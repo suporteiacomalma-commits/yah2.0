@@ -1,0 +1,184 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dark Neon Theme - Always Dark */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 270 91% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 187 92% 55%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 270 91% 65%;
+
+    --radius: 0.75rem;
+
+    /* Neon Colors */
+    --neon-purple: 270 91% 65%;
+    --neon-magenta: 320 72% 55%;
+    --neon-cyan: 187 92% 55%;
+    --neon-lime: 82 85% 55%;
+    --neon-pink: 330 80% 60%;
+
+    /* Semantic phase colors */
+    --brand-identity: 270 91% 65%;
+    --visual-identity: 320 72% 55%;
+    --target-audience: 187 92% 55%;
+    --tone-voice: 82 85% 55%;
+
+    /* Sidebar - Dark */
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 270 91% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 50% 20%;
+    --sidebar-accent-foreground: 270 91% 80%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 270 91% 65%;
+
+    /* Glow Effects */
+    --glow-primary: 0 0 30px hsl(270 91% 65% / 0.4);
+    --glow-cyan: 0 0 30px hsl(187 92% 55% / 0.4);
+    --glow-magenta: 0 0 30px hsl(320 72% 55% / 0.4);
+
+    /* Font */
+    --font-sans: 'Space Grotesk', system-ui, sans-serif;
+  }
+
+  .dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 270 91% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 187 92% 55%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 270 91% 65%;
+
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 270 91% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 50% 20%;
+    --sidebar-accent-foreground: 270 91% 80%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 270 91% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(270 91% 65%) 0%, hsl(320 72% 55%) 100%);
+  }
+
+  .gradient-neon {
+    background: linear-gradient(135deg, hsl(270 91% 65%) 0%, hsl(187 92% 55%) 100%);
+  }
+
+  .gradient-dark {
+    background: linear-gradient(180deg, hsl(0 0% 6%) 0%, hsl(0 0% 4%) 100%);
+  }
+
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-cyan {
+    box-shadow: var(--glow-cyan);
+  }
+
+  .glow-magenta {
+    box-shadow: var(--glow-magenta);
+  }
+
+  .glass-dark {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+  }
+
+  .neon-border {
+    border: 1px solid hsl(270 91% 65% / 0.5);
+  }
+
+  .neon-border-glow {
+    border: 1px solid hsl(270 91% 65%);
+    box-shadow: 0 0 15px hsl(270 91% 65% / 0.3), inset 0 0 15px hsl(270 91% 65% / 0.1);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background: linear-gradient(135deg, hsl(270 91% 65%) 0%, hsl(320 72% 55%) 100%);
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px hsl(270 91% 65% / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 40px hsl(270 91% 65% / 0.6);
+    }
+  }
+
+  .grid-pattern {
+    background-image: 
+      linear-gradient(hsl(0 0% 15% / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(0 0% 15% / 0.3) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+}

@@ -104,14 +104,19 @@ export function MiniCalendar() {
                   }}
                   className="rounded-xl w-full"
                   classNames={{
+                    months: "w-full",
+                    month: "w-full space-y-4",
                     day_selected: "bg-primary text-primary-foreground font-bold shadow-[0_0_20px_rgba(var(--primary),0.4)] rounded-xl",
                     day_today: "bg-white/5 text-primary font-bold border border-primary/20 rounded-xl",
-                    table: "w-full border-collapse space-y-1",
+                    table: "w-full border-collapse space-y-2",
                     head_row: "flex w-full mt-2",
-                    head_cell: "text-muted-foreground rounded-md w-full font-normal text-[0.8rem]",
+                    head_cell: "text-muted-foreground rounded-md flex-1 font-bold text-[0.7rem] uppercase tracking-tighter opacity-50",
                     row: "flex w-full mt-2",
-                    cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 w-full",
-                    day: "h-9 w-full p-0 font-normal aria-selected:opacity-100",
+                    cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 flex-1",
+                    day: cn(
+                      "h-11 w-full p-0 font-medium aria-selected:opacity-100 transition-all duration-300 hover:bg-white/10 rounded-xl",
+                      "flex items-center justify-center"
+                    ),
                   }}
                 />
               </div>

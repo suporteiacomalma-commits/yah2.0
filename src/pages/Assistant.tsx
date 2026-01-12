@@ -39,6 +39,7 @@ export default function Assistant() {
         recognition.lang = "pt-BR";
 
         recognition.onstart = () => {
+            console.log("Speech recognition started");
             setIsListening(true);
             setTranscript("");
             transcriptRef.current = "";
@@ -46,20 +47,36 @@ export default function Assistant() {
             setProposedTask(null);
         };
 
+        recognition.onspeechstart = () => {
+            console.log("Speech detected");
+        };
+
+        recognition.onspeechend = () => {
+            console.log("Speech ended");
+        };
+
         recognition.onresult = (event: any) => {
-            const current = event.resultIndex;
-            const transcriptText = event.results[current][0].transcript;
-            setTranscript(transcriptText);
-            transcriptRef.current = transcriptText;
+            let interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    transcriptRef.current = event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+            const currentTranscript = transcriptRef.current || interimTranscript;
+            setTranscript(currentTranscript);
+            console.log("Transcript updated:", currentTranscript);
         };
 
         recognition.onend = () => {
+            console.log("Speech recognition ended");
             setIsListening(false);
             const finalTranscript = transcriptRef.current.trim();
             if (finalTranscript) {
                 prepareTask(finalTranscript);
             } else {
-                toast.info("Nenhuma fala detectada.");
+                toast.info("Nenhuma fala detectada. Tente aproximar o microfone ou falar mais alto.");
             }
         };
 
@@ -72,13 +89,16 @@ export default function Assistant() {
                     toast.info("Não ouvi nada. Tente falar novamente.");
                     break;
                 case 'not-allowed':
-                    toast.error("Microfone bloqueado! Clique no ícone de cadeado/câmera na barra do navegador e permita o uso do microfone.");
+                    toast.error("Microfone bloqueado! Clique no ícone de cadeado na barra do navegador e permita o uso do microfone.");
                     break;
                 case 'network':
-                    toast.error("Erro de rede no reconhecimento. Verifique sua conexão.");
+                    toast.error("Erro de rede. Verifique sua conexão com a internet.");
+                    break;
+                case 'aborted':
+                    console.log("Recognition aborted");
                     break;
                 default:
-                    toast.error("Erro no reconhecimento de voz. Verifique o microfone.");
+                    toast.error(`Erro: ${event.error}. Tente recarregar a página.`);
             }
         };
 
@@ -88,9 +108,28 @@ export default function Assistant() {
     useEffect(() => {
         recognitionRef.current = initRecognition();
 
+        // Check for microphone permissions if possible
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'microphone' as any }).then((permissionStatus) => {
+                if (permissionStatus.state === 'denied') {
+                    toast.error("Acesso ao microfone negado. Por favor, habilite nas configurações do seu navegador.");
+                }
+                permissionStatus.onchange = () => {
+                    if (permissionStatus.state === 'granted') {
+                        toast.success("Microfone habilitado!");
+                        recognitionRef.current = initRecognition();
+                    }
+                };
+            });
+        }
+
         return () => {
             if (recognitionRef.current) {
-                recognitionRef.current.stop();
+                try {
+                    recognitionRef.current.abort();
+                } catch (e) {
+                    console.error("Cleanup error", e);
+                }
             }
         };
     }, [user?.id]);
@@ -110,8 +149,13 @@ export default function Assistant() {
             }
         } else {
             try {
+                // Always try to abort before starting to ensure a clean state
+                try {
+                    recognitionRef.current.abort();
+                } catch (e) { }
+
                 recognitionRef.current.start();
-                toast.info("Ouvindo...");
+                toast.info("Ouvindo... Pode falar!");
             } catch (error) {
                 console.error("Start recognition error", error);
                 // Reset ref and try again if starting fails unexpectedly

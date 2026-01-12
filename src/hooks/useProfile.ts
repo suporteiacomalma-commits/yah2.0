@@ -41,10 +41,8 @@ export function useProfile() {
 
       const { data, error } = await supabase
         .from("profiles")
-        .upsert({
-          user_id: user.id,
-          ...updates,
-        }, { onConflict: 'user_id' })
+        .update(updates)
+        .eq("user_id", user.id)
         .select()
         .single();
 

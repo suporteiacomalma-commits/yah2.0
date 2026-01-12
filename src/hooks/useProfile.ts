@@ -44,6 +44,7 @@ export function useProfile() {
         .update(updates)
         .eq("user_id", user.id)
         .select()
+        .limit(1)
         .single();
 
       if (error) throw error;

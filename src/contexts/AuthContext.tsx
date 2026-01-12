@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -61,7 +61,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      console.log("Starting sign out process...");
+      await supabase.auth.signOut();
+      // Explicitly clear state to ensure UI updates even if onAuthStateChange is delayed
+      setSession(null);
+      setUser(null);
+      console.log("Sign out successful");
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      // Fallback: still clear state even if Supabase sign out fails
+      setSession(null);
+      setUser(null);
+    }
   };
 
   return (

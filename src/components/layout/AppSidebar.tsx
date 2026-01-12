@@ -22,7 +22,9 @@ import {
   LogOut,
   Sparkles,
   LayoutDashboard,
+  Shield,
 } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const menuItems = [
   {
@@ -61,8 +63,19 @@ export function AppSidebar() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { brand } = useBrand();
+  const { isAdmin } = useUserRole();
 
   const userInitials = user?.email?.slice(0, 2).toUpperCase() || "U";
+
+  const allMenuItems = [
+    ...menuItems,
+    ...(isAdmin ? [{
+      title: "Administração",
+      url: "/admin",
+      icon: Shield,
+      color: "text-red-400",
+    }] : []),
+  ];
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -86,7 +99,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {allMenuItems.map((item) => {
                 const isActive = location.pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.title}>

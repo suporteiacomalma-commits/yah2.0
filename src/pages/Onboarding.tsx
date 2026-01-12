@@ -7,13 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { useBrand } from "@/hooks/useBrand";
 import { useProfile } from "@/hooks/useProfile";
-import { 
-  Loader2, 
-  Sparkles, 
-  ArrowRight, 
+import {
+  Loader2,
+  Sparkles,
+  ArrowRight,
   ArrowLeft,
   User,
-  Building2, 
+  Building2,
   Briefcase,
   Target,
   Rocket
@@ -73,20 +73,28 @@ export default function Onboarding() {
   };
 
   const handleFinish = async () => {
-    await createBrand.mutateAsync({
-      name: brandName,
-      sector,
-      description,
-    });
+    try {
+      console.log("Saving brand...");
+      await createBrand.mutateAsync({
+        name: brandName,
+        sector,
+        description,
+      });
 
-    await updateProfile.mutateAsync({
-      user_name: userName,
-      business_stage: businessStage,
-      main_goal: mainGoal,
-      onboarding_completed: true,
-    });
+      console.log("Saving profile...");
+      await updateProfile.mutateAsync({
+        user_name: userName,
+        business_stage: businessStage,
+        main_goal: mainGoal,
+        onboarding_completed: true,
+      });
 
-    navigate("/dashboard");
+      console.log("Onboarding complete, redirecting...");
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Error during onboarding finish:", error);
+      // createBrand and updateProfile already show toasts via onError
+    }
   };
 
   const isLoading = createBrand.isPending || updateProfile.isPending;
@@ -120,7 +128,7 @@ export default function Onboarding() {
             <span className="text-sm font-medium text-primary">{Math.round(progress)}%</span>
           </div>
           <div className="h-2 bg-secondary rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full gradient-primary transition-all duration-500 ease-out rounded-full glow-primary"
               style={{ width: `${progress}%` }}
             />
@@ -268,7 +276,7 @@ export default function Onboarding() {
                   );
                 })}
               </div>
-              
+
               {/* Optional description */}
               <div className="space-y-2 pt-2">
                 <Label htmlFor="description" className="text-foreground">Descrição (opcional)</Label>
@@ -296,7 +304,7 @@ export default function Onboarding() {
                 Voltar
               </Button>
             )}
-            
+
             {step < totalSteps ? (
               <Button
                 onClick={handleNext}

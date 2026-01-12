@@ -28,7 +28,7 @@ export function useProfile() {
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
-      
+
       if (error) throw error;
       return data as Profile | null;
     },
@@ -38,20 +38,27 @@ export function useProfile() {
   const updateProfile = useMutation({
     mutationFn: async (updates: Partial<Profile>) => {
       if (!user) throw new Error("User not authenticated");
-      
+
       const { data, error } = await supabase
         .from("profiles")
-        .update(updates)
-        .eq("user_id", user.id)
+        .upsert({
+          user_id: user.id,
+          ...updates,
+        }, { onConflict: 'user_id' })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
     },
+    onError: (error: any) => {
+      import("sonner").then(({ toast }) => {
+        toast.error("Erro ao atualizar perfil: " + error.message);
+      });
+    }
   });
 
   return {

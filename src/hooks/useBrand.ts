@@ -48,7 +48,7 @@ export function useBrand() {
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
-      
+
       if (error) throw error;
       return data as Brand | null;
     },
@@ -58,18 +58,18 @@ export function useBrand() {
   const createBrand = useMutation({
     mutationFn: async (brandData: { name: string; sector?: string; description?: string }) => {
       if (!user) throw new Error("User not authenticated");
-      
+
       const { data, error } = await supabase
         .from("brands")
-        .insert({
+        .upsert({
           user_id: user.id,
           name: brandData.name,
           sector: brandData.sector || null,
           description: brandData.description || null,
-        })
+        }, { onConflict: 'user_id' })
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -85,14 +85,14 @@ export function useBrand() {
   const updateBrand = useMutation({
     mutationFn: async (updates: Partial<Brand>) => {
       if (!user || !brand) throw new Error("User or brand not found");
-      
+
       const { data, error } = await supabase
         .from("brands")
         .update(updates)
         .eq("id", brand.id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -108,14 +108,14 @@ export function useBrand() {
   const completePhase = useMutation({
     mutationFn: async (phaseNumber: number) => {
       if (!user || !brand) throw new Error("User or brand not found");
-      
+
       const newPhasesCompleted = [...(brand.phases_completed || [])];
       if (!newPhasesCompleted.includes(phaseNumber)) {
         newPhasesCompleted.push(phaseNumber);
       }
-      
+
       const nextPhase = Math.min(phaseNumber + 1, 11);
-      
+
       const { data, error } = await supabase
         .from("brands")
         .update({
@@ -125,7 +125,7 @@ export function useBrand() {
         .eq("id", brand.id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },

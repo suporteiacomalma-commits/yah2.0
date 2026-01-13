@@ -63,7 +63,7 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (profile?.onboarding_completed && brand) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/welcome" replace />;
   }
 
   return <>{children}</>;

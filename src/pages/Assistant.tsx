@@ -22,6 +22,7 @@ export default function Assistant() {
     const navigate = useNavigate();
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+    const visualRecognitionRef = useRef<any>(null);
 
     const speak = async (text: string) => {
         try {
@@ -94,6 +95,31 @@ export default function Assistant() {
             const recorder = new MediaRecorder(stream);
             audioChunksRef.current = [];
 
+            // Parallel SpeechRecognition for Real-time Visualization
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                const visualRec = new SpeechRecognition();
+                visualRec.continuous = true;
+                visualRec.interimResults = true;
+                visualRec.lang = "pt-BR";
+
+                visualRec.onresult = (event: any) => {
+                    let interimTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            setTranscript(event.results[i][0].transcript);
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    if (interimTranscript) {
+                        setTranscript(interimTranscript);
+                    }
+                };
+                visualRec.start();
+                visualRecognitionRef.current = visualRec;
+            }
+
             recorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
                     audioChunksRef.current.push(e.data);
@@ -124,8 +150,11 @@ export default function Assistant() {
     const stopRecording = () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
             mediaRecorderRef.current.stop();
-            setIsListening(false);
         }
+        if (visualRecognitionRef.current) {
+            visualRecognitionRef.current.stop();
+        }
+        setIsListening(false);
     };
 
     const toggleListening = () => {
@@ -169,6 +198,9 @@ Regras:
 3. Se o usuário não mencionar horário, defina como 09:00:00 do dia identificado.
 4. Categorize entre: "task", "meeting", "event", ou "reminder".
 5. Defina a prioridade como "low", "medium" ou "high" baseado na urgência detectada.
+6. Identifique se é recorrente. Se o usuário disser "todo dia", "toda segunda", "mensalmente", etc.
+   - is_recurring: boolean
+   - recurrence_rule: "daily", "weekly", "monthly" ou null
 
 Retorne APENAS um objeto JSON com as seguintes chaves:
 {
@@ -177,6 +209,8 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
   "date": "string (formato ISO 8601)",
   "category": "string",
   "priority": "string",
+  "is_recurring": boolean,
+  "recurrence_rule": "string or null",
   "status": "pending"
 }`;
 
@@ -319,6 +353,14 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
                                 )}>
                                     Prio: {proposedTask.priority}
                                 </div>
+                                {proposedTask.is_recurring && (
+                                    <div className="px-3 py-1 rounded-full bg-accent/20 text-accent text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                                        <Sparkles className="w-3 h-3" />
+                                        Recorrente: {proposedTask.recurrence_rule === 'daily' ? 'Diário' :
+                                            proposedTask.recurrence_rule === 'weekly' ? 'Semanal' :
+                                                proposedTask.recurrence_rule === 'monthly' ? 'Mensal' : 'Sim'}
+                                    </div>
+                                )}
                             </div>
                         )}
 

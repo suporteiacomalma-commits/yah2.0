@@ -81,11 +81,15 @@ export function AppSidebar() {
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <Link to="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-glow border border-primary/20">
+            <img
+              src="/logo.png"
+              alt="YAh Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-sidebar-foreground">Brand Central</span>
+            <span className="font-semibold text-sidebar-foreground">Yah 2.0</span>
             {brand && (
               <span className="text-xs text-muted-foreground truncate max-w-32">
                 {brand.name}

@@ -20,8 +20,12 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
       <div className="h-full max-w-6xl mx-auto px-4 flex items-center justify-between">
         {/* Logo / Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center glow-primary">
-            <span className="text-primary-foreground font-bold text-lg">B</span>
+          <div className="w-10 h-10 rounded-xl overflow-hidden glow-primary border border-primary/20">
+            <img
+              src="/logo.png"
+              alt="YAh Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
           {brandName && (
             <span className="font-semibold text-foreground hidden sm:block text-lg">
@@ -33,17 +37,17 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="rounded-full w-10 h-10 border border-border hover:border-primary/50 hover:bg-secondary"
             >
               <User className="w-5 h-5 text-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-card border-border">
-            <DropdownMenuItem 
-              onClick={signOut} 
+            <DropdownMenuItem
+              onClick={signOut}
               className="text-destructive focus:text-destructive cursor-pointer"
             >
               <LogOut className="w-4 h-4 mr-2" />

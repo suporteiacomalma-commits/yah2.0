@@ -28,7 +28,7 @@ export default function Auth() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       emailSchema.parse(email);
       passwordSchema.parse(password);
@@ -54,7 +54,7 @@ export default function Auth() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       emailSchema.parse(email);
       passwordSchema.parse(password);
@@ -97,14 +97,18 @@ export default function Auth() {
         <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl p-8 shadow-2xl">
           {/* Logo */}
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-neon-magenta flex items-center justify-center shadow-lg shadow-primary/30">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg shadow-primary/30 border border-primary/20">
+              <img
+                src="/logo.png"
+                alt="YAh Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
 
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Brand Central</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Yah 2.0</h1>
             <p className="text-muted-foreground text-sm">
               Construa sua marca de forma estratégica
             </p>
@@ -113,13 +117,13 @@ export default function Auth() {
           {/* Tabs */}
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6 bg-secondary/30 p-1 rounded-full h-12">
-              <TabsTrigger 
+              <TabsTrigger
                 value="signin"
                 className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
               >
                 Entrar
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="signup"
                 className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
               >
@@ -163,9 +167,9 @@ export default function Auth() {
                     </div>
                   </div>
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 bg-gradient-to-r from-primary to-neon-magenta text-white font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/30" 
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-gradient-to-r from-primary to-neon-magenta text-white font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/30"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -218,9 +222,9 @@ export default function Auth() {
                     required
                   />
                 </div>
-                <Button 
-                  type="submit" 
-                  className="w-full h-12 bg-gradient-to-r from-primary to-neon-magenta text-white font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/30" 
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-gradient-to-r from-primary to-neon-magenta text-white font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/30"
                   disabled={isLoading}
                 >
                   {isLoading ? (

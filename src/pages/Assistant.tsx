@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 export default function Assistant() {
-    const { getSetting } = useSystemSettings();
+    const { getSetting, isLoading: isLoadingSettings } = useSystemSettings();
     const [isListening, setIsListening] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [showConfirmation, setShowConfirmation] = useState(false);
@@ -268,7 +268,7 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
                             isListening ? "bg-primary glow-primary scale-110" : "bg-card border border-primary/30",
                             isProcessing && "animate-spin-slow"
                         )}>
-                            {isProcessing ? (
+                            {isProcessing || isLoadingSettings ? (
                                 <Loader2 className="w-12 h-12 text-primary animate-spin" />
                             ) : (
                                 <Brain className={cn("w-16 h-16 transition-colors", isListening ? "text-white" : "text-primary")} />
@@ -296,7 +296,7 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
                             "text-xs font-bold uppercase tracking-[0.2em] mb-4 transition-colors",
                             showConfirmation ? "text-primary" : "text-muted-foreground"
                         )}>
-                            {isListening ? "Ouvindo agora..." : isProcessing ? "Processando comando..." : showConfirmation ? "Comando Interpretado" : "Aguardando Voz..."}
+                            {isListening ? "Ouvindo agora..." : (isProcessing || isLoadingSettings) ? "Processando comando..." : showConfirmation ? "Comando Interpretado" : "Aguardando Voz..."}
                         </span>
 
                         <p className={cn(
@@ -358,7 +358,7 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
                                         "w-20 h-20 rounded-full p-0 shadow-2xl transition-all active:scale-95",
                                         isListening ? "bg-destructive hover:bg-destructive/90" : "gradient-primary"
                                     )}
-                                    disabled={isProcessing}
+                                    disabled={isProcessing || isLoadingSettings}
                                 >
                                     <Mic className="w-10 h-10 text-white" />
                                 </Button>

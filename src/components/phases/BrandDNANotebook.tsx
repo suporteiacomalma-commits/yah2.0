@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, Save, Loader2, Wand2, FileText, CheckCircle2, Pencil, Plus, Trash2, Dna, FileDown, Rocket, Target, Sparkles } from "lucide-react";
 import { useBrand, Brand } from "@/hooks/useBrand";
@@ -49,12 +49,19 @@ export function BrandDNANotebook() {
         }
     }, [brand]);
 
-    const handleSuggestDNAFields = async () => {
+    const handleSuggestDNAFields = async (targetField?: keyof Brand, stepOverride?: number) => {
         if (isSuggesting || !brand?.result_essencia) return;
         setIsSuggesting(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
             if (!apiKey) return;
+
+            const currentStep = stepOverride || step;
+            const isInitialPhase1 = !targetField && currentStep === 1;
+            const isInitialPhase2 = !targetField && currentStep === 2;
+
+            const currentVal = targetField ? (formData[targetField] || "") : "";
+            let requestedFieldsStr = targetField || (currentStep === 1 ? "Nicho e Produto" : "Dores, Sonhos, Transformação e Diferencial");
 
             const prompt = `Com base nestas informações de personalidade:
 Papel: ${brand.user_role}
@@ -62,8 +69,26 @@ Motivação: ${brand.user_motivation}
 Mudança: ${brand.user_change_world}
 Essência: ${brand.result_essencia}
 
-Sugira um nicho específico (dna_nicho) e um produto/serviço (dna_produto) ideal para esta marca.
-Retorne apenas um JSON: { "dna_nicho": "string", "dna_produto": "string" } em Português.`;
+DADOS DA TELA 1 (DNA):
+- Nicho: ${formData.dna_nicho || "Ainda não definido"}
+- Produto: ${formData.dna_produto || "Ainda não definido"}
+- Objetivo: ${formData.dna_objetivo || "Ainda não definido"}
+
+Solicitação: Sugira valores estratégicos para o(s) campo(s): ${requestedFieldsStr}.
+${currentVal ? `Valor atual do campo "${targetField}": ${currentVal}. Traga algo novo, mais profundo ou complementar.` : ''}
+
+IMPORTANTE: Você deve preencher TODOS os campos solicitados no JSON abaixo com sugestões completas e impactantes.
+
+Retorne um JSON com os campos:
+{
+  "dna_nicho": "string (se for inicial da tela 1 ou solicitado)",
+  "dna_produto": "string (se for inicial da tela 1 ou solicitado)",
+  "dna_dor_principal": "string (se for inicial da tela 2 ou solicitado)",
+  "dna_sonho_principal": "string (se for inicial da tela 2 ou solicitado)",
+  "dna_transformacao": "string (se for inicial da tela 2 ou solicitado)",
+  "dna_diferencial": "string (se for inicial da tela 2 ou solicitado)"
+}
+Saída em Português. Seja criativo, prático e impactante.`;
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -74,7 +99,7 @@ Retorne apenas um JSON: { "dna_nicho": "string", "dna_produto": "string" } em Po
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        { role: "system", content: "Você é um estrategista de marca. Saída sempre em JSON." },
+                        { role: "system", content: "Você é um estrategista de marca especialista em branding premium. Saída sempre em JSON." },
                         { role: "user", content: prompt }
                     ],
                     response_format: { type: "json_object" }
@@ -86,15 +111,26 @@ Retorne apenas um JSON: { "dna_nicho": "string", "dna_produto": "string" } em Po
             const aiData = await response.json();
             const results = JSON.parse(aiData.choices[0].message.content);
 
-            if (results.dna_nicho && !formData.dna_nicho) {
-                handleInputChange("dna_nicho", results.dna_nicho);
+            // Determinar quais campos atualizar
+            let fieldsToUpdate: (keyof Brand)[] = [];
+            if (targetField) {
+                fieldsToUpdate = [targetField];
+            } else if (currentStep === 1) {
+                fieldsToUpdate = ["dna_nicho", "dna_produto"];
+            } else {
+                fieldsToUpdate = ["dna_dor_principal", "dna_sonho_principal", "dna_transformacao", "dna_diferencial"];
             }
-            if (results.dna_produto && !formData.dna_produto) {
-                handleInputChange("dna_produto", results.dna_produto);
-            }
-            toast.info("Sugestões da IA carregadas com base na sua personalidade!");
+
+            fieldsToUpdate.forEach(field => {
+                if (results[field]) {
+                    handleInputChange(field, results[field]);
+                }
+            });
+
+            toast.info(targetField ? "Nova sugestão gerada!" : "Sugestões da IA carregadas!");
         } catch (error) {
             console.error("Suggestion error:", error);
+            toast.error("Erro ao obter sugestão da IA.");
         } finally {
             setIsSuggesting(false);
         }
@@ -108,6 +144,14 @@ Retorne apenas um JSON: { "dna_nicho": "string", "dna_produto": "string" } em Po
 
     const handleObjetivoChange = (option: string) => {
         handleInputChange("dna_objetivo", option);
+    };
+
+    const handleNextStep = () => {
+        setStep(2);
+        // Pre-fill screen 2 if empty
+        if (!formData.dna_dor_principal || !formData.dna_sonho_principal || !formData.dna_transformacao || !formData.dna_diferencial) {
+            handleSuggestDNAFields(undefined, 2);
+        }
     };
 
     const handleGenerateDNA = async () => {
@@ -227,7 +271,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={handleSuggestDNAFields}
+                                    onClick={() => handleSuggestDNAFields('dna_nicho')}
                                     disabled={isSuggesting}
                                     className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
                                 >
@@ -251,7 +295,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={handleSuggestDNAFields}
+                                    onClick={() => handleSuggestDNAFields('dna_produto')}
                                     disabled={isSuggesting}
                                     className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
                                 >
@@ -312,7 +356,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                         </div>
                         <div className="flex justify-end pt-4 gap-4">
                             <Button variant="ghost" onClick={() => navigate("/dashboard")}>Voltar ao Início</Button>
-                            <Button onClick={() => setStep(2)} className="gradient-primary text-white px-8 h-12">
+                            <Button onClick={handleNextStep} className="gradient-primary text-white px-8 h-12">
                                 Próximo <ChevronRight className="ml-2 w-4 h-4" />
                             </Button>
                         </div>
@@ -329,40 +373,100 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="space-y-3">
-                            <Label className="text-base font-semibold text-primary/80">4. Descreva a dor principal do seu público.</Label>
-                            <Input
+                        <div className="space-y-3 relative">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-base font-semibold text-primary/80">4. Descreva a dor principal do seu público.</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSuggestDNAFields('dna_dor_principal')}
+                                    disabled={isSuggesting}
+                                    className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
+                                >
+                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                    Sugerir com IA
+                                </Button>
+                            </div>
+                            <AutoResizeTextarea
                                 placeholder="Ex: Não consigo me organizar para criar conteúdo"
                                 value={formData.dna_dor_principal || ""}
-                                onChange={(e) => handleInputChange("dna_dor_principal", e.target.value)}
-                                className="bg-background/50 border-border h-12"
+                                onChange={(val) => handleInputChange("dna_dor_principal", val)}
+                                className={cn(
+                                    "bg-background/50 border-border transition-all",
+                                    isSuggesting && !formData.dna_dor_principal && "animate-pulse border-accent/30"
+                                )}
                             />
                         </div>
-                        <div className="space-y-3">
-                            <Label className="text-base font-semibold text-primary/80">5. Qual sonho seu público tem?</Label>
-                            <Input
+                        <div className="space-y-3 relative">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-base font-semibold text-primary/80">5. Qual sonho seu público tem?</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSuggestDNAFields('dna_sonho_principal')}
+                                    disabled={isSuggesting}
+                                    className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
+                                >
+                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                    Sugerir com IA
+                                </Button>
+                            </div>
+                            <AutoResizeTextarea
                                 placeholder="Ser reconhecida como autoridade na minha área"
                                 value={formData.dna_sonho_principal || ""}
-                                onChange={(e) => handleInputChange("dna_sonho_principal", e.target.value)}
-                                className="bg-background/50 border-border h-12"
+                                onChange={(val) => handleInputChange("dna_sonho_principal", val)}
+                                className={cn(
+                                    "bg-background/50 border-border transition-all",
+                                    isSuggesting && !formData.dna_sonho_principal && "animate-pulse border-accent/30"
+                                )}
                             />
                         </div>
-                        <div className="space-y-3">
-                            <Label className="text-base font-semibold text-primary/80">6. Qual transformação sua marca entrega (Antes → Depois)?</Label>
-                            <Input
+                        <div className="space-y-3 relative">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-base font-semibold text-primary/80">6. Qual transformação sua marca entrega (Antes → Depois)?</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSuggestDNAFields('dna_transformacao')}
+                                    disabled={isSuggesting}
+                                    className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
+                                >
+                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                    Sugerir com IA
+                                </Button>
+                            </div>
+                            <AutoResizeTextarea
                                 placeholder="Ex: De desorganizado para produtivo. Mesmo que confuso, a IA organiza."
                                 value={formData.dna_transformacao || ""}
-                                onChange={(e) => handleInputChange("dna_transformacao", e.target.value)}
-                                className="bg-background/50 border-border h-12"
+                                onChange={(val) => handleInputChange("dna_transformacao", val)}
+                                className={cn(
+                                    "bg-background/50 border-border transition-all",
+                                    isSuggesting && !formData.dna_transformacao && "animate-pulse border-accent/30"
+                                )}
                             />
                         </div>
-                        <div className="space-y-3">
-                            <Label className="text-base font-semibold text-primary/80">7. O que te torna diferente?</Label>
-                            <Input
+                        <div className="space-y-3 relative">
+                            <div className="flex justify-between items-center">
+                                <Label className="text-base font-semibold text-primary/80">7. O que te torna diferente?</Label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSuggestDNAFields('dna_diferencial')}
+                                    disabled={isSuggesting}
+                                    className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
+                                >
+                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                    Sugerir com IA
+                                </Button>
+                            </div>
+                            <AutoResizeTextarea
                                 placeholder="Sua história, vivência, metodologia, abordagem própria…"
                                 value={formData.dna_diferencial || ""}
-                                onChange={(e) => handleInputChange("dna_diferencial", e.target.value)}
-                                className="bg-background/50 border-border h-12"
+                                onChange={(val) => handleInputChange("dna_diferencial", val)}
+                                className={cn(
+                                    "bg-background/50 border-border transition-all",
+                                    isSuggesting && !formData.dna_diferencial && "animate-pulse border-accent/30"
+                                )}
                             />
                         </div>
                         <div className="flex justify-between pt-4">
@@ -653,6 +757,32 @@ function PilarItem({ title, description, onEdit, onDelete, index }: { title: str
                 <p className="text-xs text-muted-foreground leading-snug">{description}</p>
             )}
         </div>
+    );
+}
+
+function AutoResizeTextarea({ value, onChange, placeholder, className }: { value: string; onChange: (val: string) => void; placeholder?: string; className?: string }) {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustHeight = () => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    };
+
+    useEffect(() => {
+        adjustHeight();
+    }, [value]);
+
+    return (
+        <Textarea
+            ref={textareaRef}
+            placeholder={placeholder}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={cn("min-h-[3rem] resize-none overflow-hidden py-3", className)}
+        />
     );
 }
 

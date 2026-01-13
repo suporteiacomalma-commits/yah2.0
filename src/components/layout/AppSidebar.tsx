@@ -80,16 +80,15 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4 border-b border-sidebar-border">
-        <Link to="/dashboard" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-glow border border-primary/20">
+        <Link to="/dashboard" className="flex items-center gap-2">
+          <div className="w-24 h-24 overflow-hidden">
             <img
               src="/logo.png"
               alt="YAh Logo"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-sidebar-foreground">Yah 2.0</span>
             {brand && (
               <span className="text-xs text-muted-foreground truncate max-w-32">
                 {brand.name}

@@ -96,19 +96,19 @@ export default function Auth() {
         {/* Card */}
         <div className="bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl p-8 shadow-2xl">
           {/* Logo */}
-          <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg shadow-primary/30 border border-primary/20">
+          {/* Logo */}
+          <div className="flex justify-center mb-0">
+            <div className="w-64 h-64">
               <img
                 src="/logo.png"
                 alt="YAh Logo"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
           </div>
 
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Yah 2.0</h1>
             <p className="text-muted-foreground text-sm">
               Construa sua marca de forma estratégica
             </p>

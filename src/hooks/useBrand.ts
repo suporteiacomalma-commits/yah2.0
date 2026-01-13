@@ -29,6 +29,16 @@ export interface Brand {
   vocabulary: string | null;
   key_messages: string | null;
   communication_examples: string | null;
+  user_role: string | null;
+  user_motivation: string | null;
+  user_change_world: string | null;
+  user_tone_selected: string[] | null;
+  user_creative_profile: string[] | null;
+  user_energy_times: string[] | null;
+  user_blockers: string | null;
+  result_essencia: string | null;
+  result_tom_voz: string | null;
+  result_como_funciona: string | null;
   current_phase: number;
   phases_completed: number[];
   created_at: string;

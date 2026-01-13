@@ -45,6 +45,16 @@ export type Database = {
           vision: string | null
           vocabulary: string | null
           writing_style: string | null
+          user_role: string | null
+          user_motivation: string | null
+          user_change_world: string | null
+          user_tone_selected: string[] | null
+          user_creative_profile: string[] | null
+          user_energy_times: string[] | null
+          user_blockers: string | null
+          result_essencia: string | null
+          result_tom_voz: string | null
+          result_como_funciona: string | null
         }
         Insert: {
           accent_color?: string | null
@@ -76,6 +86,16 @@ export type Database = {
           vision?: string | null
           vocabulary?: string | null
           writing_style?: string | null
+          user_role?: string | null
+          user_motivation?: string | null
+          user_change_world?: string | null
+          user_tone_selected?: string[] | null
+          user_creative_profile?: string[] | null
+          user_energy_times?: string[] | null
+          user_blockers?: string | null
+          result_essencia?: string | null
+          result_tom_voz?: string | null
+          result_como_funciona?: string | null
         }
         Update: {
           accent_color?: string | null
@@ -107,6 +127,16 @@ export type Database = {
           vision?: string | null
           vocabulary?: string | null
           writing_style?: string | null
+          user_role?: string | null
+          user_motivation?: string | null
+          user_change_world?: string | null
+          user_tone_selected?: string[] | null
+          user_creative_profile?: string[] | null
+          user_energy_times?: string[] | null
+          user_blockers?: string | null
+          result_essencia?: string | null
+          result_tom_voz?: string | null
+          result_como_funciona?: string | null
         }
         Relationships: []
       }

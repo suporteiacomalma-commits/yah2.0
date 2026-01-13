@@ -20,11 +20,11 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
       <div className="h-full max-w-6xl mx-auto px-4 flex items-center justify-between">
         {/* Logo / Brand */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden glow-primary border border-primary/20">
+          <div className="w-16 h-16 overflow-hidden">
             <img
               src="/logo.png"
               alt="YAh Logo"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
           {brandName && (

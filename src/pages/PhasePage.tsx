@@ -6,6 +6,7 @@ import { useBrand } from "@/hooks/useBrand";
 import { phases } from "@/lib/phases";
 import { cn } from "@/lib/utils";
 import { ActivityCalendar } from "@/components/calendar/ActivityCalendar";
+import { PersonalityNotebook } from "@/components/phases/PersonalityNotebook";
 
 export default function PhasePage() {
   const { phaseId } = useParams();
@@ -70,7 +71,9 @@ export default function PhasePage() {
 
           {/* Phase Content */}
           <div className="bg-card border border-border rounded-2xl p-6 md:p-8 mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            {phaseNumber === 7 ? (
+            {phaseNumber === 1 ? (
+              <PersonalityNotebook />
+            ) : phaseNumber === 7 ? (
               <ActivityCalendar />
             ) : (
               <div className="text-center py-12">
@@ -88,7 +91,7 @@ export default function PhasePage() {
           {/* Complete Button */}
           {!isCompleted && (
             <div className="flex justify-end animate-fade-in" style={{ animationDelay: "0.2s" }}>
-              <Button 
+              <Button
                 onClick={handleComplete}
                 disabled={completePhase.isPending}
                 className="gradient-primary text-primary-foreground"

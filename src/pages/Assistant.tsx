@@ -9,8 +9,10 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 export default function Assistant() {
+    const { getSetting } = useSystemSettings();
     const [isListening, setIsListening] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [showConfirmation, setShowConfirmation] = useState(false);
@@ -173,69 +175,71 @@ export default function Assistant() {
     const prepareTask = async (text: string) => {
         setIsProcessing(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 600));
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) {
+                toast.error("OpenAI API Key não configurada. Fale com um administrador.");
+                setIsProcessing(false);
+                return;
+            }
 
             const now = new Date();
-            let activityDate = new Date();
-            const lowerText = text.toLowerCase();
+            const currentDateTime = format(now, "eeee, dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR });
 
-            // 1. Detect relative days
-            if (lowerText.includes("amanhã")) {
-                activityDate.setDate(now.getDate() + 1);
-            } else if (lowerText.includes("hoje")) {
-                activityDate = new Date(now);
-            } else {
-                // 2. Detect days of the week
-                const daysMap: Record<string, number> = {
-                    "domingo": 0,
-                    "segunda": 1,
-                    "terça": 2,
-                    "quarta": 3,
-                    "quinta": 4,
-                    "sexta": 5,
-                    "sábado": 6,
-                    "sabado": 6
-                };
+            const prompt = `Você é um assistente pessoal inteligente. Sua tarefa é converter uma frase dita pelo usuário em um objeto JSON estruturado para uma atividade de calendário.
 
-                for (const [dayName, dayIndex] of Object.entries(daysMap)) {
-                    if (lowerText.includes(dayName)) {
-                        const currentDay = now.getDay();
-                        let diff = dayIndex - currentDay;
-                        // If it's the same day or past, go to next week's day
-                        if (diff <= 0) diff += 7;
-                        activityDate.setDate(now.getDate() + diff);
-                        break;
-                    }
-                }
+Data/Hora atual: ${currentDateTime}
+
+Frase do usuário: "${text}"
+
+Regras:
+1. Extraia o título da tarefa da forma mais clara possível.
+2. Identifique a data e hora. Resolva termos relativos (ex: amanhã, próxima terça, hoje à noite às 20h) baseando-se na Data/Hora atual fornecida acima.
+3. Se o usuário não mencionar horário, defina como 09:00:00 do dia identificado.
+4. Categorize entre: "task", "meeting", "event", ou "reminder".
+5. Defina a prioridade como "low", "medium" ou "high" baseado na urgência detectada.
+
+Retorne APENAS um objeto JSON com as seguintes chaves:
+{
+  "title": "string",
+  "description": "string (resumo ou frase original)",
+  "date": "string (formato ISO 8601)",
+  "category": "string",
+  "priority": "string",
+  "status": "pending"
+}`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: "Você é um assistente que extrai dados estruturados de comandos de voz. Saída sempre em JSON." },
+                        { role: "user", content: prompt }
+                    ],
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error("Falha na comunicação com a IA.");
             }
 
-            // 3. Detect Time (e.g., "as 19h", "às 19:30", "19:00")
-            const timeRegex = /(?:as|às|s)?\s*(\d{1,2})(?:[:h](\d{2})?)?/i;
-            const timeMatch = lowerText.match(timeRegex);
-            if (timeMatch) {
-                const hours = parseInt(timeMatch[1], 10);
-                const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-                if (hours >= 0 && hours < 24) {
-                    activityDate.setHours(hours, minutes, 0, 0);
-                }
-            } else {
-                // Default time
-                activityDate.setHours(9, 0, 0, 0);
-            }
+            const aiData = await response.json();
+            const results = JSON.parse(aiData.choices[0].message.content);
 
             setProposedTask({
+                ...results,
                 user_id: user?.id,
-                title: text.charAt(0).toUpperCase() + text.slice(1),
-                description: `Criado via assistente de voz: "${text}"`,
-                date: activityDate.toISOString(),
-                category: "task",
-                status: "pending",
-                priority: "medium",
+                status: "pending"
             });
             setShowConfirmation(true);
-        } catch (error) {
-            console.error("Error preparing task:", error);
-            toast.error("Falha ao interpretar comando.");
+        } catch (error: any) {
+            console.error("Error preparing task with AI:", error);
+            toast.error("Falha ao interpretar comando com IA. " + (error.message || ""));
         } finally {
             setIsProcessing(false);
         }
@@ -325,8 +329,24 @@ export default function Assistant() {
                             "text-xl md:text-2xl font-medium leading-relaxed italic transition-all duration-300",
                             showConfirmation ? "text-foreground" : "text-foreground/60"
                         )}>
-                            {transcript ? `"${transcript}"` : "Diga algo como: 'Marcar reunião para amanhã'"}
+                            {showConfirmation && proposedTask ? proposedTask.title : transcript ? `"${transcript}"` : "Diga algo como: 'Marcar dentista para amanhã às 15h'"}
                         </p>
+
+                        {showConfirmation && proposedTask && (
+                            <div className="mt-4 flex flex-wrap justify-center gap-2 animate-in slide-in-from-bottom-2">
+                                <div className="px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider">
+                                    {proposedTask.category}
+                                </div>
+                                <div className={cn(
+                                    "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
+                                    proposedTask.priority === "high" ? "bg-destructive/20 text-destructive" :
+                                        proposedTask.priority === "medium" ? "bg-orange-500/20 text-orange-500" :
+                                            "bg-green-500/20 text-green-500"
+                                )}>
+                                    Prio: {proposedTask.priority}
+                                </div>
+                            </div>
+                        )}
 
                         {showConfirmation && proposedTask && (
                             <div className="mt-6 flex items-center gap-3 px-4 py-2 rounded-full bg-primary/20 text-primary text-sm font-semibold animate-in slide-in-from-bottom-2">

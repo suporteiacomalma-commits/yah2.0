@@ -344,7 +344,7 @@ export function PersonalityNotebook() {
                         <div className="inline-flex items-center justify-center p-3 rounded-full bg-green-500/10 text-green-500 mb-2">
                             <CheckCircle2 className="w-12 h-12" />
                         </div>
-                        <h2 className="text-4xl font-extrabold text-foreground">Sua Personalidade Yah!</h2>
+                        <h2 className="text-4xl font-extrabold text-foreground">Sua Personalidade</h2>
                         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                             Aqui está o reflexo estratégico da sua essência. Você pode editar os resultados para que fiquem 100% com a sua cara.
                         </p>

@@ -20,157 +20,129 @@ export default function Assistant() {
     const [proposedTask, setProposedTask] = useState<any>(null);
     const { user } = useAuth();
     const navigate = useNavigate();
-    const recognitionRef = useRef<any>(null);
-    const transcriptRef = useRef("");
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
 
-    const initRecognition = () => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const speak = async (text: string) => {
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) return;
 
-        if (!SpeechRecognition) {
-            toast.error("Seu navegador não suporta reconhecimento de voz. Tente usar o Chrome ou Edge.");
-            return null;
+            const response = await fetch('https://api.openai.com/v1/audio/speech', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "tts-1",
+                    voice: "shimmer",
+                    input: text,
+                })
+            });
+
+            if (!response.ok) throw new Error("TTS failed");
+
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            await audio.play();
+        } catch (error) {
+            console.error("TTS Error:", error);
         }
+    };
 
-        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-            toast.warning("O reconhecimento de voz pode não funcionar em conexões não seguras (HTTP).");
+    const transcribeAudio = async (blob: Blob) => {
+        setIsProcessing(true);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) {
+                toast.error("OpenAI API Key não configurada.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", blob, "audio.webm");
+            formData.append("model", "whisper-1");
+            formData.append("language", "pt");
+
+            const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: formData
+            });
+
+            if (!response.ok) throw new Error("Whisper fail");
+
+            const data = await response.json();
+            const text = data.text;
+            setTranscript(text);
+            await prepareTask(text);
+        } catch (error: any) {
+            console.error("Transcription error:", error);
+            toast.error("Falha ao transcrever áudio.");
+        } finally {
+            setIsProcessing(false);
         }
+    };
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = true;
-        recognition.lang = "pt-BR";
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream);
+            audioChunksRef.current = [];
 
-        recognition.onstart = () => {
-            console.log("Speech recognition started");
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    audioChunksRef.current.push(e.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                if (blob.size > 0) {
+                    transcribeAudio(blob);
+                }
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            recorder.start();
+            mediaRecorderRef.current = recorder;
             setIsListening(true);
             setTranscript("");
-            transcriptRef.current = "";
             setShowConfirmation(false);
             setProposedTask(null);
-        };
+            toast.info("Ouvindo... Pode falar!");
+        } catch (error) {
+            console.error("Mic access error:", error);
+            toast.error("Erro ao acessar microfone.");
+        }
+    };
 
-        recognition.onspeechstart = () => {
-            console.log("Speech detected");
-        };
-
-        recognition.onspeechend = () => {
-            console.log("Speech ended");
-        };
-
-        recognition.onresult = (event: any) => {
-            let interimTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    transcriptRef.current = event.results[i][0].transcript;
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
-                }
-            }
-            const currentTranscript = transcriptRef.current || interimTranscript;
-            setTranscript(currentTranscript);
-            console.log("Transcript updated:", currentTranscript);
-        };
-
-        recognition.onend = () => {
-            console.log("Speech recognition ended");
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            mediaRecorderRef.current.stop();
             setIsListening(false);
-            const finalTranscript = transcriptRef.current.trim();
-            if (finalTranscript) {
-                prepareTask(finalTranscript);
-            } else {
-                toast.info("Nenhuma fala detectada. Tente aproximar o microfone ou falar mais alto.");
-            }
-        };
+        }
+    };
 
-        recognition.onerror = (event: any) => {
-            console.error("Speech recognition error", event.error);
-            setIsListening(false);
-
-            switch (event.error) {
-                case 'no-speech':
-                    toast.info("Não ouvi nada. Tente falar novamente.");
-                    break;
-                case 'not-allowed':
-                    toast.error("Microfone bloqueado! Clique no ícone de cadeado na barra do navegador e permita o uso do microfone.");
-                    break;
-                case 'network':
-                    toast.error("Erro de rede. Verifique sua conexão com a internet.");
-                    break;
-                case 'aborted':
-                    console.log("Recognition aborted");
-                    break;
-                default:
-                    toast.error(`Erro: ${event.error}. Tente recarregar a página.`);
-            }
-        };
-
-        return recognition;
+    const toggleListening = () => {
+        if (isListening) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
     };
 
     useEffect(() => {
-        recognitionRef.current = initRecognition();
-
-        // Check for microphone permissions if possible
-        if (navigator.permissions && navigator.permissions.query) {
-            navigator.permissions.query({ name: 'microphone' as any }).then((permissionStatus) => {
-                if (permissionStatus.state === 'denied') {
-                    toast.error("Acesso ao microfone negado. Por favor, habilite nas configurações do seu navegador.");
-                }
-                permissionStatus.onchange = () => {
-                    if (permissionStatus.state === 'granted') {
-                        toast.success("Microfone habilitado!");
-                        recognitionRef.current = initRecognition();
-                    }
-                };
-            });
-        }
-
         return () => {
-            if (recognitionRef.current) {
-                try {
-                    recognitionRef.current.abort();
-                } catch (e) {
-                    console.error("Cleanup error", e);
-                }
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+                mediaRecorderRef.current.stop();
             }
         };
-    }, [user?.id]);
-
-    const toggleListening = () => {
-        if (!recognitionRef.current) {
-            recognitionRef.current = initRecognition();
-            if (!recognitionRef.current) return;
-        }
-
-        if (isListening) {
-            try {
-                recognitionRef.current.stop();
-            } catch (error) {
-                console.error("Stop error", error);
-                setIsListening(false);
-            }
-        } else {
-            try {
-                // Always try to abort before starting to ensure a clean state
-                try {
-                    recognitionRef.current.abort();
-                } catch (e) { }
-
-                recognitionRef.current.start();
-                toast.info("Ouvindo... Pode falar!");
-            } catch (error) {
-                console.error("Start recognition error", error);
-                // Reset ref and try again if starting fails unexpectedly
-                recognitionRef.current = initRecognition();
-                try {
-                    recognitionRef.current?.start();
-                } catch (e) {
-                    console.error("Retry start error", e);
-                    toast.error("Não foi possível iniciar o microfone. Recarregue a página.");
-                }
-            }
-        }
-    };
+    }, []);
 
     const prepareTask = async (text: string) => {
         setIsProcessing(true);
@@ -237,6 +209,7 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
                 status: "pending"
             });
             setShowConfirmation(true);
+            await speak(`Entendi. Você quer ${results.title}. Posso salvar?`);
         } catch (error: any) {
             console.error("Error preparing task with AI:", error);
             toast.error("Falha ao interpretar comando com IA. " + (error.message || ""));
@@ -252,6 +225,7 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
             const { error } = await supabase.from("calendar_activities").insert(proposedTask);
             if (error) throw error;
 
+            await speak("Com certeza! Sua tarefa já foi salva no seu calendário.");
             toast.success("Tarefa enviada e criada com sucesso!");
             setTimeout(() => navigate("/dashboard"), 1500);
         } catch (error: any) {

@@ -7,6 +7,7 @@ import { phases } from "@/lib/phases";
 import { cn } from "@/lib/utils";
 import { ActivityCalendar } from "@/components/calendar/ActivityCalendar";
 import { PersonalityNotebook } from "@/components/phases/PersonalityNotebook";
+import { BrandDNANotebook } from "@/components/phases/BrandDNANotebook";
 
 export default function PhasePage() {
   const { phaseId } = useParams();
@@ -73,6 +74,8 @@ export default function PhasePage() {
           <div className="bg-card border border-border rounded-2xl p-6 md:p-8 mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
             {phaseNumber === 1 ? (
               <PersonalityNotebook />
+            ) : phaseNumber === 2 ? (
+              <BrandDNANotebook />
             ) : phaseNumber === 7 ? (
               <ActivityCalendar />
             ) : (

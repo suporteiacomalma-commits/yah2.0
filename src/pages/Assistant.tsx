@@ -196,7 +196,7 @@ Regras:
 1. Extraia o título da tarefa da forma mais clara possível.
 2. Identifique a data e hora. Resolva termos relativos (ex: amanhã, próxima terça, hoje à noite às 20h) baseando-se na Data/Hora atual fornecida acima.
 3. Se o usuário não mencionar horário, defina como 09:00:00 do dia identificado.
-4. Categorize entre: "task", "meeting", "event", ou "reminder".
+4. Categorize rigorosamente entre: "task", "meeting", "content", "deadline" ou "reminder". (Não use "event").
 5. Defina a prioridade como "low", "medium" ou "high" baseado na urgência detectada.
 6. Identifique se é recorrente. Se o usuário disser "todo dia", "toda segunda", "mensalmente", etc.
    - is_recurring: boolean

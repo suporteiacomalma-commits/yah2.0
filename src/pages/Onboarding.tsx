@@ -90,7 +90,7 @@ export default function Onboarding() {
       });
 
       console.log("Onboarding complete, redirecting...");
-      navigate("/dashboard");
+      navigate("/welcome");
     } catch (error: any) {
       console.error("Error during onboarding finish:", error);
       // createBrand and updateProfile already show toasts via onError

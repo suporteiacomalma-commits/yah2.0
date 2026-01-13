@@ -14,6 +14,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import PhasePage from "./pages/PhasePage";
 import Admin from "./pages/Admin";
+import Welcome from "./pages/Welcome";
 import Assistant from "./pages/Assistant";
 import Calendar from "./pages/Calendar";
 import NotFound from "./pages/NotFound";
@@ -99,6 +100,7 @@ function AppRoutes() {
       <Route path="/phase/:phaseId" element={<ProtectedRoute><PhasePage /></ProtectedRoute>} />
       <Route path="/assistant" element={<ProtectedRoute><Assistant /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+      <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { MinimalLayout } from "@/components/layout/MinimalLayout";
 import { Button } from "@/components/ui/button";
 import { Mic, X, Sparkles, Brain, Loader2, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { format, addDays, addWeeks, addMonths, isBefore, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -193,24 +193,28 @@ Data/Hora atual: ${currentDateTime}
 Frase do usuário: "${text}"
 
 Regras:
-1. Extraia o título da tarefa da forma mais clara possível.
+1. Extraia o título da tarefa de forma concisa.
 2. Identifique a data e hora. Resolva termos relativos (ex: amanhã, próxima terça, hoje à noite às 20h) baseando-se na Data/Hora atual fornecida acima.
 3. Se o usuário não mencionar horário, defina como 09:00:00 do dia identificado.
 4. Categorize rigorosamente entre: "task", "meeting", "content", "deadline" ou "reminder". (Não use "event").
 5. Defina a prioridade como "low", "medium" ou "high" baseado na urgência detectada.
-6. Identifique se é recorrente. Se o usuário disser "todo dia", "toda segunda", "mensalmente", etc.
+6. Identifique se é recorrente. Exemplos: "toda segunda", "todo dia", "mensalmente", "até o fim de janeiro".
    - is_recurring: boolean
    - recurrence_rule: "daily", "weekly", "monthly" ou null
+   - recurrence_end: "string (formato ISO 8601 ou YYYY-MM-DD)" ou null. Identifique se o usuário limitou o período (ex: "até o fim de janeiro", "nas próximas 2 semanas"). Se não houver limite óbvio, use null.
+
+7. IMPORTANTE SOBRE FORMATO DE DATA: Retorne a data no formato ISO 8601 LOCAL (ex: "2026-01-05T06:00:00"). NÃO adicione o 'Z' no final para não forçar UTC, a menos que você tenha certeza absoluta que o horário é em UTC. Use o horário exatamente como detectado na fala do usuário.
 
 Retorne APENAS um objeto JSON com as seguintes chaves:
 {
   "title": "string",
   "description": "string (resumo ou frase original)",
-  "date": "string (formato ISO 8601)",
+  "date": "string (YYYY-MM-DDTHH:mm:ss)",
   "category": "string",
   "priority": "string",
   "is_recurring": boolean,
   "recurrence_rule": "string or null",
+  "recurrence_end": "string or null",
   "status": "pending"
 }`;
 
@@ -256,11 +260,42 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
         if (!proposedTask) return;
         setIsProcessing(true);
         try {
-            const { error } = await supabase.from("calendar_activities").insert(proposedTask);
+            const tasksToInsert = [];
+
+            if (proposedTask.is_recurring && proposedTask.recurrence_rule) {
+                let currentDate = parseISO(proposedTask.date);
+                // Define um limite de segurança para recorrência (ex: 3 meses se não houver end date)
+                const limitDate = proposedTask.recurrence_end
+                    ? parseISO(proposedTask.recurrence_end)
+                    : addMonths(currentDate, 3);
+
+                while (isBefore(currentDate, limitDate) || format(currentDate, 'yyyy-MM-dd') === format(limitDate, 'yyyy-MM-dd')) {
+                    const { recurrence_end, ...taskData } = proposedTask;
+                    tasksToInsert.push({
+                        ...taskData,
+                        date: currentDate.toISOString()
+                    });
+
+                    if (proposedTask.recurrence_rule === 'daily') {
+                        currentDate = addDays(currentDate, 1);
+                    } else if (proposedTask.recurrence_rule === 'weekly') {
+                        currentDate = addWeeks(currentDate, 1);
+                    } else if (proposedTask.recurrence_rule === 'monthly') {
+                        currentDate = addMonths(currentDate, 1);
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                const { recurrence_end, ...taskData } = proposedTask;
+                tasksToInsert.push(taskData);
+            }
+
+            const { error } = await supabase.from("calendar_activities").insert(tasksToInsert);
             if (error) throw error;
 
-            await speak("Com certeza! Sua tarefa já foi salva no seu calendário.");
-            toast.success("Tarefa enviada e criada com sucesso!");
+            await speak("Com certeza! Sua(s) tarefa(s) já foi/foram salva(s) no seu calendário.");
+            toast.success(`${tasksToInsert.length} tarefa(s) criada(s) com sucesso!`);
             setTimeout(() => navigate("/dashboard"), 1500);
         } catch (error: any) {
             console.error("Error creating task:", error);

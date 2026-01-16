@@ -392,11 +392,13 @@ export default function IdeiaInbox() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
                     <div className="p-10 rounded-[48px] bg-card/40 border border-white/5 shadow-2xl space-y-6 flex flex-col hover:border-primary/20 transition-all group">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                                <Lightbulb className="w-5 h-5 text-amber-500" />
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                                    <Lightbulb className="w-5 h-5 text-amber-500" />
+                                </div>
+                                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sugestão</span>
                             </div>
-                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sugestão</span>
                         </div>
                         <div className="flex-1 space-y-4">
                             <h3 className="text-2xl font-bold leading-tight group-hover:text-primary transition-colors">{analysisResult.title}</h3>
@@ -404,8 +406,34 @@ export default function IdeiaInbox() {
                         </div>
                         <div className="pt-4 border-t border-white/5 flex items-center justify-between">
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Categoria: {analysisResult.category}</span>
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary text-[10px] font-bold">
-                                <Folder className="w-3 h-3" /> {analysisResult.suggested_destination}
+
+                            {/* Folder Selector Dropdown/Badge */}
+                            <div className="relative group/folder">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 gap-2 rounded-full bg-secondary/50 hover:bg-secondary text-[10px] font-black uppercase tracking-widest px-3"
+                                >
+                                    <Folder className="w-3 h-3" />
+                                    {analysisResult.suggested_destination}
+                                </Button>
+
+                                <div className="absolute bottom-full right-0 mb-2 w-48 bg-card border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-focus-within/folder:opacity-100 group-focus-within/folder:visible transition-all z-20 overflow-hidden">
+                                    <div className="p-2 space-y-1">
+                                        {FOLDERS.map(f => (
+                                            <button
+                                                key={f.name}
+                                                onClick={() => setAnalysisResult({ ...analysisResult, suggested_destination: f.name })}
+                                                className={cn(
+                                                    "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10",
+                                                    analysisResult.suggested_destination === f.name ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                {f.icon} {f.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

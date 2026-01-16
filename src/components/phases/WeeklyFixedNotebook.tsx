@@ -80,6 +80,7 @@ export function WeeklyFixedNotebook() {
     const [detailTab, setDetailTab] = useState<DetailTab>("feed");
     const [isFormInitialized, setIsFormInitialized] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isGeneratingIntentions, setIsGeneratingIntentions] = useState(false);
     const [isWritingScript, setIsWritingScript] = useState(false);
     const isDirty = useRef(false);
 
@@ -343,6 +344,66 @@ export function WeeklyFixedNotebook() {
         setWeeklyData({});
         await updateBrand.mutateAsync({ updates: { weekly_structure_data: {} } });
         toast.success("Todo o planejamento foi apagado!");
+    };
+
+    const handleGenerateIntentions = async () => {
+        setIsGeneratingIntentions(true);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) throw new Error("API Key não configurada");
+
+            const prompt = `Você é um Estrategista de Branding e Conteúdo.
+      OBJETIVO: Definir a "Intenção Principal" para cada dia da semana (Domingo a Sábado) para uma marca.
+      
+      OPÇÕES DE INTENÇÃO (Escolha APENAS estas): ${INTENTION_OPTIONS.join(", ")}.
+      
+      MARCA:
+      Nome: ${brand?.name}
+      Setor: ${brand?.sector}
+      DNA/Tese: ${brand?.dna_tese}
+      Essência/Personalidade: ${brand?.result_essencia}
+      
+      REGRAS:
+      1. Distribua as intenções de forma estratégica ao longo da semana.
+      2. Foque em criar uma jornada de valor para o seguidor (Educação -> Conexão -> Venda, etc).
+      3. O resultado deve ser um objeto JSON onde as chaves são os dias da semana (Domingo, Segunda, Terça, Quarta, Quinta, Sexta, Sábado) e os valores são as intenções escolhidas.
+      
+      SAÍDA EXCLUSIVAMENTE EM JSON.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: "Expert em estratégia de conteúdo. Saída sempre em JSON." },
+                        { role: "user", content: prompt }
+                    ],
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            const data = await response.json();
+            const result = JSON.parse(data.choices[0].message.content);
+
+            // Validar e aplicar
+            const newPrefs = { ...(routineData.routine_intentions_prefs || {}) };
+            DAYS_OF_WEEK.forEach(day => {
+                if (result[day] && INTENTION_OPTIONS.includes(result[day])) {
+                    newPrefs[day] = result[day];
+                }
+            });
+
+            handleRoutineChange("routine_intentions_prefs", newPrefs);
+            toast.success("Intenções geradas com estratégia de IA!");
+        } catch (error: any) {
+            toast.error("Erro ao gerar intenções: " + error.message);
+        } finally {
+            setIsGeneratingIntentions(false);
+        }
     };
 
     const handleClearTab = (tab: DetailTab) => {
@@ -827,8 +888,22 @@ export function WeeklyFixedNotebook() {
                     </Card>
 
                     <Card className="bg-card/50 border-border overflow-hidden">
-                        <CardHeader className="bg-muted/30">
+                        <CardHeader className="bg-muted/30 flex flex-row items-center justify-between">
                             <CardTitle className="text-base">4. Intenção Principal por Dia</CardTitle>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-[10px] font-bold uppercase gap-1.5 border-accent/30 hover:bg-accent/5"
+                                onClick={handleGenerateIntentions}
+                                disabled={isGeneratingIntentions}
+                            >
+                                {isGeneratingIntentions ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                    <Sparkles className="w-3 h-3 text-accent" />
+                                )}
+                                {isGeneratingIntentions ? "Gerando..." : "Gerar com IA"}
+                            </Button>
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="divide-y divide-border">

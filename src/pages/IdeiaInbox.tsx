@@ -412,10 +412,11 @@ export default function IdeiaInbox() {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 gap-2 rounded-full bg-secondary/50 hover:bg-secondary text-[10px] font-black uppercase tracking-widest px-3"
+                                    className="h-8 gap-2 rounded-full bg-secondary/50 hover:bg-secondary text-[10px] font-black uppercase tracking-widest px-3 border border-white/5"
                                 >
                                     <Folder className="w-3 h-3" />
                                     {analysisResult.suggested_destination}
+                                    <ChevronRight className="w-3 h-3 opacity-50" />
                                 </Button>
 
                                 <div className="absolute bottom-full right-0 mb-2 w-48 bg-card border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-focus-within/folder:opacity-100 group-focus-within/folder:visible transition-all z-20 overflow-hidden">

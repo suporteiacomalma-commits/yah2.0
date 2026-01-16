@@ -112,14 +112,24 @@ export function WeeklyFixedNotebook() {
         isDirty.current = true;
     };
 
-    const handleDataChange = (tab: DetailTab, field: string, value: any) => {
+    const handleDataChange = (tab: DetailTab, field: string, value: any, blockIndex?: number) => {
         const newData = JSON.parse(JSON.stringify(weeklyData)); // Deep clone
         if (!newData[currentWeek - 1]) newData[currentWeek - 1] = {};
         if (!newData[currentWeek - 1][selectedDayIndex]) {
             newData[currentWeek - 1][selectedDayIndex] = { feed: {}, stories: {} };
         }
 
-        newData[currentWeek - 1][selectedDayIndex][tab][field] = value;
+        const dayTab = newData[currentWeek - 1][selectedDayIndex][tab];
+
+        if (blockIndex === undefined || blockIndex === 0) {
+            dayTab[field] = value;
+        } else {
+            if (!dayTab.extraBlocks) dayTab.extraBlocks = [];
+            if (dayTab.extraBlocks[blockIndex - 1]) {
+                dayTab.extraBlocks[blockIndex - 1][field] = value;
+            }
+        }
+
         setWeeklyData(newData);
         isDirty.current = true;
     };
@@ -264,19 +274,23 @@ export function WeeklyFixedNotebook() {
         }
     };
 
-    const handleWriteScript = async (tab: DetailTab) => {
+    const handleWriteScript = async (tab: DetailTab, blockIndex?: number) => {
         setIsWritingScript(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
             if (!apiKey) throw new Error("API Key não configurada");
 
             const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
+            const block = (blockIndex === undefined || blockIndex === 0)
+                ? dayData
+                : dayData.extraBlocks[blockIndex - 1];
+
             const prompt = `Gere um roteiro detalhado para um ${tab === 'feed' ? 'Post de Feed' : 'Stories'} do Instagram.
-      Título/Tema: ${dayData.headline}
-      Formato: ${dayData.format}
-      Intenção: ${dayData.intention}
+      Título/Tema: ${block.headline}
+      Formato: ${block.format}
+      Intenção: ${block.intention}
       DNA da Marca: ${brand?.dna_tese}
-      Instrução da IA: ${dayData.instruction}
+      Instrução da IA: ${block.instruction || "Crie um conteúdo estratégico."}
       
       Gere um roteiro estruturado, direto e persuasivo.`;
 
@@ -297,7 +311,7 @@ export function WeeklyFixedNotebook() {
 
             const data = await response.json();
             const script = data.choices[0].message.content;
-            handleDataChange(tab, "notes", script);
+            handleDataChange(tab, "notes", script, blockIndex);
             toast.success("Roteiro sugerido com sucesso!");
         } catch (error: any) {
             toast.error("Erro ao gerar roteiro: " + error.message);
@@ -307,9 +321,13 @@ export function WeeklyFixedNotebook() {
     };
 
 
-    const handleCreateWithAI = (tab: DetailTab) => {
+    const handleCreateWithAI = (tab: DetailTab, blockIndex?: number) => {
         const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
-        const context = `[${tab.toUpperCase()}] ${dayData.format} - ${dayData.headline}\nIntenção: ${dayData.intention}\nInstrução: ${dayData.instruction}`;
+        const block = (blockIndex === undefined || blockIndex === 0)
+            ? dayData
+            : dayData.extraBlocks[blockIndex - 1];
+
+        const context = `[${tab.toUpperCase()}] ${block.format} - ${block.headline}\nIntenção: ${block.intention}\nInstrução: ${block.instruction}`;
         sessionStorage.setItem("ai_assistant_context", context);
         window.location.href = "/assistant";
     };
@@ -320,14 +338,31 @@ export function WeeklyFixedNotebook() {
         if (!newData[currentWeek - 1][selectedDayIndex]) newData[currentWeek - 1][selectedDayIndex] = { feed: {}, stories: {} };
         const day = newData[currentWeek - 1][selectedDayIndex][tab];
         if (!day.extraBlocks) day.extraBlocks = [];
+
         day.extraBlocks.push({
-            headline: `Extra: ${day.headline}`,
+            headline: "",
+            format: tab === "feed" ? "Carrossel" : "Sequência",
+            intention: "Conexão",
+            instruction: "Crie um tema complementar.",
             notes: "",
             id: Date.now()
         });
         setWeeklyData(newData);
         isDirty.current = true;
-        toast.info("Bloco extra adicionado!");
+        toast.info("Novo tema adicionado!");
+    };
+
+    const handleRemoveBlock = (tab: DetailTab, blockIndex: number) => {
+        if (blockIndex === 0) {
+            toast.error("O bloco principal não pode ser removido. Use 'Limpar' se desejar.");
+            return;
+        }
+        const newData = JSON.parse(JSON.stringify(weeklyData));
+        const day = newData[currentWeek - 1][selectedDayIndex][tab];
+        day.extraBlocks.splice(blockIndex - 1, 1);
+        setWeeklyData(newData);
+        isDirty.current = true;
+        toast.success("Tema removido!");
     };
 
     const handleClearWeek = async () => {
@@ -488,7 +523,8 @@ export function WeeklyFixedNotebook() {
                 doc.setTextColor(0, 0, 0);
 
                 // Feed
-                if (day.feed?.headline || day.feed?.notes) {
+                const feedBlocks = [day.feed, ...(day.feed?.extraBlocks || [])].filter(b => b?.headline || b?.notes);
+                for (const block of feedBlocks) {
                     doc.setFontSize(11);
                     doc.setTextColor(100, 100, 100);
                     doc.setFont("helvetica", "bold");
@@ -496,8 +532,8 @@ export function WeeklyFixedNotebook() {
                     yPos += 6;
                     doc.setTextColor(0, 0, 0);
 
-                    if (day.feed.headline) {
-                        const cleanHeadline = cleanTextForPDF(day.feed.headline);
+                    if (block.headline) {
+                        const cleanHeadline = cleanTextForPDF(block.headline);
                         doc.setFont("helvetica", "bold");
                         doc.text(`TEMA: ${cleanHeadline}`, margin + 5, yPos);
                         yPos += lineHeight;
@@ -505,15 +541,14 @@ export function WeeklyFixedNotebook() {
 
                     doc.setFontSize(10);
                     doc.setFont("helvetica", "normal");
-                    doc.text(`Formato: ${day.feed.format || '-'} | Intenção: ${day.feed.intention || '-'}`, margin + 5, yPos);
+                    doc.text(`Formato: ${block.format || '-'} | Intenção: ${block.intention || '-'}`, margin + 5, yPos);
                     yPos += lineHeight + 2;
 
-                    if (day.feed.notes) {
+                    if (block.notes) {
                         doc.setFontSize(11);
-                        const cleanNotes = cleanTextForPDF(day.feed.notes);
+                        const cleanNotes = cleanTextForPDF(block.notes);
                         const splitNotes = doc.splitTextToSize(cleanNotes, contentWidth - 10);
 
-                        // Verificar quebra de página dentro das notas
                         if (yPos + (splitNotes.length * lineHeight) > doc.internal.pageSize.getHeight() - margin) {
                             doc.addPage();
                             yPos = 20;
@@ -526,8 +561,8 @@ export function WeeklyFixedNotebook() {
                 }
 
                 // Stories
-                if (day.stories?.headline || day.stories?.notes) {
-                    // Verificar espaço para stories
+                const storiesBlocks = [day.stories, ...(day.stories?.extraBlocks || [])].filter(b => b?.headline || b?.notes);
+                for (const block of storiesBlocks) {
                     if (yPos > doc.internal.pageSize.getHeight() - 30) {
                         doc.addPage();
                         yPos = 20;
@@ -540,8 +575,8 @@ export function WeeklyFixedNotebook() {
                     yPos += 6;
                     doc.setTextColor(0, 0, 0);
 
-                    if (day.stories.headline) {
-                        const cleanHeadline = cleanTextForPDF(day.stories.headline);
+                    if (block.headline) {
+                        const cleanHeadline = cleanTextForPDF(block.headline);
                         doc.setFont("helvetica", "bold");
                         doc.text(`GANCHO: ${cleanHeadline}`, margin + 5, yPos);
                         yPos += lineHeight;
@@ -549,12 +584,12 @@ export function WeeklyFixedNotebook() {
 
                     doc.setFontSize(10);
                     doc.setFont("helvetica", "normal");
-                    doc.text(`Formato: ${day.stories.format || '-'} | Objetivo: ${day.stories.intention || '-'}`, margin + 5, yPos);
+                    doc.text(`Formato: ${block.format || '-'} | Objetivo: ${block.intention || '-'}`, margin + 5, yPos);
                     yPos += lineHeight + 2;
 
-                    if (day.stories.notes) {
+                    if (block.notes) {
                         doc.setFontSize(11);
-                        const cleanNotes = cleanTextForPDF(day.stories.notes);
+                        const cleanNotes = cleanTextForPDF(block.notes);
                         const splitNotes = doc.splitTextToSize(cleanNotes, contentWidth - 10);
 
                         if (yPos + (splitNotes.length * lineHeight) > doc.internal.pageSize.getHeight() - margin) {
@@ -621,7 +656,7 @@ export function WeeklyFixedNotebook() {
                         <h2 className="text-2xl font-bold">Estrutura fixa semanal</h2>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="bg-background/50 border-border">
+                                <Button variant="outline" size="sm" className="bg-background/50 border-border hover:bg-white/5">
                                     Semana {currentWeek} <ChevronLeft className="w-4 h-4 ml-2 rotate-[-90deg]" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -694,28 +729,33 @@ export function WeeklyFixedNotebook() {
                                             </div>
                                         </CardHeader>
                                         <CardContent className="p-4 pt-0 space-y-4">
-                                            <div className="p-3 rounded-xl bg-background/40 hover:bg-background/60 cursor-pointer border border-transparent hover:border-border transition-all space-y-2 shadow-sm"
-                                                onClick={() => { setSelectedDayIndex(idx); setDetailTab("feed"); setScreen("detail"); }}>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-semibold flex items-center gap-1.5"><Instagram className="w-3 h-3 text-pink-500" /> FEED</span>
-                                                    <span className="px-1.5 py-0.5 rounded-full bg-accent/10 text-accent text-[9px] font-bold uppercase">{dayContent.feed?.format || '---'}</span>
-                                                </div>
-                                                <p className="text-sm font-bold line-clamp-2 leading-tight">{dayContent.feed?.headline || 'Título da IA...'}</p>
-                                            </div>
-                                            <div className="p-3 rounded-xl bg-background/40 hover:bg-background/60 cursor-pointer border border-transparent hover:border-border transition-all space-y-2 shadow-sm"
-                                                onClick={() => { setSelectedDayIndex(idx); setDetailTab("stories"); setScreen("detail"); }}>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-semibold flex items-center gap-1.5"><MessageSquare className="w-3 h-3 text-orange-400" /> STORIES</span>
-                                                    <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-bold uppercase">{dayContent.stories?.format || '---'}</span>
-                                                </div>
-                                                <p className="text-sm font-bold line-clamp-2 leading-tight">{dayContent.stories?.headline || 'Headline Stories...'}</p>
-                                                {dayContent.stories?.extraBlocks?.length > 0 && (
-                                                    <div className="flex gap-1 mt-1">
-                                                        {dayContent.stories.extraBlocks.map((_: any, i: number) => (
-                                                            <div key={i} className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-                                                        ))}
+                                            <div className="flex-1 space-y-3">
+                                                <div className="p-3 rounded-xl bg-background/40 hover:bg-white/5 cursor-pointer border border-transparent hover:border-accent/30 transition-all space-y-2 shadow-sm"
+                                                    onClick={() => { setSelectedDayIndex(idx); setDetailTab("feed"); setScreen("detail"); }}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-semibold flex items-center gap-1.5"><Instagram className="w-3 h-3 text-pink-500" /> FEED</span>
+                                                        <div className="flex gap-1">
+                                                            <span className="px-1.5 py-0.5 rounded-full bg-accent/10 text-accent text-[9px] font-bold uppercase">{dayContent.feed?.format || '---'}</span>
+                                                            {(dayContent.feed?.extraBlocks?.length || 0) > 0 && (
+                                                                <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-white text-[9px] font-bold">+{dayContent.feed.extraBlocks.length}</span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                )}
+                                                    <p className="text-sm font-bold line-clamp-2 leading-tight">{dayContent.feed?.headline || 'Título da IA...'}</p>
+                                                </div>
+                                                <div className="p-3 rounded-xl bg-background/40 hover:bg-white/5 cursor-pointer border border-transparent hover:border-accent/30 transition-all space-y-2 shadow-sm"
+                                                    onClick={() => { setSelectedDayIndex(idx); setDetailTab("stories"); setScreen("detail"); }}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-semibold flex items-center gap-1.5"><MessageSquare className="w-3 h-3 text-orange-400" /> STORIES</span>
+                                                        <div className="flex gap-1">
+                                                            <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-bold uppercase">{dayContent.stories?.format || '---'}</span>
+                                                            {(dayContent.stories?.extraBlocks?.length || 0) > 0 && (
+                                                                <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-white text-[9px] font-bold">+{dayContent.stories.extraBlocks.length}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-sm font-bold line-clamp-2 leading-tight">{dayContent.stories?.headline || 'Headline Stories...'}</p>
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -981,126 +1021,158 @@ export function WeeklyFixedNotebook() {
 
     const renderDetail = () => {
         const dayData = weeklyData[currentWeek - 1]?.[selectedDayIndex] || { feed: {}, stories: {} };
+        const blocks = [dayData[detailTab], ...(dayData[detailTab]?.extraBlocks || [])];
+
         return (
             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-20">
                 <div className="flex items-center justify-between">
                     <Button variant="ghost" size="sm" onClick={() => setScreen("vision")}><ChevronLeft className="w-4 h-4 mr-1" /> Voltar</Button>
                     <div className="text-center">
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-accent uppercase mb-1 tracking-widest">
+                            {detailTab === 'feed' ? <Instagram className="w-3 h-3" /> : <MessageSquare className="w-3 h-3" />}
+                            {detailTab}
+                        </span>
                         <h3 className="text-sm font-bold uppercase tracking-widest">{DAYS_OF_WEEK[selectedDayIndex]}</h3>
                         <p className="text-[10px] text-muted-foreground uppercase">{getPostDate(currentWeek, selectedDayIndex)} • Semana {currentWeek}</p>
                     </div>
                     <Button variant="ghost" size="sm" onClick={saveWeeklyData} className="text-accent"><Save className="w-4 h-4 mr-1" /> Salvar</Button>
                 </div>
 
-                <Tabs defaultValue={detailTab} onValueChange={(v) => setDetailTab(v as DetailTab)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/30">
-                        <TabsTrigger value="feed"><Instagram className="w-4 h-4 mr-2" /> FEED</TabsTrigger>
-                        <TabsTrigger value="stories"><MessageSquare className="w-4 h-4 mr-2" /> STORIES</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="feed" className="space-y-6 py-4">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Headline / Tema</Label>
-                                <Input value={dayData.feed?.headline || ""} onChange={(e) => handleDataChange("feed", "headline", e.target.value)} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Formato</Label>
-                                    <Select value={dayData.feed?.format || "Carrossel"} onValueChange={(val) => handleDataChange("feed", "format", val)}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>{FEED_FORMATS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
-                                    </Select>
+                <div className="space-y-8">
+                    {blocks.map((block, bIdx) => (
+                        <Card key={bIdx === 0 ? 'main' : (block.id || bIdx)} className="bg-card/30 border-border overflow-hidden relative">
+                            <CardHeader className="py-3 px-4 bg-muted/20 border-b border-border flex flex-row items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center text-[10px] font-black text-accent">
+                                        {bIdx + 1}
+                                    </div>
+                                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        {bIdx === 0 ? "Tema Principal" : "Tema Complementar"}
+                                    </span>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Intenção</Label>
-                                    <Select value={dayData.feed?.intention || "Conexão"} onValueChange={(val) => handleDataChange("feed", "intention", val)}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>{INTENTION_OPTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <div className="p-4 rounded-xl bg-accent/5 border border-accent/20">
-                                <Label className="text-[10px] font-bold text-accent uppercase flex items-center gap-1.5"><Sparkles className="w-3 h-3" /> ESTRATÉGIA IA</Label>
-                                <p className="text-sm mt-1">{dayData.feed?.instruction || "Gere para ver"}</p>
-                            </div>
-                            <Textarea placeholder="Roteiro..." className="min-h-[200px]" value={dayData.feed?.notes || ""} onChange={(e) => handleDataChange("feed", "notes", e.target.value)} />
-                            <div className="flex flex-col gap-3">
-                                <div className="grid grid-cols-2 gap-3">
+                                {bIdx > 0 && (
                                     <Button
-                                        variant="outline"
-                                        onClick={() => handleWriteScript("feed")}
-                                        disabled={isWritingScript || isGenerating}
-                                        className={cn(
-                                            "h-11 font-bold border-accent/30 hover:bg-accent/5",
-                                            !dayData.feed?.notes && "animate-pulse border-accent/60 bg-accent/5"
-                                        )}
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => handleRemoveBlock(detailTab, bIdx)}
                                     >
-                                        {isWritingScript ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2 text-accent" />}
-                                        {isWritingScript ? "Escrevendo..." : "Sugerir roteiro"}
+                                        <Trash2 className="w-3.5 h-3.5" />
                                     </Button>
-                                    <Button variant="outline" className="h-11" onClick={() => handleAddExtraBlock("feed")}><Plus className="w-4 h-4 mr-2" /> Bloco Extra</Button>
-                                </div>
-                                <Button className="w-full h-12 gradient-primary" onClick={() => handleCreateWithAI("feed")} disabled={isGenerating}>Criar com a YAh</Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleClearTab("feed")} className="text-destructive/60 hover:text-destructive hover:bg-destructive/5 self-center">
-                                    <Trash2 className="w-4 h-4 mr-2" /> Limpar Feed
-                                </Button>
-                            </div>
-                        </div>
-                    </TabsContent>
+                                )}
+                            </CardHeader>
+                            <CardContent className="p-4 space-y-4">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Título / Tema</Label>
+                                        <Input
+                                            placeholder={detailTab === 'feed' ? "Título do post..." : "Micro-headline / Gancho..."}
+                                            value={block.headline || ""}
+                                            onChange={(e) => handleDataChange(detailTab, "headline", e.target.value, bIdx)}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Formato</Label>
+                                            <Select
+                                                value={block.format || (detailTab === 'feed' ? "Carrossel" : "Sequência")}
+                                                onValueChange={(val) => handleDataChange(detailTab, "format", val, bIdx)}
+                                            >
+                                                <SelectTrigger className="h-9 bg-background/50"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    {(detailTab === 'feed' ? FEED_FORMATS : STORIES_FORMATS).map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Intenção</Label>
+                                            <Select
+                                                value={block.intention || "Conexão"}
+                                                onValueChange={(val) => handleDataChange(detailTab, "intention", val, bIdx)}
+                                            >
+                                                <SelectTrigger className="h-9 bg-background/50"><SelectValue /></SelectTrigger>
+                                                <SelectContent>{INTENTION_OPTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
 
-                    <TabsContent value="stories" className="space-y-6 py-4">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Micro-headline / Gancho</Label>
-                                <Input placeholder="O gancho inicial dos seus stories..." value={dayData.stories?.headline || ""} onChange={(e) => handleDataChange("stories", "headline", e.target.value)} />
-                            </div>
+                                    {(block.instruction || bIdx === 0) && (
+                                        <div className="p-3 rounded-xl bg-accent/5 border border-accent/20">
+                                            <Label className="text-[10px] font-bold text-accent uppercase flex items-center gap-1.5">
+                                                <Sparkles className="w-3 h-3" /> ESTRATÉGIA IA
+                                            </Label>
+                                            <p className="text-xs mt-1.5 leading-relaxed text-foreground/80">
+                                                {block.instruction || "Gere para ver a estratégia detalhada."}
+                                            </p>
+                                        </div>
+                                    )}
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Formato</Label>
-                                    <Select value={dayData.stories?.format || "Sequência"} onValueChange={(val) => handleDataChange("stories", "format", val)}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>{STORIES_FORMATS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
-                                    </Select>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Roteiro / Conteúdo</Label>
+                                            <span className="text-[9px] text-muted-foreground">{block.notes?.length || 0} caracteres</span>
+                                        </div>
+                                        <Textarea
+                                            placeholder="Descreve aqui o roteiro detalhado..."
+                                            className="min-h-[160px] bg-background/40 resize-none text-sm leading-relaxed"
+                                            value={block.notes || ""}
+                                            onChange={(e) => handleDataChange(detailTab, "notes", e.target.value, bIdx)}
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 pt-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleWriteScript(detailTab, bIdx)}
+                                            disabled={isWritingScript || isGenerating}
+                                            className={cn(
+                                                "h-10 text-xs font-bold border-accent/30 hover:bg-accent/5",
+                                                !block.notes && "border-accent/60 bg-accent/5"
+                                            )}
+                                        >
+                                            {isWritingScript ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Sparkles className="w-3.5 h-3.5 mr-2 text-accent" />}
+                                            {isWritingScript ? "Escrevendo..." : "Sugerir Roteiro"}
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="h-10 text-xs font-bold border-primary/20 hover:bg-primary/5"
+                                            onClick={() => handleCreateWithAI(detailTab, bIdx)}
+                                            disabled={isGenerating}
+                                        >
+                                            <Layout className="w-3.5 h-3.5 mr-2 text-primary" />
+                                            Criar com a YAh
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Objetivo</Label>
-                                    <Select value={dayData.stories?.intention || "Conexão"} onValueChange={(val) => handleDataChange("stories", "intention", val)}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>{INTENTION_OPTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+
+                    <div className="flex flex-col gap-4 py-4">
+                        <Button
+                            variant="outline"
+                            className="w-full h-14 border-dashed border-2 border-accent/30 hover:border-accent hover:bg-accent/5 flex flex-col items-center justify-center gap-0.5"
+                            onClick={() => handleAddExtraBlock(detailTab)}
+                        >
+                            <div className="flex items-center gap-2 text-accent">
+                                <Plus className="w-4 h-4" />
+                                <span className="font-bold">Adicionar Novo Tema</span>
                             </div>
-                            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                                <Label className="text-[10px] font-bold text-primary uppercase">BLOCO DE INSTRUÇÃO</Label>
-                                <p className="text-sm mt-1">{dayData.stories?.instruction || "Gere para ver"}</p>
-                            </div>
-                            <Textarea placeholder="Notas / Roteiro dos Stories..." className="min-h-[200px]" value={dayData.stories?.notes || ""} onChange={(e) => handleDataChange("stories", "notes", e.target.value)} />
-                            <div className="flex flex-col gap-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => handleWriteScript("stories")}
-                                        disabled={isWritingScript || isGenerating}
-                                        className={cn(
-                                            "h-11 font-bold border-accent/30 hover:bg-accent/5",
-                                            !dayData.stories?.notes && "animate-pulse border-accent/60 bg-accent/5"
-                                        )}
-                                    >
-                                        {isWritingScript ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2 text-accent" />}
-                                        {isWritingScript ? "Escrevendo..." : "Escrever sequência"}
-                                    </Button>
-                                    <Button variant="outline" className="h-11" onClick={() => handleAddExtraBlock("stories")}><Plus className="w-4 h-4 mr-2" /> Bloco Extra Stories</Button>
-                                </div>
-                                <Button className="w-full h-12 gradient-primary" onClick={() => handleCreateWithAI("stories")} disabled={isGenerating}>Criar com a YAh - Stories</Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleClearTab("stories")} className="text-destructive/60 hover:text-destructive hover:bg-destructive/5 self-center">
-                                    <Trash2 className="w-4 h-4 mr-2" /> Limpar Stories
-                                </Button>
-                            </div>
-                        </div>
-                    </TabsContent>
-                </Tabs>
+                            <span className="text-[10px] text-muted-foreground/60 uppercase">Crie mais um conteúdo complementar</span>
+                        </Button>
+
+                        <div className="h-px bg-border my-2" />
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleClearTab(detailTab)}
+                            className="text-destructive/50 hover:text-destructive hover:bg-destructive/5 self-center text-xs"
+                        >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Limpar {detailTab === 'feed' ? 'Feed' : 'Stories'} deste dia
+                        </Button>
+                    </div>
+                </div>
             </div>
         );
     };

@@ -59,7 +59,15 @@ export default function IdeiaInbox() {
     const [savedIdeas, setSavedIdeas] = useState<any[]>([]);
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [selectedIdea, setSelectedIdea] = useState<any>(null);
+    const [editingIdea, setEditingIdea] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isSelectingWeek, setIsSelectingWeek] = useState(false);
+    const [targetWeekForLink, setTargetWeekForLink] = useState<number | null>(null);
+    const [allocationDraft, setAllocationDraft] = useState<{
+        week: number;
+        type: "feed" | "stories";
+        intention: string;
+    } | null>(null);
 
     // Refs
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -70,6 +78,13 @@ export default function IdeiaInbox() {
     useEffect(() => {
         fetchIdeas();
     }, [user]);
+
+    useEffect(() => {
+        setEditingIdea(null);
+        setIsSelectingWeek(false);
+        setTargetWeekForLink(null);
+        setAllocationDraft(null);
+    }, [selectedIdea]);
 
     const fetchIdeas = async () => {
         if (!user) return;
@@ -316,8 +331,10 @@ export default function IdeiaInbox() {
         }
     };
 
-    const addToWeeklyPlan = async () => {
-        if (!brand || !analysisResult || !user) return;
+    const addToWeeklyPlan = async (targetWeek: number, contentType: "feed" | "stories") => {
+        const ideaToUse = (inboxState === 'item_detail') ? (editingIdea || selectedIdea) : analysisResult;
+        if (!brand || !ideaToUse || !user) return;
+
         setIsProcessing(true);
         try {
             const { data: latestBrand, error: fetchError } = await (supabase.from("brands" as any) as any)
@@ -327,36 +344,46 @@ export default function IdeiaInbox() {
 
             if (fetchError) throw fetchError;
 
-            const currentStructure = latestBrand.weekly_structure_data || { weeks: [] };
+            // Alignment with WeeklyFixedNotebook: top-level object with '0', '1', '2', '3' as keys
+            const currentStructure = latestBrand.weekly_structure_data || {};
 
-            const sugg = analysisResult.sugestao_conteudo;
-            const weekIdx = (sugg?.semana_ideal || 1) - 1;
+            const metadata = ideaToUse.metadata || ideaToUse;
+            const sugg = metadata.sugestao_conteudo || {};
+            const weekIdx = targetWeek - 1;
 
             const dayMapping: { [key: string]: number } = {
-                "segunda": 1, "terça": 2, "quarta": 3, "quinta": 4, "sexta": 5, "sábado": 6, "sabado": 6, "domingo": 7
+                "domingo": 0, "segunda": 1, "terça": 2, "terca": 2, "quarta": 3, "quinta": 4, "sexta": 5, "sábado": 6, "sabado": 6,
+                "domingo-feira": 0, "segunda-feira": 1, "terça-feira": 2, "terca-feira": 2, "quarta-feira": 3, "quinta-feira": 4, "sexta-feira": 5, "sábado-feira": 6, "sabado-feira": 6
             };
-            const dayIdx = dayMapping[(sugg?.dia_ideal || "segunda").toLowerCase()] || 1;
+            const rawDay = (sugg?.dia_ideal || "segunda").toLowerCase();
+            const dayIdx = dayMapping[rawDay] ?? 1;
 
-            if (!currentStructure.weeks) currentStructure.weeks = [];
-            if (!currentStructure.weeks[weekIdx]) currentStructure.weeks[weekIdx] = { days: {} };
-            if (!currentStructure.weeks[weekIdx].days) currentStructure.weeks[weekIdx].days = {};
-            if (!currentStructure.weeks[weekIdx].days[dayIdx]) currentStructure.weeks[weekIdx].days[dayIdx] = { feed: { notes: [] }, stories: { notes: [] } };
+            if (!currentStructure[weekIdx]) {
+                currentStructure[weekIdx] = {};
+            }
+            if (!currentStructure[weekIdx][dayIdx]) {
+                currentStructure[weekIdx][dayIdx] = { feed: {}, stories: {} };
+            }
 
-            const daySlot = currentStructure.weeks[weekIdx].days[dayIdx];
-            if (!daySlot.feed) daySlot.feed = { notes: [] };
-            if (!daySlot.feed.notes) daySlot.feed.notes = [];
+            const dayContent = currentStructure[weekIdx][dayIdx];
+            const targetContent = dayContent[contentType] || {};
 
-            daySlot.feed.notes.push({
-                content: analysisResult.summary,
-                title: sugg?.headline || analysisResult.title,
-                micro_headline: sugg?.micro_headline,
-                mini_roteiro: sugg?.mini_roteiro,
-                source: "Ideia Inbox",
-                type: analysisResult.category,
-                intencao: sugg?.intencao_conteudo,
-                formato_feed: sugg?.formato_feed,
-                formato_stories: sugg?.formato_stories
-            });
+            const newBlock = {
+                headline: sugg?.headline || metadata.title || ideaToUse.content?.substring(0, 50),
+                format: (contentType === "feed" ? sugg?.formato_feed : sugg?.formato_stories) || (contentType === "feed" ? "Reels" : "Sequência"),
+                intention: sugg?.intencao_conteudo || "Conexão",
+                notes: metadata.summary || ideaToUse.content || "",
+                instruction: sugg?.mini_roteiro || "Transformar esta ideia em um post estratégico.",
+                id: Date.now()
+            };
+
+            // If main block is empty, fill it. Else, add to extraBlocks.
+            if (!targetContent.headline) {
+                dayContent[contentType] = { ...targetContent, ...newBlock };
+            } else {
+                if (!targetContent.extraBlocks) targetContent.extraBlocks = [];
+                targetContent.extraBlocks.push(newBlock);
+            }
 
             const { error: updateError } = await (supabase.from("brands" as any) as any)
                 .update({ weekly_structure_data: currentStructure })
@@ -364,9 +391,158 @@ export default function IdeiaInbox() {
 
             if (updateError) throw updateError;
 
-            await saveIdeaDirectly();
+            toast.success(`Ideia enviada para ${contentType === "feed" ? "Feed" : "Stories"} na Semana ${targetWeek}!`);
+            setIsSelectingWeek(false);
+            setTargetWeekForLink(null);
+
+            if (inboxState === 'triage') {
+                await saveIdeaDirectly();
+            } else {
+                setInboxState("initial");
+                fetchIdeas();
+            }
+
         } catch (error: any) {
-            toast.error("Erro ao vincular: " + error.message);
+            toast.error("Erro ao enviar: " + error.message);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleStartAllocation = () => {
+        const ideaToUse = (inboxState === 'item_detail') ? (editingIdea || selectedIdea) : analysisResult;
+        if (!ideaToUse) return;
+
+        const metadata = ideaToUse.metadata || ideaToUse;
+        const sugg = metadata.sugestao_conteudo || {};
+
+        setAllocationDraft({
+            week: sugg.semana_ideal || 1,
+            type: sugg.formato_stories ? "stories" : "feed",
+            intention: sugg.intencao_conteudo || "Conexão"
+        });
+        setIsSelectingWeek(true);
+    };
+
+    const renderWeekSelection = () => {
+        if (!allocationDraft) return null;
+
+        return (
+            <div className="space-y-4 p-4 bg-background/50 rounded-2xl border border-white/10 animate-in slide-in-from-top-2 duration-300">
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-primary">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Sugestão da YAh</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase px-1">Selecione a Semana</label>
+                            <div className="grid grid-cols-4 gap-1.5">
+                                {[1, 2, 3, 4].map(w => (
+                                    <button
+                                        key={w}
+                                        onClick={() => setAllocationDraft({ ...allocationDraft, week: w })}
+                                        className={cn(
+                                            "h-9 rounded-lg text-[10px] font-bold transition-all border",
+                                            allocationDraft.week === w
+                                                ? "bg-primary/20 border-primary/40 text-primary shadow-[0_0_15px_rgba(168,85,247,0.1)]"
+                                                : "bg-background/40 border-white/5 text-muted-foreground hover:bg-white/5"
+                                        )}
+                                    >
+                                        S{w}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-[9px] font-bold text-muted-foreground uppercase px-1">Canal</label>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <button
+                                        onClick={() => setAllocationDraft({ ...allocationDraft, type: "feed" })}
+                                        className={cn(
+                                            "h-9 rounded-lg flex items-center justify-center gap-1.5 border transition-all",
+                                            allocationDraft.type === "feed"
+                                                ? "bg-pink-500/20 border-pink-500/40 text-pink-400"
+                                                : "bg-background/40 border-white/5 text-muted-foreground hover:bg-white/5"
+                                        )}
+                                    >
+                                        <Instagram className="w-3 h-3" />
+                                        <span className="text-[9px] font-bold uppercase">Feed</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setAllocationDraft({ ...allocationDraft, type: "stories" })}
+                                        className={cn(
+                                            "h-9 rounded-lg flex items-center justify-center gap-1.5 border transition-all",
+                                            allocationDraft.type === "stories"
+                                                ? "bg-orange-500/20 border-orange-500/40 text-orange-400"
+                                                : "bg-background/40 border-white/5 text-muted-foreground hover:bg-white/5"
+                                        )}
+                                    >
+                                        <MessageSquare className="w-3 h-3" />
+                                        <span className="text-[9px] font-bold uppercase">St.</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[9px] font-bold text-muted-foreground uppercase px-1">Intenção</label>
+                                <select
+                                    className="w-full h-9 bg-background/40 border border-white/5 rounded-lg text-[9px] font-bold uppercase px-2 focus:ring-1 focus:ring-primary/40 outline-none"
+                                    value={allocationDraft.intention}
+                                    onChange={(e) => setAllocationDraft({ ...allocationDraft, intention: e.target.value })}
+                                >
+                                    {["Conexão", "Autoridade", "Venda", "Educação", "Entretenimento"].map(i => (
+                                        <option key={i} value={i} className="bg-background">{i}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="pt-2 border-t border-white/5">
+                    <Button
+                        size="sm"
+                        className="w-full h-10 rounded-xl gradient-primary text-white font-black uppercase tracking-widest text-[10px] shadow-lg group"
+                        onClick={() => addToWeeklyPlan(allocationDraft.week, allocationDraft.type)}
+                        disabled={isProcessing}
+                    >
+                        {isProcessing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                            <>
+                                <Check className="w-3.5 h-3.5 mr-1" />
+                                Confirmar Envio
+                            </>
+                        )}
+                    </Button>
+                </div>
+            </div>
+        );
+    };
+
+    const updateSavedIdea = async () => {
+        if (!editingIdea) return;
+        setIsProcessing(true);
+        try {
+            const { error } = await (supabase.from("idea_inbox" as any) as any)
+                .update({
+                    content: editingIdea.content,
+                    metadata: editingIdea.metadata,
+                    category: editingIdea.category,
+                    folder: editingIdea.folder
+                })
+                .eq("id", editingIdea.id);
+
+            if (error) throw error;
+            toast.success("Ideia atualizada!");
+            setSelectedIdea(editingIdea);
+            setSavedIdeas(prev => prev.map(i => i.id === editingIdea.id ? editingIdea : i));
+            setEditingIdea(null);
+        } catch (error: any) {
+            toast.error("Erro ao atualizar: " + error.message);
         } finally {
             setIsProcessing(false);
         }
@@ -509,8 +685,16 @@ export default function IdeiaInbox() {
                             )}
                         </div>
                         <div className="flex-1 space-y-4">
-                            <h3 className="text-2xl font-bold leading-tight group-hover:text-primary transition-colors">{analysisResult.title}</h3>
-                            <p className="text-muted-foreground leading-relaxed">{analysisResult.summary}</p>
+                            <input
+                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-2xl font-bold leading-tight group-hover:text-primary transition-colors px-0 cursor-text"
+                                value={analysisResult.title}
+                                onChange={(e) => setAnalysisResult({ ...analysisResult, title: e.target.value })}
+                            />
+                            <textarea
+                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-muted-foreground leading-relaxed resize-none px-0 cursor-text min-h-[60px]"
+                                value={analysisResult.summary}
+                                onChange={(e) => setAnalysisResult({ ...analysisResult, summary: e.target.value })}
+                            />
                         </div>
                         <div className="pt-4 border-t border-white/5 flex items-center justify-between">
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Categoria: {analysisResult.category}</span>
@@ -557,16 +741,41 @@ export default function IdeiaInbox() {
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase">{analysisResult.sugestao_conteudo.dia_ideal} • Semana {analysisResult.sugestao_conteudo.semana_ideal}</span>
                                 </div>
                                 <div className="space-y-2">
-                                    <h5 className="text-lg font-bold leading-none">{analysisResult.sugestao_conteudo.headline}</h5>
-                                    <p className="text-xs text-muted-foreground italic">{analysisResult.sugestao_conteudo.micro_headline}</p>
+                                    <input
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-lg font-bold leading-none px-0"
+                                        value={analysisResult.sugestao_conteudo.headline}
+                                        onChange={(e) => setAnalysisResult({
+                                            ...analysisResult,
+                                            sugestao_conteudo: { ...analysisResult.sugestao_conteudo, headline: e.target.value }
+                                        })}
+                                    />
+                                    <input
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-xs text-muted-foreground italic px-0"
+                                        value={analysisResult.sugestao_conteudo.micro_headline}
+                                        onChange={(e) => setAnalysisResult({
+                                            ...analysisResult,
+                                            sugestao_conteudo: { ...analysisResult.sugestao_conteudo, micro_headline: e.target.value }
+                                        })}
+                                    />
                                 </div>
                                 <div className="space-y-3">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Roteiro Sugerido:</span>
                                     <div className="space-y-2">
                                         {analysisResult.sugestao_conteudo.mini_roteiro?.map((step: string, i: number) => (
-                                            <div key={i} className="flex gap-3 text-xs leading-relaxed">
-                                                <span className="text-primary font-bold">{i + 1}.</span>
-                                                <span className="text-foreground/80">{step}</span>
+                                            <div key={i} className="flex gap-3 text-xs leading-relaxed group/item">
+                                                <span className="text-primary font-bold mt-2">{i + 1}.</span>
+                                                <input
+                                                    className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg py-2 px-0 text-foreground/80"
+                                                    value={step}
+                                                    onChange={(e) => {
+                                                        const newSteps = [...analysisResult.sugestao_conteudo.mini_roteiro];
+                                                        newSteps[i] = e.target.value;
+                                                        setAnalysisResult({
+                                                            ...analysisResult,
+                                                            sugestao_conteudo: { ...analysisResult.sugestao_conteudo, mini_roteiro: newSteps }
+                                                        });
+                                                    }}
+                                                />
                                             </div>
                                         ))}
                                     </div>
@@ -580,16 +789,44 @@ export default function IdeiaInbox() {
                                     <Target className="w-4 h-4" /> Plano de Meta
                                 </h4>
                                 <div className="space-y-1">
-                                    <p className="text-xl font-bold">{analysisResult.sugestao_meta.descricao_meta}</p>
-                                    <p className="text-xs text-muted-foreground italic">Início sugerido: {analysisResult.sugestao_meta.sugestao_inicio_calendario}</p>
+                                    <input
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xl font-bold px-0 text-emerald-500"
+                                        value={analysisResult.sugestao_meta.descricao_meta}
+                                        onChange={(e) => setAnalysisResult({
+                                            ...analysisResult,
+                                            sugestao_meta: { ...analysisResult.sugestao_meta, descricao_meta: e.target.value }
+                                        })}
+                                    />
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground italic shrink-0">Início sugerido:</span>
+                                        <input
+                                            className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xs text-muted-foreground italic px-0"
+                                            value={analysisResult.sugestao_meta.sugestao_inicio_calendario}
+                                            onChange={(e) => setAnalysisResult({
+                                                ...analysisResult,
+                                                sugestao_meta: { ...analysisResult.sugestao_meta, sugestao_inicio_calendario: e.target.value }
+                                            })}
+                                        />
+                                    </div>
                                 </div>
                                 <div className="space-y-3">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Checklist de Execução:</span>
                                     <div className="space-y-2">
                                         {analysisResult.sugestao_meta.checklist_passos?.map((step: string, i: number) => (
-                                            <div key={i} className="flex gap-3 text-xs items-center">
+                                            <div key={i} className="flex gap-3 text-xs items-center group/item">
                                                 <div className="w-4 h-4 rounded-full border border-emerald-500/30 flex items-center justify-center text-[8px] text-emerald-500 font-bold shrink-0">{i + 1}</div>
-                                                <span className="text-foreground/80">{step}</span>
+                                                <input
+                                                    className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg py-1 px-0 text-foreground/80"
+                                                    value={step}
+                                                    onChange={(e) => {
+                                                        const newSteps = [...analysisResult.sugestao_meta.checklist_passos];
+                                                        newSteps[i] = e.target.value;
+                                                        setAnalysisResult({
+                                                            ...analysisResult,
+                                                            sugestao_meta: { ...analysisResult.sugestao_meta, checklist_passos: newSteps }
+                                                        });
+                                                    }}
+                                                />
                                             </div>
                                         ))}
                                     </div>
@@ -602,14 +839,32 @@ export default function IdeiaInbox() {
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500 flex items-center gap-2">
                                     <Zap className="w-4 h-4" /> Regra do Insight
                                 </h4>
-                                <p className="text-lg font-bold leading-tight italic">"{analysisResult.sugestao_insight.descricao_regra}"</p>
+                                <textarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg text-lg font-bold leading-tight italic px-0 resize-none min-h-[60px] text-amber-500"
+                                    value={analysisResult.sugestao_insight.descricao_regra}
+                                    onChange={(e) => setAnalysisResult({
+                                        ...analysisResult,
+                                        sugestao_insight: { ...analysisResult.sugestao_insight, descricao_regra: e.target.value }
+                                    })}
+                                />
                                 <div className="space-y-3">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Impacto no Sistema:</span>
                                     <div className="space-y-2">
                                         {analysisResult.sugestao_insight.como_influencia_yah?.map((impact: string, i: number) => (
-                                            <div key={i} className="flex gap-3 text-xs italic text-foreground/70">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
-                                                <span>{impact}</span>
+                                            <div key={i} className="flex gap-3 text-xs italic text-foreground/70 group/item">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-2" />
+                                                <input
+                                                    className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg py-1 px-0 text-foreground/70 italic"
+                                                    value={impact}
+                                                    onChange={(e) => {
+                                                        const newImpacts = [...analysisResult.sugestao_insight.como_influencia_yah];
+                                                        newImpacts[i] = e.target.value;
+                                                        setAnalysisResult({
+                                                            ...analysisResult,
+                                                            sugestao_insight: { ...analysisResult.sugestao_insight, como_influencia_yah: newImpacts }
+                                                        });
+                                                    }}
+                                                />
                                             </div>
                                         ))}
                                     </div>
@@ -636,12 +891,16 @@ export default function IdeiaInbox() {
                                 Descartar
                             </Button>
                             {analysisResult.category === 'conteudo' ? (
-                                <Button
-                                    onClick={addToWeeklyPlan}
-                                    className="h-14 rounded-2xl gradient-primary text-white font-bold shadow-xl flex items-center gap-2"
-                                >
-                                    <Calendar className="w-4 h-4" /> Vincular Semana
-                                </Button>
+                                <div className="col-span-1 space-y-2">
+                                    <Button
+                                        onClick={() => setIsSelectingWeek(!isSelectingWeek)}
+                                        className="w-full h-14 rounded-2xl gradient-primary text-white font-bold shadow-xl flex items-center gap-2"
+                                    >
+                                        <Calendar className="w-4 h-4" />
+                                        {isSelectingWeek ? "Cancelar" : "Enviar p/ semana"}
+                                    </Button>
+                                    {isSelectingWeek && renderWeekSelection()}
+                                </div>
                             ) : (
                                 <Button
                                     onClick={saveIdeaDirectly}
@@ -820,7 +1079,7 @@ export default function IdeiaInbox() {
                         <h2 className="text-2xl font-bold">{selectedFolder}</h2>
                         <span className="text-sm text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full">{filteredIdeas.length} itens</span>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setInboxState("folders")}>Voltar às Pastas</Button>
+                    <Button variant="ghost" size="sm" onClick={() => setInboxState("initial")}>Voltar às Pastas</Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -863,52 +1122,285 @@ export default function IdeiaInbox() {
 
     const renderItemDetail = () => {
         if (!selectedIdea) return null;
+
+        const currentIdea = editingIdea || selectedIdea;
+        const meta = currentIdea.metadata || {};
+
         return (
-            <div className="w-full h-full space-y-8 animate-in zoom-in-95 duration-500">
+            <div className="w-full h-full space-y-8 animate-in zoom-in-95 duration-500 pb-20">
                 <div className="flex flex-col md:flex-row gap-8">
                     <div className="flex-1 space-y-6">
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest border border-primary/20">
-                                    {selectedIdea.category}
-                                </div>
+                                <span className={cn(
+                                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
+                                    currentIdea.category === 'conteudo' ? 'bg-primary/10 text-primary border-primary/20' :
+                                        currentIdea.category === 'meta' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                )}>
+                                    {currentIdea.category}
+                                </span>
                                 <div className="text-sm text-muted-foreground flex items-center gap-1.5">
                                     <Clock className="w-4 h-4" />
-                                    {format(new Date(selectedIdea.created_at), "eeee, dd MMMM HH:mm", { locale: ptBR })}
+                                    {format(new Date(currentIdea.created_at), "eeee, dd MMMM HH:mm", { locale: ptBR })}
                                 </div>
                             </div>
-                            <h2 className="text-3xl font-black tracking-tight leading-tight">{selectedIdea.metadata?.title || "Sua Ideia"}</h2>
+
+                            <input
+                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-3xl font-black tracking-tight leading-tight px-0 py-2"
+                                value={meta.title || "Sua Ideia"}
+                                onChange={(e) => {
+                                    const updated = { ...currentIdea, metadata: { ...meta, title: e.target.value } };
+                                    setEditingIdea(updated);
+                                }}
+                            />
                         </div>
 
                         <div className="p-8 rounded-[32px] bg-card/60 border border-white/5 shadow-xl space-y-4">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Conteúdo Original</h3>
-                            <p className="text-lg leading-relaxed whitespace-pre-wrap italic">
-                                "{selectedIdea.content}"
-                            </p>
+                            <textarea
+                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-lg leading-relaxed italic px-0 min-h-[100px] resize-none"
+                                value={currentIdea.content}
+                                onChange={(e) => {
+                                    const updated = { ...currentIdea, content: e.target.value };
+                                    setEditingIdea(updated);
+                                }}
+                            />
                         </div>
 
-                        {selectedIdea.metadata?.ai_insights && (
+                        {/* Category Specific suggestions inside Item Detail */}
+                        {currentIdea.category === 'conteudo' && meta.sugestao_conteudo && (
+                            <div className="p-8 rounded-[32px] bg-primary/5 border border-primary/10 space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                                        <FileText className="w-4 h-4" /> Plano de Conteúdo
+                                    </h4>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{meta.sugestao_conteudo.dia_ideal} • Semana {meta.sugestao_conteudo.semana_ideal}</span>
+                                </div>
+                                <div className="space-y-4">
+                                    <input
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-lg font-bold leading-none px-0"
+                                        value={meta.sugestao_conteudo.headline}
+                                        onChange={(e) => {
+                                            const updated = {
+                                                ...currentIdea,
+                                                metadata: {
+                                                    ...meta,
+                                                    sugestao_conteudo: { ...meta.sugestao_conteudo, headline: e.target.value }
+                                                }
+                                            };
+                                            setEditingIdea(updated);
+                                        }}
+                                    />
+                                    <input
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-xs text-muted-foreground italic px-0"
+                                        value={meta.sugestao_conteudo.micro_headline}
+                                        onChange={(e) => {
+                                            const updated = {
+                                                ...currentIdea,
+                                                metadata: {
+                                                    ...meta,
+                                                    sugestao_conteudo: { ...meta.sugestao_conteudo, micro_headline: e.target.value }
+                                                }
+                                            };
+                                            setEditingIdea(updated);
+                                        }}
+                                    />
+
+                                    <div className="space-y-2 pt-4">
+                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Roteiro:</span>
+                                        {meta.sugestao_conteudo.mini_roteiro?.map((step: string, i: number) => (
+                                            <div key={i} className="flex gap-3 text-xs leading-relaxed">
+                                                <span className="text-primary font-bold mt-2">{i + 1}.</span>
+                                                <input
+                                                    className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg py-2 px-0 text-foreground/80"
+                                                    value={step}
+                                                    onChange={(e) => {
+                                                        const newSteps = [...meta.sugestao_conteudo.mini_roteiro];
+                                                        newSteps[i] = e.target.value;
+                                                        const updated = {
+                                                            ...currentIdea,
+                                                            metadata: {
+                                                                ...meta,
+                                                                sugestao_conteudo: { ...meta.sugestao_conteudo, mini_roteiro: newSteps }
+                                                            }
+                                                        };
+                                                        setEditingIdea(updated);
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {currentIdea.category === 'meta' && meta.sugestao_meta && (
+                            <div className="p-8 rounded-[32px] bg-emerald-500/5 border border-emerald-500/10 space-y-6">
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 flex items-center gap-2">
+                                    <Target className="w-4 h-4" /> Plano de Meta
+                                </h4>
+                                <div className="space-y-1">
+                                    <input
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xl font-bold px-0 text-emerald-500"
+                                        value={meta.sugestao_meta.descricao_meta}
+                                        onChange={(e) => {
+                                            const updated = {
+                                                ...currentIdea,
+                                                metadata: {
+                                                    ...meta,
+                                                    sugestao_meta: { ...meta.sugestao_meta, descricao_meta: e.target.value }
+                                                }
+                                            };
+                                            setEditingIdea(updated);
+                                        }}
+                                    />
+                                    <input
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xs text-muted-foreground italic px-0"
+                                        value={meta.sugestao_meta.sugestao_inicio_calendario}
+                                        onChange={(e) => {
+                                            const updated = {
+                                                ...currentIdea,
+                                                metadata: {
+                                                    ...meta,
+                                                    sugestao_meta: { ...meta.sugestao_meta, sugestao_inicio_calendario: e.target.value }
+                                                }
+                                            };
+                                            setEditingIdea(updated);
+                                        }}
+                                    />
+                                </div>
+                                <div className="space-y-3">
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Checklist:</span>
+                                    <div className="space-y-2">
+                                        {meta.sugestao_meta.checklist_passos?.map((step: string, i: number) => (
+                                            <div key={i} className="flex gap-3 text-xs items-center group/item">
+                                                <div className="w-4 h-4 rounded-full border border-emerald-500/30 flex items-center justify-center text-[8px] text-emerald-500 font-bold shrink-0">{i + 1}</div>
+                                                <input
+                                                    className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg py-1 px-0 text-foreground/80"
+                                                    value={step}
+                                                    onChange={(e) => {
+                                                        const newSteps = [...meta.sugestao_meta.checklist_passos];
+                                                        newSteps[i] = e.target.value;
+                                                        const updated = {
+                                                            ...currentIdea,
+                                                            metadata: {
+                                                                ...meta,
+                                                                sugestao_meta: { ...meta.sugestao_meta, checklist_passos: newSteps }
+                                                            }
+                                                        };
+                                                        setEditingIdea(updated);
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {currentIdea.category === 'insight' && meta.sugestao_insight && (
+                            <div className="p-8 rounded-[32px] bg-amber-500/5 border border-amber-500/10 space-y-6">
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500 flex items-center gap-2">
+                                    <Zap className="w-4 h-4" /> Regra do Insight
+                                </h4>
+                                <textarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg text-lg font-bold leading-tight italic px-0 resize-none min-h-[60px] text-amber-500"
+                                    value={meta.sugestao_insight.descricao_regra}
+                                    onChange={(e) => {
+                                        const updated = {
+                                            ...currentIdea,
+                                            metadata: {
+                                                ...meta,
+                                                sugestao_insight: { ...meta.sugestao_insight, descricao_regra: e.target.value }
+                                            }
+                                        };
+                                        setEditingIdea(updated);
+                                    }}
+                                />
+                                <div className="space-y-3">
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Impacto:</span>
+                                    <div className="space-y-2">
+                                        {meta.sugestao_insight.como_influencia_yah?.map((impact: string, i: number) => (
+                                            <div key={i} className="flex gap-3 text-xs italic text-foreground/70 group/item">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-2" />
+                                                <input
+                                                    className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg py-1 px-0 text-foreground/70 italic"
+                                                    value={impact}
+                                                    onChange={(e) => {
+                                                        const newImpacts = [...meta.sugestao_insight.como_influencia_yah];
+                                                        newImpacts[i] = e.target.value;
+                                                        const updated = {
+                                                            ...currentIdea,
+                                                            metadata: {
+                                                                ...meta,
+                                                                sugestao_insight: { ...meta.sugestao_insight, como_influencia_yah: newImpacts }
+                                                            }
+                                                        };
+                                                        setEditingIdea(updated);
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {(!meta.sugestao_conteudo && !meta.sugestao_meta && !meta.sugestao_insight && meta.ai_insights) && (
                             <div className="p-8 rounded-[32px] bg-primary/5 border border-primary/20 space-y-4">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Sparkles className="w-4 h-4" /> AI Insights & Sugestões
                                 </h3>
-                                <p className="text-foreground/90 leading-relaxed">
-                                    {selectedIdea.metadata.ai_insights}
-                                </p>
+                                <textarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-foreground/90 leading-relaxed px-0 min-h-[100px] resize-none"
+                                    value={meta.ai_insights}
+                                    onChange={(e) => {
+                                        const updated = {
+                                            ...currentIdea,
+                                            metadata: { ...meta, ai_insights: e.target.value }
+                                        };
+                                        setEditingIdea(updated);
+                                    }}
+                                />
                             </div>
                         )}
                     </div>
 
                     <div className="w-full md:w-72 space-y-4">
-                        <Card className="p-4 space-y-3 bg-secondary/20 border-none">
+                        {editingIdea && (
+                            <Button
+                                onClick={updateSavedIdea}
+                                disabled={isProcessing}
+                                className="w-full h-14 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-2"
+                            >
+                                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                                Salvar Alterações
+                            </Button>
+                        )}
+
+                        <Card className="p-4 space-y-3 bg-secondary/20 border-none relative overflow-hidden">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Ações Rápidas</h4>
-                            <Button variant="outline" className="w-full justify-start gap-3 rounded-xl h-12 border-border/50 hover:bg-background">
-                                <Calendar className="w-4 h-4 text-primary" /> Agendar Post
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start gap-3 rounded-xl h-12 border-border/50 hover:bg-background">
-                                <ListTodo className="w-4 h-4 text-accent" /> Criar Tracker
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start gap-3 rounded-xl h-12 border-border/50 hover:bg-background">
+
+                            {currentIdea.folder === "Conteúdo" && (
+                                <div className="space-y-2">
+                                    <Button
+                                        onClick={handleStartAllocation}
+                                        variant="outline"
+                                        className={cn(
+                                            "w-full justify-start gap-3 rounded-xl h-12 border-border/50 transition-all",
+                                            isSelectingWeek && "bg-primary/10 border-primary/30"
+                                        )}
+                                    >
+                                        <Calendar className="w-4 h-4 text-primary" />
+                                        {isSelectingWeek ? "Cancelar" : "Enviar para semana"}
+                                    </Button>
+
+                                    {isSelectingWeek && renderWeekSelection()}
+                                </div>
+                            )}
+
+                            <Button variant="outline" className="w-full justify-start gap-3 rounded-xl h-12 border-border/50">
                                 <Share2 className="w-4 h-4 text-blue-500" /> Compartilhar
                             </Button>
                             <Button
@@ -922,9 +1414,34 @@ export default function IdeiaInbox() {
 
                         <div className="p-4 space-y-3">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pasta</h4>
-                            <div className="flex items-center gap-2 text-sm font-bold bg-card p-3 rounded-xl border border-border">
-                                <Folder className="w-4 h-4 text-primary" />
-                                {selectedIdea.folder || "Sem Pasta"}
+                            <div className="relative group/folder">
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start gap-3 rounded-xl h-12 border-border/50 bg-card font-bold text-sm"
+                                >
+                                    <Folder className="w-4 h-4 text-primary" />
+                                    {currentIdea.folder || "Sem Pasta"}
+                                </Button>
+
+                                <div className="absolute bottom-full left-0 mb-2 w-full bg-card border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-focus-within/folder:opacity-100 group-focus-within/folder:visible transition-all z-20 overflow-hidden">
+                                    <div className="p-2 space-y-1">
+                                        {FOLDERS.map(f => (
+                                            <button
+                                                key={f.name}
+                                                onClick={() => {
+                                                    const updated = { ...currentIdea, folder: f.name };
+                                                    setEditingIdea(updated);
+                                                }}
+                                                className={cn(
+                                                    "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10",
+                                                    currentIdea.folder === f.name ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                {f.icon} {f.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -944,7 +1461,7 @@ export default function IdeiaInbox() {
                             size="sm"
                             onClick={() => {
                                 if (inboxState === "initial") navigate("/dashboard");
-                                else if (inboxState === "folder_detail") setInboxState("folders");
+                                else if (inboxState === "folder_detail") setInboxState("initial");
                                 else if (inboxState === "item_detail" && selectedFolder) setInboxState("folder_detail");
                                 else setInboxState("initial");
                             }}

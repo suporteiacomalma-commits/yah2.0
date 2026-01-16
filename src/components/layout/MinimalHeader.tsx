@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
 
 interface MinimalHeaderProps {
   brandName?: string;
@@ -14,6 +15,7 @@ interface MinimalHeaderProps {
 
 export function MinimalHeader({ brandName }: MinimalHeaderProps) {
   const { signOut } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <header className="h-16 border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
@@ -45,13 +47,24 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
               <User className="w-5 h-5 text-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-card border-border">
+          <DropdownMenuContent align="end" className="bg-card border-border w-56 p-2 space-y-1 shadow-2xl">
+            <div className="px-3 py-2 border-b border-border/50 mb-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Configurações</p>
+            </div>
+            <DropdownMenuItem
+              onClick={() => navigate("/profile")}
+              className="cursor-pointer rounded-lg hover:bg-secondary transition-colors py-3"
+            >
+              <User className="w-4 h-4 mr-3 text-primary" />
+              <span className="font-medium">Meu Perfil</span>
+            </DropdownMenuItem>
+            <div className="h-0.5 bg-border/30 my-1 mx-2" />
             <DropdownMenuItem
               onClick={signOut}
-              className="text-destructive focus:text-destructive cursor-pointer"
+              className="text-destructive focus:text-destructive cursor-pointer rounded-lg hover:bg-destructive/5 transition-colors py-3"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
+              <LogOut className="w-4 h-4 mr-3" />
+              <span className="font-medium">Sair</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

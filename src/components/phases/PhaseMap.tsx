@@ -8,7 +8,7 @@ interface PhaseMapProps {
 }
 
 // Only show these 8 phases in the dashboard grid
-const dashboardPhases = [1, 2, 3, 4, 5, 6, 7, 9];
+const dashboardPhases = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export function PhaseMap({ currentPhase, completedPhases }: PhaseMapProps) {
   const navigate = useNavigate();

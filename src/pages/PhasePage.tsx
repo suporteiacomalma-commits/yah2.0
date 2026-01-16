@@ -61,7 +61,7 @@ export default function PhasePage() {
               {isCompleted ? <Check className="w-7 h-7" /> : <Icon className="w-7 h-7" />}
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Fase {phaseNumber} de 11</p>
+              <p className="text-sm text-muted-foreground mb-1">Fase {phaseNumber} de {phases.length}</p>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 {phase.title}
               </h1>
@@ -77,9 +77,7 @@ export default function PhasePage() {
               <PersonalityNotebook />
             ) : phaseNumber === 2 ? (
               <BrandDNANotebook />
-            ) : phaseNumber === 3 ? (
-              <WeeklyFixedNotebook />
-            ) : phaseNumber === 7 ? (
+            ) : phaseNumber === 5 ? (
               <ActivityCalendar />
             ) : (
               <div className="text-center py-12">

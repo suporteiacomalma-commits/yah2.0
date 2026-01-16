@@ -223,7 +223,7 @@ export function WeeklyFixedNotebook() {
 
                         cleanedWeek[idx] = {
                             feed: {
-                                format: aiContent.feed?.format || 'Personalizado',
+                                format: aiContent.feed?.format || 'Carrossel',
                                 intention: aiContent.feed?.intention || 'Conexão',
                                 headline: aiContent.feed?.headline || 'Título pendente...',
                                 instruction: aiContent.feed?.instruction || 'Crie um post engajador.',
@@ -951,7 +951,6 @@ export function WeeklyFixedNotebook() {
                             </div>
                             <Textarea placeholder="Roteiro..." className="min-h-[200px]" value={dayData.feed?.notes || ""} onChange={(e) => handleDataChange("feed", "notes", e.target.value)} />
                             <div className="flex flex-col gap-3">
-                                <Button className="w-full h-12 gradient-primary" onClick={() => handleCreateWithAI("feed")} disabled={isGenerating}>Criar com a YAh</Button>
                                 <div className="grid grid-cols-2 gap-3">
                                     <Button
                                         variant="outline"
@@ -967,6 +966,7 @@ export function WeeklyFixedNotebook() {
                                     </Button>
                                     <Button variant="outline" className="h-11" onClick={() => handleAddExtraBlock("feed")}><Plus className="w-4 h-4 mr-2" /> Bloco Extra</Button>
                                 </div>
+                                <Button className="w-full h-12 gradient-primary" onClick={() => handleCreateWithAI("feed")} disabled={isGenerating}>Criar com a YAh</Button>
                                 <Button variant="ghost" size="sm" onClick={() => handleClearTab("feed")} className="text-destructive/60 hover:text-destructive hover:bg-destructive/5 self-center">
                                     <Trash2 className="w-4 h-4 mr-2" /> Limpar Feed
                                 </Button>
@@ -1003,7 +1003,6 @@ export function WeeklyFixedNotebook() {
                             </div>
                             <Textarea placeholder="Notas / Roteiro dos Stories..." className="min-h-[200px]" value={dayData.stories?.notes || ""} onChange={(e) => handleDataChange("stories", "notes", e.target.value)} />
                             <div className="flex flex-col gap-3">
-                                <Button className="w-full h-12 gradient-primary" onClick={() => handleCreateWithAI("stories")} disabled={isGenerating}>Criar com a YAh - Stories</Button>
                                 <div className="grid grid-cols-2 gap-3">
                                     <Button
                                         variant="outline"
@@ -1019,6 +1018,7 @@ export function WeeklyFixedNotebook() {
                                     </Button>
                                     <Button variant="outline" className="h-11" onClick={() => handleAddExtraBlock("stories")}><Plus className="w-4 h-4 mr-2" /> Bloco Extra Stories</Button>
                                 </div>
+                                <Button className="w-full h-12 gradient-primary" onClick={() => handleCreateWithAI("stories")} disabled={isGenerating}>Criar com a YAh - Stories</Button>
                                 <Button variant="ghost" size="sm" onClick={() => handleClearTab("stories")} className="text-destructive/60 hover:text-destructive hover:bg-destructive/5 self-center">
                                     <Trash2 className="w-4 h-4 mr-2" /> Limpar Stories
                                 </Button>

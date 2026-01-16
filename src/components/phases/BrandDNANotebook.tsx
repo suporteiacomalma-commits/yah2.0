@@ -32,22 +32,26 @@ export function BrandDNANotebook() {
     // Local state for form data
     const [formData, setFormData] = useState<Partial<Brand>>({});
     const [outroObjetivo, setOutroObjetivo] = useState("");
+    const [isFormInitialized, setIsFormInitialized] = useState(false);
+    const isDirty = useRef(false);
 
     useEffect(() => {
-        if (brand) {
+        if (brand && !isFormInitialized) {
             setFormData(brand);
-            // If they already have a generated DNA, skip to results
-            if (brand.dna_tese && step === 1) {
+            setIsFormInitialized(true);
+
+            // If they already have a generated DNA, skip to results (Step 3)
+            if (brand.dna_tese) {
                 setStep(3);
                 return;
             }
 
-            // Suggest niche and product if empty
+            // Suggest niche and product if empty and we have essence from Phase 1
             if (step === 1 && brand.result_essencia && (!brand.dna_nicho || !brand.dna_produto)) {
                 handleSuggestDNAFields();
             }
         }
-    }, [brand]);
+    }, [brand, isFormInitialized, step]);
 
     const handleSuggestDNAFields = async (targetField?: keyof Brand, stepOverride?: number) => {
         if (isSuggesting || !brand?.result_essencia) return;
@@ -137,10 +141,37 @@ Saída em Português. Seja criativo, prático e impactante.`;
     };
 
     const handleInputChange = (field: keyof Brand, value: any) => {
-        const updatedData = { ...formData, [field]: value };
-        setFormData(updatedData);
-        updateBrand.mutate({ [field]: value });
+        setFormData(prev => ({ ...prev, [field]: value }));
+        isDirty.current = true;
     };
+
+    // Auto-save logic with debounce
+    useEffect(() => {
+        // Skip initial mount or if formData is empty and brand is still loading
+        if (!brand) return;
+
+        const timer = setTimeout(() => {
+            // Compare current formData with brand data to avoid redundant saves
+            const changedFields: Partial<Brand> = {};
+            let hasChanges = false;
+
+            Object.keys(formData).forEach((key) => {
+                const k = key as keyof Brand;
+                // Basic comparison, could be improved for arrays if needed
+                if (JSON.stringify(formData[k]) !== JSON.stringify(brand[k])) {
+                    (changedFields as any)[k] = formData[k];
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges && isDirty.current) {
+                updateBrand.mutate({ updates: changedFields, silent: true });
+                isDirty.current = false;
+            }
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [formData, brand]);
 
     const handleObjetivoChange = (option: string) => {
         handleInputChange("dna_objetivo", option);
@@ -217,17 +248,19 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
             const results = JSON.parse(aiData.choices[0].message.content);
 
             await updateBrand.mutateAsync({
-                dna_tese: results.dna_tese,
-                dna_pilares: results.dna_pilares,
-                mission: results.mission,
-                vision: results.vision,
-                values: results.values,
-                purpose: results.purpose,
-                dna_objecao_comum: results.dna_objecao_comum,
-                dna_persona_data: results.persona_data,
-                dna_competidores: results.dna_competidores,
-                dna_comparativo: results.dna_comparativo,
-                dna_uvp: results.dna_uvp
+                updates: {
+                    dna_tese: results.dna_tese,
+                    dna_pilares: results.dna_pilares,
+                    mission: results.mission,
+                    vision: results.vision,
+                    values: results.values,
+                    purpose: results.purpose,
+                    dna_objecao_comum: results.dna_objecao_comum,
+                    dna_persona_data: results.persona_data,
+                    dna_competidores: results.dna_competidores,
+                    dna_comparativo: results.dna_comparativo,
+                    dna_uvp: results.dna_uvp
+                }
             });
 
             setStep(3);

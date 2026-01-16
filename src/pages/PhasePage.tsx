@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ActivityCalendar } from "@/components/calendar/ActivityCalendar";
 import { PersonalityNotebook } from "@/components/phases/PersonalityNotebook";
 import { BrandDNANotebook } from "@/components/phases/BrandDNANotebook";
+import { WeeklyFixedNotebook } from "@/components/phases/WeeklyFixedNotebook";
 
 export default function PhasePage() {
   const { phaseId } = useParams();
@@ -76,6 +77,8 @@ export default function PhasePage() {
               <PersonalityNotebook />
             ) : phaseNumber === 2 ? (
               <BrandDNANotebook />
+            ) : phaseNumber === 3 ? (
+              <WeeklyFixedNotebook />
             ) : phaseNumber === 7 ? (
               <ActivityCalendar />
             ) : (

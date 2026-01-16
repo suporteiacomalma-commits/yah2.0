@@ -39,6 +39,15 @@ export interface Brand {
   result_essencia: string | null;
   result_tom_voz: string | null;
   result_como_funciona: string | null;
+  routine_posts_per_week?: number;
+  routine_planning_days?: string[];
+  routine_execution_days?: string[];
+  routine_posting_days?: string[];
+  routine_feed_format_prefs?: any;
+  routine_intentions_prefs?: any;
+  routine_fixed_hours?: string[];
+  weekly_structure_data?: any;
+  monthly_structure_data?: any;
   dna_nicho: string | null;
   dna_produto: string | null;
   dna_objetivo: string | null;
@@ -107,7 +116,7 @@ export function useBrand() {
   });
 
   const updateBrand = useMutation({
-    mutationFn: async (updates: Partial<Brand>) => {
+    mutationFn: async ({ updates, silent }: { updates: Partial<Brand>; silent?: boolean }) => {
       if (!user || !brand) throw new Error("User or brand not found");
 
       const { data, error } = await supabase
@@ -118,11 +127,13 @@ export function useBrand() {
         .single();
 
       if (error) throw error;
-      return data;
+      return { data, silent };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["brand", user?.id] });
-      toast.success("Dados salvos com sucesso!");
+      if (!data.silent) {
+        toast.success("Dados salvos com sucesso!");
+      }
     },
     onError: (error) => {
       toast.error("Erro ao salvar: " + error.message);

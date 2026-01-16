@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, Save, Loader2, Wand2, FileText, CheckCircle2, Pencil } from "lucide-react";
 import { useBrand, Brand } from "@/hooks/useBrand";
@@ -45,24 +45,54 @@ export function PersonalityNotebook() {
 
     // Local state for auto-save and UI responsiveness
     const [formData, setFormData] = useState<Partial<Brand>>({});
+    const [isFormInitialized, setIsFormInitialized] = useState(false);
+    const isDirty = useRef(false);
 
     useEffect(() => {
-        if (brand) {
+        if (brand && !isFormInitialized) {
             setFormData(brand);
+            setIsFormInitialized(true);
             // Skip to results if they already exist
             if (brand.result_essencia && step === 1) {
                 setStep(4);
             }
+        } else if (brand && isFormInitialized && brand.result_essencia && step === 1) {
+            // This handles cases where brand might update later and we need to skip,
+            // but formData should not be re-initialized.
+            setStep(4);
         }
-    }, [brand]);
+    }, [brand, isFormInitialized, step]);
 
     const handleInputChange = (field: keyof Brand, value: any) => {
-        const updatedData = { ...formData, [field]: value };
-        setFormData(updatedData);
-
-        // Auto-save logic
-        updateBrand.mutate({ [field]: value });
+        setFormData(prev => ({ ...prev, [field]: value }));
+        isDirty.current = true;
     };
+
+    // Auto-save logic with debounce
+    useEffect(() => {
+        if (!brand) return;
+
+        const timer = setTimeout(() => {
+            const changedFields: Partial<Brand> = {};
+            let hasChanges = false;
+
+            Object.keys(formData).forEach((key) => {
+                const k = key as keyof Brand;
+                // Basic comparison, could be improved for arrays if needed
+                if (JSON.stringify(formData[k]) !== JSON.stringify(brand[k])) {
+                    (changedFields as any)[k] = formData[k];
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges && isDirty.current) {
+                updateBrand.mutate({ updates: changedFields, silent: true });
+                isDirty.current = false;
+            }
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [formData, brand]);
 
     const toggleArrayOption = (field: keyof Brand, option: string, maxSelection?: number) => {
         const currentArray = (formData[field] as string[]) || [];
@@ -135,9 +165,11 @@ export function PersonalityNotebook() {
             const results = JSON.parse(aiData.choices[0].message.content);
 
             await updateBrand.mutateAsync({
-                result_essencia: results.result_essencia,
-                result_tom_voz: results.result_tom_voz,
-                result_como_funciona: results.result_como_funciona
+                updates: {
+                    result_essencia: results.result_essencia,
+                    result_tom_voz: results.result_tom_voz,
+                    result_como_funciona: results.result_como_funciona
+                }
             });
 
             setStep(4);

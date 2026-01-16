@@ -16,10 +16,10 @@ interface PhaseIconProps {
 const phaseColors: Record<number, { bg: string; icon: string }> = {
   1: { bg: "bg-pink-500", icon: "text-white" },
   2: { bg: "bg-purple-600", icon: "text-white" },
-  3: { bg: "bg-cyan-400", icon: "text-gray-900" },
-  4: { bg: "bg-orange-500", icon: "text-white" },
-  5: { bg: "bg-blue-500", icon: "text-white" },
-  6: { bg: "bg-lime-400", icon: "text-gray-900" },
+  3: { bg: "bg-lime-400", icon: "text-gray-900" },
+  4: { bg: "bg-cyan-400", icon: "text-gray-900" },
+  5: { bg: "bg-orange-500", icon: "text-white" },
+  6: { bg: "bg-blue-500", icon: "text-white" },
   7: { bg: "bg-emerald-500", icon: "text-white" },
   8: { bg: "bg-violet-600", icon: "text-white" },
   9: { bg: "bg-yellow-400", icon: "text-gray-900" },
@@ -65,7 +65,7 @@ export function PhaseIcon({ icon: Icon, phaseNumber, status, title, onClick, siz
         )}>
           <Icon className={cn("w-4 h-4", status === "locked" ? "text-zinc-500" : "text-primary")} />
         </div>
-        
+
         {/* Title */}
         <span className={cn(
           "text-sm font-medium truncate",
@@ -116,7 +116,7 @@ export function PhaseIcon({ icon: Icon, phaseNumber, status, title, onClick, siz
         ) : (
           <Icon className={cn(colors.icon, iconSizes[size])} />
         )}
-        
+
         {/* Phase number badge */}
         <span className={cn(
           "absolute -bottom-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shadow-md",
@@ -125,7 +125,7 @@ export function PhaseIcon({ icon: Icon, phaseNumber, status, title, onClick, siz
           {phaseNumber}
         </span>
       </button>
-      
+
       {/* Title below icon */}
       <span className={cn(
         "text-xs font-medium text-center max-w-[80px] md:max-w-[100px] leading-tight mt-1",

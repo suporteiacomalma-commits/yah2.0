@@ -166,12 +166,19 @@ export default function Assistant() {
     };
 
     useEffect(() => {
+        const context = sessionStorage.getItem("ai_assistant_context");
+        if (context && !isLoadingSettings) {
+            setTranscript(context);
+            prepareTask(context);
+            sessionStorage.removeItem("ai_assistant_context");
+        }
+
         return () => {
             if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
                 mediaRecorderRef.current.stop();
             }
         };
-    }, []);
+    }, [isLoadingSettings]);
 
     const prepareTask = async (text: string) => {
         setIsProcessing(true);

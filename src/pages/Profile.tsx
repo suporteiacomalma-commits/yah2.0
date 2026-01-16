@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { MinimalLayout } from "@/components/layout/MinimalLayout";
+import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useBrand } from "@/hooks/useBrand";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +23,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, User, Building, Target, Mail } from "lucide-react";
+import { Loader2, User, Building, Target, Mail, ArrowLeft, Lock, ShieldCheck } from "lucide-react";
 
 export default function Profile() {
     const { profile, isLoading: profileLoading, updateProfile } = useProfile();
@@ -33,6 +35,13 @@ export default function Profile() {
         business_stage: "",
         main_goal: "",
     });
+
+    const [passwords, setPasswords] = useState({
+        newPassword: "",
+        confirmPassword: "",
+    });
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (profile) {
@@ -54,6 +63,39 @@ export default function Profile() {
         }
     };
 
+    const handlePasswordChange = async () => {
+        if (!passwords.newPassword || !passwords.confirmPassword) {
+            toast.error("Por favor, preencha todos os campos de senha.");
+            return;
+        }
+
+        if (passwords.newPassword !== passwords.confirmPassword) {
+            toast.error("As senhas não coincidem.");
+            return;
+        }
+
+        if (passwords.newPassword.length < 6) {
+            toast.error("A senha deve ter pelo menos 6 caracteres.");
+            return;
+        }
+
+        setIsUpdatingPassword(true);
+        try {
+            const { error } = await supabase.auth.updateUser({
+                password: passwords.newPassword,
+            });
+
+            if (error) throw error;
+
+            toast.success("Senha atualizada com sucesso!");
+            setPasswords({ newPassword: "", confirmPassword: "" });
+        } catch (error: any) {
+            toast.error("Erro ao atualizar senha: " + error.message);
+        } finally {
+            setIsUpdatingPassword(false);
+        }
+    };
+
     if (profileLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -66,13 +108,23 @@ export default function Profile() {
         <MinimalLayout brandName={brand?.name}>
             <div className="flex-1 p-6 md:p-8">
                 <div className="max-w-3xl mx-auto space-y-6">
-                    <div>
-                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-                            Meu Perfil
-                        </h1>
-                        <p className="text-muted-foreground mt-2">
-                            Gerencie suas informações pessoais e profissionais para uma melhor experiência com a YAh.
-                        </p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <Button
+                                variant="ghost"
+                                className="mb-4 -ml-2 text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
+                                onClick={() => navigate("/dashboard")}
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                                Voltar ao Dashboard
+                            </Button>
+                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+                                Meu Perfil
+                            </h1>
+                            <p className="text-muted-foreground mt-2">
+                                Gerencie suas informações pessoais e profissionais para uma melhor experiência com a YAh.
+                            </p>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -214,6 +266,59 @@ export default function Profile() {
                                     )}
                                 </Button>
                             </div>
+
+                            <Card className="bg-card/50 border-white/10 backdrop-blur-sm shadow-xl mt-8">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <Lock className="w-5 h-5 text-amber-500" />
+                                        Segurança
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Mantenha sua conta protegida alterando sua senha periodicamente.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="new_password">Nova Senha</Label>
+                                            <Input
+                                                id="new_password"
+                                                type="password"
+                                                value={passwords.newPassword}
+                                                onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                                                placeholder="••••••••"
+                                                className="bg-background/50 border-white/10 focus:border-primary/50"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="confirm_password">Confirmar Nova Senha</Label>
+                                            <Input
+                                                id="confirm_password"
+                                                type="password"
+                                                value={passwords.confirmPassword}
+                                                onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                                                placeholder="••••••••"
+                                                className="bg-background/50 border-white/10 focus:border-primary/50"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end pt-2">
+                                        <Button
+                                            onClick={handlePasswordChange}
+                                            disabled={isUpdatingPassword}
+                                            variant="outline"
+                                            className="border-white/10 hover:bg-white/5 gap-2"
+                                        >
+                                            {isUpdatingPassword ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <ShieldCheck className="w-4 h-4" />
+                                            )}
+                                            Atualizar Senha
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
                 </div>

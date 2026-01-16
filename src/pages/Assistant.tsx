@@ -18,6 +18,7 @@ export default function Assistant() {
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [transcript, setTranscript] = useState("");
     const [proposedTask, setProposedTask] = useState<any>(null);
+    const [assistantResponse, setAssistantResponse] = useState<string | null>(null);
     const { user } = useAuth();
     const navigate = useNavigate();
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -140,6 +141,7 @@ export default function Assistant() {
             setTranscript("");
             setShowConfirmation(false);
             setProposedTask(null);
+            setAssistantResponse(null);
             toast.info("Ouvindo... Pode falar!");
         } catch (error) {
             console.error("Mic access error:", error);
@@ -193,37 +195,42 @@ export default function Assistant() {
             const now = new Date();
             const currentDateTime = format(now, "eeee, dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR });
 
-            const prompt = `Você é um assistente pessoal inteligente. Sua tarefa é converter uma frase dita pelo usuário em um objeto JSON estruturado para uma atividade de calendário.
+            const prompt = `Você é um assistente pessoal inteligente. Analise a frase do usuário e identifique o "intent" (intenção).
 
 Data/Hora atual: ${currentDateTime}
-
 Frase do usuário: "${text}"
 
-Regras:
-1. Extraia o título da tarefa de forma concisa.
-2. Identifique a data e hora. Resolva termos relativos (ex: amanhã, próxima terça, hoje à noite às 20h) baseando-se na Data/Hora atual fornecida acima.
-3. Se o usuário não mencionar horário, defina como 09:00:00 do dia identificado.
-4. Categorize rigorosamente entre: "task", "meeting", "content", "deadline" ou "reminder". (Não use "event").
-5. Defina a prioridade como "low", "medium" ou "high" baseado na urgência detectada.
-6. Identifique se é recorrente. Exemplos: "toda segunda", "todo dia", "mensalmente", "até o fim de janeiro".
-   - is_recurring: boolean
-   - recurrence_rule: "daily", "weekly", "monthly" ou null
-   - recurrence_end: "string (formato ISO 8601 ou YYYY-MM-DD)" ou null. Identifique se o usuário limitou o período (ex: "até o fim de janeiro", "nas próximas 2 semanas"). Se não houver limite óbvio, use null.
+Determine se o usuário quer CRIAR uma tarefa ou CONSULTAR dados existentes.
 
-7. IMPORTANTE SOBRE FORMATO DE DATA: Retorne a data no formato ISO 8601 LOCAL (ex: "2026-01-05T06:00:00"). NÃO adicione o 'Z' no final para não forçar UTC, a menos que você tenha certeza absoluta que o horário é em UTC. Use o horário exatamente como detectado na fala do usuário.
-
-Retorne APENAS um objeto JSON com as seguintes chaves:
+Se o intent for "create":
+Extraia as informações para a tarefa.
 {
-  "title": "string",
-  "description": "string (resumo ou frase original)",
-  "date": "string (YYYY-MM-DDTHH:mm:ss)",
-  "category": "string",
-  "priority": "string",
-  "is_recurring": boolean,
-  "recurrence_rule": "string or null",
-  "recurrence_end": "string or null",
-  "status": "pending"
-}`;
+  "intent": "create",
+  "data": {
+    "title": "string",
+    "description": "string",
+    "date": "string (YYYY-MM-DDTHH:mm:ss)",
+    "category": "task|meeting|content|deadline|reminder",
+    "priority": "low|medium|high",
+    "is_recurring": boolean,
+    "recurrence_rule": "daily|weekly|monthly|null",
+    "recurrence_end": "string|null"
+  }
+}
+
+Se o intent for "query":
+Identifique o que ele quer saber.
+{
+  "intent": "query",
+  "data": {
+    "type": "calendar_activities",
+    "target_date_start": "string (YYYY-MM-DDTHH:mm:ss)",
+    "target_date_end": "string (YYYY-MM-DDTHH:mm:ss)",
+    "query_description": "string"
+  }
+}
+
+Retorne APENAS o JSON.`;
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -241,23 +248,73 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
                 })
             });
 
-            if (!response.ok) {
-                throw new Error("Falha na comunicação com a IA.");
-            }
+            if (!response.ok) throw new Error("Falha na comunicação com a IA.");
 
             const aiData = await response.json();
             const results = JSON.parse(aiData.choices[0].message.content);
 
-            setProposedTask({
-                ...results,
-                user_id: user?.id,
-                status: "pending"
-            });
-            setShowConfirmation(true);
-            await speak(`Entendi. Você quer ${results.title}. Posso salvar?`);
+            if (results.intent === "query") {
+                await handleQuery(results.data);
+            } else {
+                setProposedTask({
+                    ...results.data,
+                    user_id: user?.id,
+                    status: "pending"
+                });
+                setShowConfirmation(true);
+                await speak(`Entendi. Você quer ${results.data.title}. Posso salvar?`);
+            }
         } catch (error: any) {
             console.error("Error preparing task with AI:", error);
             toast.error("Falha ao interpretar comando com IA. " + (error.message || ""));
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleQuery = async (queryData: any) => {
+        setIsProcessing(true);
+        try {
+            const { data: activities, error } = await supabase
+                .from("calendar_activities")
+                .select("*")
+                .eq("user_id", user?.id)
+                .gte("date", queryData.target_date_start)
+                .lte("date", queryData.target_date_end)
+                .order("date", { ascending: true });
+
+            if (error) throw error;
+
+            const apiKey = getSetting("openai_api_key")?.value;
+            const prompt = `O usuário perguntou: "${transcript}"
+            Encontrei as seguintes atividades no banco de dados: ${JSON.stringify(activities)}
+            
+            Gere uma resposta curta, amigável e natural para ser dita por voz, resumindo essas atividades.
+            Se não houver nada, diga de forma gentil.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: "Você é um assistente pessoal prestativo." },
+                        { role: "user", content: prompt }
+                    ]
+                })
+            });
+
+            const data = await response.json();
+            const finalSpeech = data.choices[0].message.content;
+
+            setAssistantResponse(finalSpeech);
+            await speak(finalSpeech);
+        } catch (error: any) {
+            console.error("Query handling error:", error);
+            toast.error("Erro ao buscar informações: " + error.message);
         } finally {
             setIsProcessing(false);
         }
@@ -314,9 +371,10 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
 
     const cancelTask = () => {
         setProposedTask(null);
+        setAssistantResponse(null);
         setShowConfirmation(false);
         setTranscript("");
-        toast.info("Tarefa descartada.");
+        toast.info("Comando cancelado.");
     };
 
     return (
@@ -377,9 +435,9 @@ Retorne APENAS um objeto JSON com as seguintes chaves:
 
                         <p className={cn(
                             "text-xl md:text-2xl font-medium leading-relaxed italic transition-all duration-300",
-                            showConfirmation ? "text-foreground" : "text-foreground/60"
+                            (showConfirmation || assistantResponse) ? "text-foreground" : "text-foreground/60"
                         )}>
-                            {showConfirmation && proposedTask ? proposedTask.title : transcript ? `"${transcript}"` : "Diga algo como: 'Marcar dentista para amanhã às 15h'"}
+                            {assistantResponse ? assistantResponse : showConfirmation && proposedTask ? proposedTask.title : transcript ? `"${transcript}"` : "Diga algo como: 'Marcar dentista para amanhã às 15h'"}
                         </p>
 
                         {showConfirmation && proposedTask && (

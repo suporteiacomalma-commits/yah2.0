@@ -498,107 +498,146 @@ export default function IdeiaInbox() {
     };
 
     // Render Helpers
-    const renderInitial = () => (
-        <div className="flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-500">
-            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Lightbulb className="w-12 h-12 text-primary" />
-            </div>
-            <div className="space-y-4 max-w-md">
-                <h2 className="text-3xl font-extrabold tracking-tight">O que vamos criar hoje?</h2>
-                <p className="text-muted-foreground text-lg">
-                    Capture insights rápidos por voz ou texto. Nossa IA cuida do resto.
-                </p>
-            </div>
-
-            <div className="w-full max-w-xl flex gap-3 p-3 bg-background/50 rounded-[24px] border border-white/10 shadow-inner focus-within:border-primary/50 transition-all">
-                <input
-                    type="text"
-                    placeholder="Digite seu insight..."
-                    className="flex-1 bg-transparent border-none focus:ring-0 px-4 text-foreground text-lg placeholder:text-muted-foreground/50"
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleTextSubmit(e.currentTarget.value);
-                    }}
-                />
-                <Button size="icon" className="rounded-2xl h-12 w-12 gradient-primary shadow-lg" onClick={() => {
-                    const input = document.querySelector('input') as HTMLInputElement;
-                    handleTextSubmit(input.value);
-                }}>
-                    <Send className="w-5 h-5 text-white" />
-                </Button>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-4">
-                <Button onClick={startRecording} variant="outline" className="rounded-[20px] gap-3 h-16 px-10 border-primary/20 hover:border-primary/50 bg-primary/5 shadow-xl transition-all hover:-translate-y-1">
-                    <Mic className="w-6 h-6 text-primary" />
-                    <span className="font-bold text-lg">Voz</span>
-                </Button>
-                <Button onClick={() => setInboxState("folders")} variant="outline" className="rounded-[20px] gap-3 h-16 px-10 border-border hover:border-foreground/20 bg-card/40 transition-all hover:-translate-y-1">
-                    <Folder className="w-6 h-6 text-muted-foreground" />
-                    <span className="font-bold text-lg">Pastas</span>
-                </Button>
-                <Button onClick={() => setInboxState("search")} variant="outline" className="rounded-[20px] gap-3 h-16 px-10 border-border hover:border-foreground/20 bg-card/40 transition-all hover:-translate-y-1">
-                    <Search className="w-6 h-6 text-muted-foreground" />
-                    <span className="font-bold text-lg">Busca</span>
-                </Button>
-            </div>
-
-            {/* Recentes horizontal list */}
-            {savedIdeas.length > 0 && (
-                <div className="w-full pt-12 space-y-4">
-                    <div className="flex items-center justify-between px-2">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Capturas Recentes</h3>
-                        <Button variant="ghost" size="sm" onClick={() => setInboxState("folders")} className="text-xs">Ver todas</Button>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                        {savedIdeas.slice(0, 5).map(idea => (
-                            <div
-                                key={idea.id}
-                                onClick={() => { setSelectedIdea(idea); setInboxState("item_detail"); }}
-                                className="min-w-[200px] p-4 rounded-2xl bg-card border border-border/50 hover:border-primary/30 cursor-pointer transition-all space-y-2 text-left shrink-0"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{idea.category}</span>
-                                </div>
-                                <h4 className="text-sm font-bold line-clamp-2">{idea.metadata?.title || idea.content}</h4>
-                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                    <Clock className="w-3 h-3" />
-                                    {format(new Date(idea.created_at), "dd MMM, HH:mm", { locale: ptBR })}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+    // Render Helpers
+    const renderInitial = () => {
+        const foldersList = (
+            <div className="w-full pt-12 space-y-6">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <Folder className="w-4 h-4" /> Suas Pastas
+                    </h3>
                 </div>
-            )}
-        </div>
-    );
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    {FOLDERS.map(f => {
+                        const count = savedIdeas.filter(i => i.folder === f).length;
+                        return (
+                            <Button
+                                key={f}
+                                variant="outline"
+                                onClick={() => { setSelectedFolder(f); setInboxState("folder_detail"); }}
+                                className="h-28 rounded-3xl flex flex-col items-start p-5 border-white/5 hover:border-primary/40 bg-card/40 hover:bg-card transition-all group shadow-sm"
+                            >
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-auto group-hover:scale-110 transition-transform">
+                                    <Folder className="w-4 h-4 text-primary" />
+                                </div>
+                                <div className="text-left w-full">
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className="text-base font-bold">{f}</span>
+                                        <span className="text-[10px] text-muted-foreground">{count}</span>
+                                    </div>
+                                </div>
+                            </Button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+
+        return (
+            <div className="flex flex-col items-center w-full space-y-12 animate-in fade-in duration-500">
+                {/* Massive Animated Voice/Text Area */}
+                <div className="flex flex-col items-center space-y-10 w-full max-w-2xl py-8">
+                    {inboxState === "recording" || inboxState === "burst_mode" ? (
+                        renderRecording()
+                    ) : (
+                        <>
+                            <div className="relative group cursor-pointer" onClick={startRecording}>
+                                <div className="w-32 h-32 rounded-full gradient-primary flex items-center justify-center glow-primary hover:scale-105 transition-transform duration-500 active:scale-95">
+                                    <Mic className="w-12 h-12 text-white" />
+                                </div>
+                                <div className="absolute -inset-4 border border-primary/20 rounded-full animate-pulse group-hover:animate-ping" />
+                            </div>
+
+                            <div className="space-y-4 max-w-md text-center">
+                                <h2 className="text-4xl font-black tracking-tighter italic uppercase text-foreground leading-[0.9]">Diga seu insight</h2>
+                                <p className="text-muted-foreground text-base px-6">
+                                    Pressione para capturar ou use a busca abaixo.
+                                </p>
+                            </div>
+
+                            <div className="w-full flex gap-3 p-3 bg-background/50 rounded-[24px] border border-white/10 shadow-inner focus-within:border-primary/50 transition-all">
+                                <Search className="w-5 h-5 text-muted-foreground/50 ml-3 mt-3" />
+                                <input
+                                    type="text"
+                                    placeholder="Ou digite sua ideia de produto, post..."
+                                    className="flex-1 bg-transparent border-none focus:ring-0 px-2 text-foreground text-lg placeholder:text-muted-foreground/30"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleTextSubmit(e.currentTarget.value);
+                                    }}
+                                />
+                                <Button size="icon" className="rounded-2xl h-12 w-12 gradient-primary shadow-lg" onClick={() => {
+                                    const input = document.querySelector('input') as HTMLInputElement;
+                                    handleTextSubmit(input.value);
+                                }}>
+                                    <Send className="w-5 h-5 text-white" />
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {/* Always visible components */}
+                <div className="w-full">
+                    {foldersList}
+
+                    {savedIdeas.length > 0 && (
+                        <div className="w-full pt-12 space-y-4">
+                            <div className="flex items-center justify-between px-2">
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Últimos Insights</h3>
+                                <Button variant="ghost" size="sm" onClick={() => setInboxState("search")} className="text-xs">Buscar todos</Button>
+                            </div>
+                            <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar">
+                                {savedIdeas.slice(0, 5).map(idea => (
+                                    <div
+                                        key={idea.id}
+                                        onClick={() => { setSelectedIdea(idea); setInboxState("item_detail"); }}
+                                        className="min-w-[220px] p-5 rounded-3xl bg-card border border-border/50 hover:border-primary/30 cursor-pointer transition-all space-y-3 text-left shrink-0"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{idea.category}</span>
+                                        </div>
+                                        <h4 className="text-sm font-bold line-clamp-2 leading-tight">{idea.metadata?.title || idea.content}</h4>
+                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                            <Clock className="w-3 h-3" />
+                                            {format(new Date(idea.created_at), "dd MMM, HH:mm", { locale: ptBR })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     const renderRecording = () => (
-        <div className="flex flex-col items-center justify-center text-center space-y-12 animate-in zoom-in-95 duration-300 w-full max-w-md">
+        <div className="flex flex-col items-center justify-center text-center space-y-10 animate-in zoom-in-95 duration-300 w-full">
             <div className="relative">
-                <div className="w-48 h-48 rounded-full bg-primary flex items-center justify-center glow-primary animate-pulse shadow-[0_0_80px_rgba(var(--primary),0.2)]">
-                    <Mic className="w-20 h-20 text-white" />
+                <div className="w-32 h-32 rounded-full bg-destructive flex items-center justify-center glow-destructive animate-pulse" onClick={stopRecording}>
+                    <Mic className="w-12 h-12 text-white" />
                 </div>
-                <div className="absolute -inset-6 border-2 border-primary/20 rounded-full animate-ping opacity-50" />
+                <div className="absolute -inset-4 border-2 border-destructive/20 rounded-full animate-ping opacity-50" />
             </div>
 
             <div className="space-y-6">
-                <div className="text-5xl font-mono font-black text-primary drop-shadow-sm">
+                <div className="text-4xl font-mono font-black text-destructive tracking-widest">
                     {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}
                 </div>
-                <div className="min-h-[60px]">
-                    <p className="text-xl font-medium italic text-foreground tracking-tight line-clamp-2">
-                        {transcript || "Sintonizando seus pensamentos..."}
+                <div className="min-h-[40px] px-8">
+                    <p className="text-lg font-bold italic text-foreground/80 tracking-tight line-clamp-1">
+                        {transcript || "YAh ouvindo você..."}
                     </p>
                 </div>
-                <div className="flex items-center justify-center gap-2 text-primary font-bold animate-pulse text-xs uppercase tracking-[0.2em]">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    Capturando Áudio
+                <div className="flex items-center justify-center gap-2 text-destructive font-black animate-pulse text-[10px] uppercase tracking-[0.3em]">
+                    <div className="w-1 h-1 rounded-full bg-destructive" />
+                    Capturando Fluxo
                 </div>
             </div>
 
-            <Button size="lg" onClick={stopRecording} className="h-20 w-20 rounded-full bg-destructive shadow-2xl shadow-destructive/20 hover:bg-destructive/90 transition-all active:scale-95 group">
-                <Check className="w-10 h-10 group-hover:scale-110 transition-transform" />
+            <Button onClick={stopRecording} className="rounded-full h-14 px-10 bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-widest shadow-xl shadow-destructive/20 active:scale-95">
+                Concluir
             </Button>
         </div>
     );
@@ -762,10 +801,9 @@ export default function IdeiaInbox() {
                         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/4" />
                         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent/5 rounded-full blur-[120px] pointer-events-none translate-y-1/2 -translate-x-1/4" />
 
-                        {inboxState === "initial" && renderInitial()}
+                        {(inboxState === "initial" || inboxState === "recording" || inboxState === "burst_mode") && renderInitial()}
                         {inboxState === "triage" && renderTriage()}
                         {inboxState === "content_suggestion" && renderContentSuggestion()}
-                        {inboxState === "burst_mode" && renderRecording()}
                         {inboxState === "processing" && renderProcessing()}
                         {inboxState === "review" && renderReview()}
                         {inboxState === "folder_detail" && renderFolderDetail()}
@@ -777,42 +815,6 @@ export default function IdeiaInbox() {
                                 <p className="text-muted-foreground italic">"Trabalhando a cada 15 dias, você terá um padrão de produtividade..."</p>
                                 <p className="text-sm text-muted-foreground">Com base no que você capturou, a YAh percebeu padrões cruciais para sua jornada.</p>
                                 <Button variant="outline" onClick={() => setInboxState("initial")}>Voltar</Button>
-                            </div>
-                        )}
-
-                        {inboxState === "folders" && (
-                            <div className="w-full h-full space-y-10 animate-in fade-in py-4">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                                        <Folder className="w-8 h-8 text-primary" /> Suas Pastas
-                                    </h2>
-                                    <Button className="rounded-2xl h-12 px-6 gradient-primary font-bold shadow-lg shadow-primary/20">
-                                        <Plus className="w-5 h-5 mr-2" /> Criar Pasta
-                                    </Button>
-                                </div>
-                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {FOLDERS.map(f => {
-                                        const count = savedIdeas.filter(i => i.folder === f).length;
-                                        return (
-                                            <Button
-                                                key={f}
-                                                variant="outline"
-                                                onClick={() => { setSelectedFolder(f); setInboxState("folder_detail"); }}
-                                                className="h-32 rounded-[32px] flex flex-col items-start p-6 border-white/5 hover:border-primary/40 bg-card/40 hover:bg-card transition-all group hover:-translate-y-2 shadow-sm"
-                                            >
-                                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-auto group-hover:scale-110 transition-transform">
-                                                    <Folder className="w-5 h-5 text-primary" />
-                                                </div>
-                                                <div className="text-left w-full">
-                                                    <div className="flex items-center justify-between w-full">
-                                                        <span className="text-lg font-bold">{f}</span>
-                                                        <span className="text-xs text-muted-foreground">{count}</span>
-                                                    </div>
-                                                </div>
-                                            </Button>
-                                        );
-                                    })}
-                                </div>
                             </div>
                         )}
 

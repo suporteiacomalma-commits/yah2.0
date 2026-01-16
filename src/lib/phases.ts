@@ -81,9 +81,9 @@ export const phases: Phase[] = [
   },
   {
     id: 8,
-    title: "Tutoriais",
-    shortTitle: "Tutoriais",
-    description: "Aprenda estratégias e técnicas avançadas",
+    title: "Baú da Marca",
+    shortTitle: "Baú da Marca",
+    description: "Acesse materiais, referências e ferramentas da sua marca",
     icon: BookOpen,
     href: "/phase/8",
   },

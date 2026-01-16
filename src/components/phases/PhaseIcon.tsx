@@ -66,13 +66,20 @@ export function PhaseIcon({ icon: Icon, phaseNumber, status, title, onClick, siz
           <Icon className={cn("w-4 h-4", status === "locked" ? "text-zinc-500" : "text-primary")} />
         </div>
 
-        {/* Title */}
-        <span className={cn(
-          "text-sm font-medium truncate",
-          status === "locked" ? "text-muted-foreground/50" : "text-foreground"
-        )}>
-          {title}
-        </span>
+        {/* Title & Tag */}
+        <div className="flex flex-col items-start min-w-0">
+          {phaseNumber <= 4 && (
+            <span className="text-[10px] uppercase tracking-wider font-bold text-primary/70 -mb-1">
+              Etapa {phaseNumber}
+            </span>
+          )}
+          <span className={cn(
+            "text-sm font-medium truncate",
+            status === "locked" ? "text-muted-foreground/50" : "text-foreground"
+          )}>
+            {title}
+          </span>
+        </div>
 
         {/* Status indicator */}
         {status === "completed" && (

@@ -23,6 +23,7 @@ import {
   Sparkles,
   LayoutDashboard,
   Shield,
+  CalendarDays,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -32,6 +33,12 @@ const menuItems = [
     url: "/dashboard",
     icon: LayoutDashboard,
     color: "text-foreground",
+  },
+  {
+    title: "Calendário",
+    url: "/calendar",
+    icon: CalendarDays,
+    color: "text-accent",
   },
   {
     title: "Identidade da Marca",

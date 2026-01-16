@@ -18,6 +18,7 @@ import Welcome from "./pages/Welcome";
 import Assistant from "./pages/Assistant";
 import Calendar from "./pages/Calendar";
 import Profile from "./pages/Profile";
+import IdeiaInbox from "./pages/IdeiaInbox";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -101,6 +102,7 @@ function AppRoutes() {
       <Route path="/phase/:phaseId" element={<ProtectedRoute><PhasePage /></ProtectedRoute>} />
       <Route path="/assistant" element={<ProtectedRoute><Assistant /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+      <Route path="/ideia-inbox" element={<ProtectedRoute><IdeiaInbox /></ProtectedRoute>} />
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

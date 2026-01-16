@@ -32,7 +32,14 @@ type InboxState =
     | "burst_mode"
     | "insights";
 
-const FOLDERS = ["Sem Pasta", "Conteúdo", "Metas", "Insights", "Inspiracional", "Produtos"];
+const FOLDERS = [
+    { name: "Conteúdo", icon: "✍️", description: "Ideias de posts e campanhas", color: "#A855F7" },
+    { name: "Metas", icon: "🎯", description: "Objetivos com progresso", color: "#EC4899" },
+    { name: "Insights", icon: "💡", description: "Aprendizados estratégicos", color: "#EAB308" },
+    { name: "Produto", icon: "🚀", description: "Ofertas e serviços", color: "#22D3EE" },
+    { name: "Stand-by", icon: "🕰️", description: "Ideias para o futuro", color: "#8B5CF6" },
+    { name: "Construção", icon: "🤔", description: "Em desenvolvimento", color: "#D1D5DB" }
+];
 
 export default function IdeiaInbox() {
     const navigate = useNavigate();
@@ -199,13 +206,14 @@ export default function IdeiaInbox() {
             Conteúdo: "${content}"
             
             Categorias: "content", "goal", "insight", "folder".
+            Pastas sugeridas: "Conteúdo", "Metas", "Insights", "Produto", "Stand-by", "Construção".
 
             Retorne um JSON:
             {
                 "category": "content" | "goal" | "insight" | "folder",
                 "title": "string",
                 "summary": "string",
-                "suggested_destination": "string (folder name)",
+                "suggested_destination": "string (one of the folder names above)",
                 "ai_insights": "string",
                 "is_urgent": boolean
             }
@@ -507,24 +515,30 @@ export default function IdeiaInbox() {
                         <Folder className="w-4 h-4" /> Suas Pastas
                     </h3>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
                     {FOLDERS.map(f => {
-                        const count = savedIdeas.filter(i => i.folder === f).length;
+                        const count = savedIdeas.filter(i => i.folder === f.name).length;
                         return (
                             <Button
-                                key={f}
+                                key={f.name}
                                 variant="outline"
-                                onClick={() => { setSelectedFolder(f); setInboxState("folder_detail"); }}
-                                className="h-28 rounded-3xl flex flex-col items-start p-5 border-white/5 hover:border-primary/40 bg-card/40 hover:bg-card transition-all group shadow-sm"
+                                onClick={() => { setSelectedFolder(f.name); setInboxState("folder_detail"); }}
+                                className="h-40 rounded-[32px] flex flex-col items-start p-6 border-white/5 hover:border-primary/40 bg-card/40 hover:bg-card transition-all group shadow-2xl relative overflow-hidden text-left"
                             >
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-auto group-hover:scale-110 transition-transform">
-                                    <Folder className="w-4 h-4 text-primary" />
-                                </div>
-                                <div className="text-left w-full">
-                                    <div className="flex items-center justify-between w-full">
-                                        <span className="text-base font-bold">{f}</span>
-                                        <span className="text-[10px] text-muted-foreground">{count}</span>
+                                <div className="flex justify-between w-full items-start mb-4">
+                                    <span className="text-3xl filter drop-shadow-md group-hover:scale-110 transition-transform">{f.icon}</span>
+                                    <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                                        {count}
                                     </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <h4 className="text-2xl font-black tracking-tight" style={{ color: f.color }}>{f.name}</h4>
+                                    <p className="text-xs text-muted-foreground font-medium leading-tight opacity-70">{f.description}</p>
+                                </div>
+
+                                <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <ChevronRight className="w-4 h-4" style={{ color: f.color }} />
                                 </div>
                             </Button>
                         );

@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import {
     ArrowLeft, Lightbulb, Mic, Search, Folder, Sparkles,
     Loader2, Send, X, MoreHorizontal, Check, Trash2,
-    Calendar, ListTodo, Brain, ScrollText, Plus, MessageSquare,
-    ChevronRight, Clock, Info, Share2, Tag, Instagram, Zap, FileText, Target
+    Calendar as CalendarIcon, ListTodo, Brain, ScrollText, Plus, MessageSquare,
+    ChevronRight, Clock, Info, Share2, Tag, Instagram, Zap, FileText, Target,
+    Rocket, Eye, Layers, Play, FolderSync, Wrench, Megaphone, BarChart3, Settings2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -14,8 +15,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/hooks/useBrand";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
 
 type InboxState =
     | "initial"
@@ -38,8 +40,7 @@ const FOLDERS = [
     { name: "Insights", icon: "💡", description: "Aprendizados estratégicos", color: "#EAB308" },
     { name: "Produto", icon: "🚀", description: "Ofertas e serviços", color: "#22D3EE" },
     { name: "Projeto", icon: "📂", description: "Iniciativas e eventos", color: "#3B82F6" },
-    { name: "Stand-by", icon: "🕰️", description: "Ideias para o futuro", color: "#8B5CF6" },
-    { name: "Construção", icon: "🤔", description: "Ideias em rascunho", color: "#D1D5DB" }
+    { name: "Stand-by", icon: "🕰️", description: "Ideias para o futuro", color: "#8B5CF6" }
 ];
 
 const AutoHeightTextarea = ({ value, onChange, className, placeholder, autoFocus }: any) => {
@@ -69,11 +70,321 @@ const AutoHeightTextarea = ({ value, onChange, className, placeholder, autoFocus
     );
 };
 
+const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' }) => {
+    const { user } = useAuth();
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+    const [activities, setActivities] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [newActivityTitle, setNewActivityTitle] = useState("");
+    const [isAdding, setIsAdding] = useState(false);
+
+    // Color palette based on type
+    const colors = type === 'meta' ? {
+        text: 'text-emerald-500',
+        bg: 'bg-emerald-500',
+        bgHover: 'hover:bg-emerald-600',
+        bgOpacity: 'bg-emerald-500/10',
+        bgOpacity20: 'bg-emerald-500/20',
+        border: 'border-emerald-500/20',
+        border30: 'border-emerald-500/30',
+        shadow: 'after:shadow-[0_0_5px_rgba(16,185,129,0.5)]',
+        shadowBtn: 'shadow-[0_0_15px_rgba(16,185,129,0.3)]',
+        accent: 'emerald',
+        icon: Target
+    } : {
+        text: 'text-blue-500',
+        bg: 'bg-blue-500',
+        bgHover: 'hover:bg-blue-600',
+        bgOpacity: 'bg-blue-500/10',
+        bgOpacity20: 'bg-blue-500/20',
+        border: 'border-blue-500/20',
+        border30: 'border-blue-500/30',
+        shadow: 'after:shadow-[0_0_5px_rgba(59,130,246,0.5)]',
+        shadowBtn: 'shadow-[0_0_15px_rgba(59,130,246,0.3)]',
+        accent: 'blue',
+        icon: Rocket
+    };
+
+    // Recurrence states
+    const [showOptions, setShowOptions] = useState(false);
+    const [frequency, setFrequency] = useState<'none' | 'daily' | 'weekly'>('none');
+    const [selectedDays, setSelectedDays] = useState<number[]>([]); // 0-6
+    const [startTime, setStartTime] = useState("09:00");
+
+    const daysOfWeek = [
+        { label: 'D', value: 0 },
+        { label: 'S', value: 1 },
+        { label: 'T', value: 2 },
+        { label: 'Q', value: 3 },
+        { label: 'Q', value: 4 },
+        { label: 'S', value: 5 },
+        { label: 'S', value: 6 },
+    ];
+
+    const fetchActivities = async () => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from("calendar_activities")
+                .select("*")
+                .eq("user_id", user.id)
+                .order("date", { ascending: true });
+            if (error) throw error;
+            setActivities(data || []);
+        } catch (error) {
+            console.error("Error fetching activities:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchActivities();
+    }, [user]);
+
+    const isActivityOnDay = (activity: any, day: Date) => {
+        if (!day) return false;
+        const activityDate = new Date(activity.date);
+
+        // Match exact date
+        if (isSameDay(activityDate, day)) return true;
+
+        // Pattern matching for recurring tasks
+        try {
+            const meta = JSON.parse(activity.description || "{}");
+            if (meta.isRecurring) {
+                // Ignore if day is before the start date
+                const dayStart = new Date(day);
+                dayStart.setHours(0, 0, 0, 0);
+                const activityStart = new Date(activityDate);
+                activityStart.setHours(0, 0, 0, 0);
+
+                if (dayStart < activityStart) return false;
+
+                if (meta.frequency === 'daily') return true;
+                if (meta.frequency === 'weekly') {
+                    return meta.days.includes(day.getDay());
+                }
+            }
+        } catch (e) {
+            // Not recurring
+        }
+        return false;
+    };
+
+    const handleAddActivity = async () => {
+        if (!user || !selectedDate || !newActivityTitle.trim()) return;
+        setIsAdding(true);
+        try {
+            const [hours, minutes] = startTime.split(':').map(Number);
+            const dateWithTime = new Date(selectedDate);
+            dateWithTime.setHours(hours, minutes, 0, 0);
+
+            const recurrenceData = frequency !== 'none' ? {
+                isRecurring: true,
+                frequency,
+                days: frequency === 'weekly' ? (selectedDays.length > 0 ? selectedDays : [selectedDate.getDay()]) : [0, 1, 2, 3, 4, 5, 6],
+                time: startTime
+            } : { isRecurring: false, time: startTime };
+
+            const { error } = await supabase
+                .from("calendar_activities")
+                .insert({
+                    user_id: user.id,
+                    title: newActivityTitle.trim(),
+                    date: dateWithTime.toISOString(),
+                    description: JSON.stringify(recurrenceData),
+                    category: type === 'meta' ? "task" : "project_action",
+                    status: "pending",
+                    priority: "medium"
+                });
+            if (error) throw error;
+            toast.success(frequency !== 'none' ? "Rotina recorrente agendada!" : "Atividade agendada!");
+            setNewActivityTitle("");
+            setShowOptions(false);
+            fetchActivities();
+        } catch (error) {
+            toast.error("Erro ao agendar rotina");
+        } finally {
+            setIsAdding(false);
+        }
+    };
+
+    const toggleDay = (day: number) => {
+        setSelectedDays(prev =>
+            prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+        );
+    };
+
+    const selectedDayActivities = activities.filter(a =>
+        selectedDate && isActivityOnDay(a, selectedDate)
+    );
+
+    const modifiers = {
+        hasActivity: (day: Date) => activities.some(a => isActivityOnDay(a, day))
+    };
+
+    return (
+        <div className="space-y-4 pt-4 border-t border-white/5 animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-50 flex items-center gap-2">
+                    <CalendarIcon className={cn("w-3 h-3", colors.text)} /> Calendário de {type === 'meta' ? 'Rotinas' : 'Ações'}:
+                </span>
+            </div>
+
+            <div className="flex flex-col xl:flex-row gap-4 bg-white/[0.02] p-4 rounded-3xl border border-white/5">
+                <div className="xl:w-[280px] shrink-0">
+                    <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        locale={ptBR}
+                        modifiers={modifiers}
+                        modifiersClassNames={{
+                            hasActivity: cn("relative after:absolute after:bottom-[3px] after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-current", colors.shadow, colors.text)
+                        }}
+                        className="rounded-xl border border-white/5 bg-black/20 p-2"
+                        classNames={{
+                            day_selected: cn(colors.bg, "text-white focus:bg-current rounded-lg", colors.bgHover),
+                            day_today: cn("bg-white/5 font-bold border rounded-lg", colors.text, colors.border),
+                            day: "h-8 w-8 p-0 font-normal aria-selected:opacity-100 hover:bg-white/10 rounded-lg transition-all",
+                            head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem] uppercase opacity-50",
+                            cell: "h-8 w-8 text-center text-xs p-0 relative",
+                            nav_button: "h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100 border border-white/10 rounded-md",
+                        }}
+                    />
+                </div>
+
+                <div className="flex-1 flex flex-col space-y-4 min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-widest", colors.text)}>
+                            {selectedDate ? format(selectedDate, "dd 'de' MMMM", { locale: ptBR }) : "Selecione um dia"}
+                        </span>
+                        <div className={cn("px-2 py-0.5 rounded-full border text-[9px] font-bold", colors.bgOpacity, colors.border, colors.text)}>
+                            {selectedDayActivities.length} ativ.
+                        </div>
+                    </div>
+
+                    <div className="flex-1 space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar pr-2 min-h-[60px]">
+                        {selectedDayActivities.length > 0 ? (
+                            selectedDayActivities.map((activity) => {
+                                let timeStr = "";
+                                try {
+                                    const metaData = JSON.parse(activity.description || "{}");
+                                    if (metaData.time) timeStr = metaData.time;
+                                } catch (e) { }
+
+                                return (
+                                    <div key={activity.id} className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-white/5 group hover:bg-white/[0.08] transition-all">
+                                        <div className={cn("w-1.5 h-1.5 rounded-full", colors.bg)} />
+                                        <span className="text-xs text-foreground/80 flex-1 truncate">{activity.title}</span>
+                                        {timeStr && <span className="text-[9px] text-muted-foreground font-mono">{timeStr}</span>}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center p-4 text-center border border-dashed border-white/10 rounded-2xl opacity-40">
+                                <p className="text-[9px] italic">Nenhuma {type === 'meta' ? 'rotina' : 'ação'} para este dia</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                placeholder={type === 'meta' ? "Adicionar rotina..." : "Adicionar ação..."}
+                                className={cn("flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none transition-all placeholder:opacity-50", `focus:ring-1 focus:ring-${colors.accent}-500/30`)}
+                                value={newActivityTitle}
+                                onChange={(e) => setNewActivityTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleAddActivity();
+                                }}
+                            />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                    "h-8 w-8 rounded-xl border border-white/5 transition-all outline-none",
+                                    showOptions ? cn(colors.bgOpacity20, colors.text, colors.border30) : "hover:bg-white/5 text-muted-foreground"
+                                )}
+                                onClick={() => setShowOptions(!showOptions)}
+                            >
+                                <Clock className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                size="icon"
+                                className={cn(colors.bg, colors.bgHover, "text-white rounded-xl h-8 w-8 shrink-0 disabled:opacity-30")}
+                                onClick={handleAddActivity}
+                                disabled={isAdding || !newActivityTitle.trim()}
+                            >
+                                {isAdding ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-4 h-4" />}
+                            </Button>
+                        </div>
+
+                        {showOptions && (
+                            <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/10 space-y-5 animate-in zoom-in-95 duration-200 shadow-xl overflow-visible">
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                                    <div className="flex-1 flex gap-1.5 bg-black/40 p-1.5 rounded-2xl border border-white/5">
+                                        {(['none', 'daily', 'weekly'] as const).map((f) => (
+                                            <button
+                                                key={f}
+                                                onClick={() => setFrequency(f)}
+                                                className={cn(
+                                                    "flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all duration-300",
+                                                    frequency === f
+                                                        ? cn(colors.bg, "text-white ring-1 ring-white/20", colors.shadowBtn)
+                                                        : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                                                )}
+                                            >
+                                                {f === 'none' ? 'Única' : f === 'daily' ? 'Diária' : 'Semanal'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center gap-3 px-3 py-2 bg-black/40 rounded-2xl border border-white/5 sm:w-auto">
+                                        <Clock className={cn("w-3.5 h-3.5", colors.text, "opacity-50")} />
+                                        <input
+                                            type="time"
+                                            value={startTime}
+                                            onChange={(e) => setStartTime(e.target.value)}
+                                            className={cn("bg-transparent border-none text-xs font-mono outline-none w-20 [color-scheme:dark]", colors.text)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {frequency === 'weekly' && (
+                                    <div className="flex flex-wrap justify-between gap-2 p-1">
+                                        {daysOfWeek.map((day) => (
+                                            <button
+                                                key={day.value}
+                                                onClick={() => toggleDay(day.value)}
+                                                className={cn(
+                                                    "w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-xs font-bold transition-all duration-300 border flex items-center justify-center",
+                                                    selectedDays.includes(day.value)
+                                                        ? cn(colors.bg, "text-white border-white/20 shadow-lg")
+                                                        : "bg-white/5 text-muted-foreground border-white/5 hover:border-white/20 hover:bg-white/10"
+                                                )}
+                                            >
+                                                {day.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function IdeiaInbox() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { brand, updateBrand } = useBrand();
-    const { getSetting, isLoading: isLoadingSettings } = useSystemSettings();
+    const { settings, getSetting, isLoading: isLoadingSettings } = useSystemSettings();
 
     // State Management
     const [inboxState, setInboxState] = useState<InboxState>("initial");
@@ -90,6 +401,7 @@ export default function IdeiaInbox() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isSelectingWeek, setIsSelectingWeek] = useState(false);
     const [targetWeekForLink, setTargetWeekForLink] = useState<number | null>(null);
+    const [generatingField, setGeneratingField] = useState<string | null>(null);
     const [allocationDraft, setAllocationDraft] = useState<{
         week: number;
         type: "feed" | "stories";
@@ -98,6 +410,8 @@ export default function IdeiaInbox() {
 
     const [isTriageFolderOpen, setIsTriageFolderOpen] = useState(false);
     const [isDetailFolderOpen, setIsDetailFolderOpen] = useState(false);
+    const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+    const [successData, setSuccessData] = useState<{ week: number; day: string; type: string } | null>(null);
 
     // Refs
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -270,7 +584,6 @@ export default function IdeiaInbox() {
             - Insight (insight): Percepção, regra ou padrão (ex: horários de postagem, comportamento do público).
             - Produto (produto): Oferta específica (curso, mentoria, app, evento pago).
             - Projeto (projeto): Iniciativa ampla com várias ações (evento, reforma, nova temporada).
-            - Em construção (em_construcao): Vago, confuso, rascunho inicial.
             - Stand-by (standby): Ideia de conteúdo guardada para depois ou não definida.
 
             REGRAS DE SAÍDA POR CATEGORIA:
@@ -284,7 +597,20 @@ export default function IdeiaInbox() {
             3. Se categoria = "insight":
                Gere "sugestao_insight" com: descricao_regra, como_influencia_yah (array de strings) e formatos_afetados (array).
 
-            4. Se categoria = "produto" ou "projeto":
+            4. Se categoria = "projeto":
+               Gere "sugestao_projeto" com os 10 campos estratégicos para planejamento de projeto:
+               - visao: Descrição da visão de futuro do projeto.
+               - objetivo: O que se pretende alcançar com clareza.
+               - estrutura: Como o projeto será organizado/fases.
+               - acoes: Lista de ações práticas imediatas.
+               - execucao: Plano prático para o dia a dia.
+               - organizacao: Processos para manter a ordem.
+               - recursos: O que é necessário (ferramentas, pessoas, investimento).
+               - comunicacao: Como será divulgado, vendido ou explicado.
+               - metricas: Como medir o sucesso e progresso.
+               - ajustes: Pontos de atenção e possíveis correções.
+
+            5. Se categoria = "produto":
                Gere o checklist inicial e próximos passos específicos.
 
             MODO RAJADA:
@@ -294,18 +620,35 @@ export default function IdeiaInbox() {
             {
                 "modo": "${mode}",
                 ${mode === 'rajada' ? '"itens": [ ... ]' : `
-                "category": "conteudo" | "meta" | "insight" | "produto" | "projeto" | "em_construcao" | "standby",
+                "category": "conteudo" | "meta" | "insight" | "produto" | "projeto" | "standby",
                 "title": "string",
                 "summary": "string",
                 "suggested_destination": "string (Pasta correspondente)",
                 "ai_insights": "string",
                 "is_urgent": boolean,
                 "sugestao_conteudo": { ... },
-                "sugestao_meta": { ... },
+                "sugestao_meta": {
+                    "descricao_meta": "string",
+                    "sugestao_inicio_calendario": "string",
+                    "checklist_passos": ["string"],
+                    "plano_estrategico": "string",
+                    "plano_acoes": "string",
+                    "rotinas": "string"
+                },
                 "sugestao_insight": { ... },
                 "sugestao_produto": { ... },
-                "sugestao_projeto": { ... },
-                "marcar_em_construcao": boolean,
+                "sugestao_projeto": {
+                    "visao": "string",
+                    "objetivo": "string",
+                    "estrutura": "string",
+                    "acoes": "string",
+                    "execucao": "string",
+                    "organizacao": "string",
+                    "recursos": "string",
+                    "comunicacao": "string",
+                    "metricas": "string",
+                    "ajustes": "string"
+                },
                 "marcar_standby": boolean
                 `}
             }
@@ -334,6 +677,80 @@ export default function IdeiaInbox() {
             setInboxState("review");
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    const handleGenerateProjectField = async (fieldKey: string, fieldLabel: string, isFromDetail: boolean = false) => {
+        const apiKey = getSetting('openai_api_key')?.value;
+        if (!apiKey || !apiKey.startsWith('sk-')) {
+            toast.error("Configure sua chave OpenAI válida nas configurações.");
+            return;
+        }
+
+        const currentSource = isFromDetail ? (editingIdea || selectedIdea) : { metadata: analysisResult, content: editingTranscript };
+        if (!currentSource) return;
+
+        const metadata = currentSource.metadata || {};
+        const title = metadata.title || "Projeto sem título";
+        const summary = metadata.summary || (isFromDetail ? (currentSource as any).content : editingTranscript) || "Sem descrição";
+        const sugestao_projeto = metadata.sugestao_projeto || {};
+
+        setGeneratingField(fieldKey);
+        try {
+            const prompt = `Você é a Yah, especialista em estratégia.
+            Gere uma sugestão curta, direta e estratégica para o campo "${fieldLabel}" de um projeto.
+
+            TÍTULO DO PROJETO: ${title}
+            RESUMO/CONTEXTO: ${summary}
+            
+            OUTROS CAMPOS JÁ DEFINIDOS (use como contexto se necessário):
+            ${Object.entries(sugestao_projeto)
+                    .filter(([key, val]) => key !== fieldKey && val)
+                    .map(([key, val]) => `- ${key}: ${val}`)
+                    .join('\n')}
+
+            Regra de ouro: Seja específico, não genérico. Use tom de voz encorajador mas profissional. 
+            Retorne APENAS o texto da sugestão para este campo específico, em no máximo 3 parágrafos curtos ou lista de tópicos.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: "Expert em estratégia para mentes atípicas." },
+                        { role: "user", content: prompt }
+                    ]
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            const content = data.choices[0].message.content.trim();
+
+            if (isFromDetail) {
+                const updated = {
+                    ...currentSource,
+                    metadata: {
+                        ...metadata,
+                        sugestao_projeto: { ...sugestao_projeto, [fieldKey]: content }
+                    }
+                };
+                setEditingIdea(updated);
+            } else {
+                setAnalysisResult({
+                    ...analysisResult,
+                    sugestao_projeto: { ...sugestao_projeto, [fieldKey]: content }
+                });
+            }
+            toast.success(`${fieldLabel} atualizado com IA!`);
+        } catch (error: any) {
+            toast.error("Erro ao gerar campo: " + error.message);
+        } finally {
+            setGeneratingField(null);
         }
     };
 
@@ -421,14 +838,18 @@ export default function IdeiaInbox() {
 
             if (updateError) throw updateError;
 
-            toast.success(`Ideia enviada para ${contentType === "feed" ? "Feed" : "Stories"} na Semana ${targetWeek}!`);
+            setSuccessData({
+                week: targetWeek,
+                day: rawDay.charAt(0).toUpperCase() + rawDay.slice(1),
+                type: contentType === "feed" ? "Feed" : "Stories"
+            });
+            setShowSuccessDialog(true);
             setIsSelectingWeek(false);
             setTargetWeekForLink(null);
 
             if (inboxState === 'triage') {
                 await saveIdeaDirectly();
             } else {
-                setInboxState("initial");
                 fetchIdeas();
             }
 
@@ -715,16 +1136,17 @@ export default function IdeiaInbox() {
                             )}
                         </div>
                         <div className="flex-1 space-y-4">
-                            <input
+                            <AutoHeightTextarea
                                 className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-xl sm:text-2xl font-bold leading-tight group-hover:text-primary transition-colors px-0 cursor-text"
                                 value={analysisResult.title}
-                                onChange={(e) => setAnalysisResult({ ...analysisResult, title: e.target.value })}
+                                onChange={(e: any) => setAnalysisResult({ ...analysisResult, title: e.target.value })}
                             />
                             <AutoHeightTextarea
                                 className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-muted-foreground leading-relaxed px-0 cursor-text text-sm sm:text-base"
                                 value={analysisResult.summary}
                                 onChange={(e: any) => setAnalysisResult({ ...analysisResult, summary: e.target.value })}
                             />
+
                         </div>
                         <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Categoria: {analysisResult.category}</span>
@@ -768,6 +1190,91 @@ export default function IdeiaInbox() {
 
                     {/* Dynamic Suggestion Details */}
                     <div className="space-y-6 px-4 sm:px-0">
+                        {/* Original Content Box in Triage */}
+                        {analysisResult.category !== 'projeto' && (
+                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-card/60 border border-white/5 shadow-xl space-y-4">
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <ScrollText className="w-4 h-4" /> Conteúdo Original
+                                </h4>
+                                <AutoHeightTextarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-sm leading-relaxed italic px-0 text-muted-foreground/80"
+                                    value={editingTranscript}
+                                    onChange={(e: any) => setEditingTranscript(e.target.value)}
+                                />
+                            </div>
+                        )}
+
+                        {analysisResult.category !== 'meta' && analysisResult.category !== 'projeto' && (
+                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-card/60 border border-white/5 shadow-xl space-y-4">
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <Plus className="w-4 h-4" /> Conteúdo Adicional
+                                </h4>
+                                <AutoHeightTextarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-sm leading-relaxed px-0 text-foreground/90"
+                                    placeholder="Deseja adicionar algo mais?"
+                                    value={analysisResult.additional_content || ""}
+                                    onChange={(e: any) => setAnalysisResult({ ...analysisResult, additional_content: e.target.value })}
+                                />
+                            </div>
+                        )}
+
+                        {/* Projeto Planning Details in Triage */}
+                        {analysisResult.category === 'projeto' && analysisResult.sugestao_projeto && (
+                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-blue-500/5 border border-blue-500/10 space-y-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-blue-500 flex items-center gap-2">
+                                    <Rocket className="w-4 h-4" /> Planejamento Estratégico do Projeto
+                                </h4>
+
+                                <div className="grid grid-cols-1 gap-6">
+                                    {[
+                                        { key: 'visao', label: 'Visão', icon: Eye },
+                                        { key: 'objetivo', label: 'Objetivo', icon: Target },
+                                        { key: 'estrutura', label: 'Estrutura', icon: Layers },
+                                        { key: 'acoes', label: 'Ações', icon: ListTodo },
+                                        { key: 'execucao', label: 'Execução', icon: Play },
+                                        { key: 'organizacao', label: 'Organização', icon: FolderSync },
+                                        { key: 'recursos', label: 'Recursos', icon: Wrench },
+                                        { key: 'comunicacao', label: 'Comunicação', icon: Megaphone },
+                                        { key: 'metricas', label: 'Métricas', icon: BarChart3 },
+                                        { key: 'ajustes', label: 'Ajustes', icon: Settings2 }
+                                    ].map((field) => (
+                                        <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <field.icon className="w-4 h-4 text-blue-500/70 group-hover:text-blue-500 transition-colors" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500 transition-colors">{field.label}</span>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    disabled={generatingField === field.key}
+                                                    onClick={() => handleGenerateProjectField(field.key, field.label)}
+                                                    className="h-8 px-4 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-blue-500/20 shadow-lg shadow-blue-500/5 active:scale-95 translate-y-[-2px]"
+                                                >
+                                                    {generatingField === field.key ? (
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Sparkles className="w-3.5 h-3.5" />
+                                                    )}
+                                                    {generatingField === field.key ? "GERANDO..." : "GERAR COM IA"}
+                                                </Button>
+                                            </div>
+                                            <AutoHeightTextarea
+                                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-blue-500/20 rounded-lg text-sm leading-relaxed px-0 text-foreground/90 transition-all font-medium"
+                                                placeholder={`Descreva a ${field.label.toLowerCase()}...`}
+                                                value={(analysisResult.sugestao_projeto as any)[field.key] || ""}
+                                                onChange={(e: any) => setAnalysisResult({
+                                                    ...analysisResult,
+                                                    sugestao_projeto: { ...analysisResult.sugestao_projeto, [field.key]: e.target.value }
+                                                })}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                                <InboxActivityCalendar type="projeto" />
+                            </div>
+                        )}
+
                         {analysisResult.category === 'conteudo' && analysisResult.sugestao_conteudo && (
                             <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-primary/5 border border-primary/10 space-y-6">
                                 <div className="flex items-center justify-between">
@@ -777,18 +1284,18 @@ export default function IdeiaInbox() {
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase">{analysisResult.sugestao_conteudo.dia_ideal} • Semana {analysisResult.sugestao_conteudo.semana_ideal}</span>
                                 </div>
                                 <div className="space-y-2">
-                                    <input
-                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-lg font-bold leading-none px-0"
+                                    <AutoHeightTextarea
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-lg font-bold leading-tight px-0"
                                         value={analysisResult.sugestao_conteudo.headline}
-                                        onChange={(e) => setAnalysisResult({
+                                        onChange={(e: any) => setAnalysisResult({
                                             ...analysisResult,
                                             sugestao_conteudo: { ...analysisResult.sugestao_conteudo, headline: e.target.value }
                                         })}
                                     />
-                                    <input
+                                    <AutoHeightTextarea
                                         className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-xs text-muted-foreground italic px-0"
                                         value={analysisResult.sugestao_conteudo.micro_headline}
-                                        onChange={(e) => setAnalysisResult({
+                                        onChange={(e: any) => setAnalysisResult({
                                             ...analysisResult,
                                             sugestao_conteudo: { ...analysisResult.sugestao_conteudo, micro_headline: e.target.value }
                                         })}
@@ -800,10 +1307,10 @@ export default function IdeiaInbox() {
                                         {analysisResult.sugestao_conteudo.mini_roteiro?.map((step: string, i: number) => (
                                             <div key={i} className="flex gap-3 text-xs leading-relaxed group/item">
                                                 <span className="text-primary font-bold mt-2">{i + 1}.</span>
-                                                <input
+                                                <AutoHeightTextarea
                                                     className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg py-2 px-0 text-foreground/80"
                                                     value={step}
-                                                    onChange={(e) => {
+                                                    onChange={(e: any) => {
                                                         const newSteps = [...analysisResult.sugestao_conteudo.mini_roteiro];
                                                         newSteps[i] = e.target.value;
                                                         setAnalysisResult({
@@ -825,36 +1332,76 @@ export default function IdeiaInbox() {
                                     <Target className="w-4 h-4" /> Plano de Meta
                                 </h4>
                                 <div className="space-y-1">
-                                    <input
+                                    <AutoHeightTextarea
                                         className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xl font-bold px-0 text-emerald-500"
                                         value={analysisResult.sugestao_meta.descricao_meta}
-                                        onChange={(e) => setAnalysisResult({
+                                        onChange={(e: any) => setAnalysisResult({
                                             ...analysisResult,
                                             sugestao_meta: { ...analysisResult.sugestao_meta, descricao_meta: e.target.value }
                                         })}
                                     />
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground italic shrink-0">Início sugerido:</span>
-                                        <input
+                                    <div className="flex items-start gap-2 pb-6 border-b border-white/5">
+                                        <span className="text-xs text-muted-foreground italic shrink-0 mt-2">Início sugerido:</span>
+                                        <AutoHeightTextarea
                                             className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xs text-muted-foreground italic px-0"
                                             value={analysisResult.sugestao_meta.sugestao_inicio_calendario}
-                                            onChange={(e) => setAnalysisResult({
+                                            onChange={(e: any) => setAnalysisResult({
                                                 ...analysisResult,
                                                 sugestao_meta: { ...analysisResult.sugestao_meta, sugestao_inicio_calendario: e.target.value }
                                             })}
                                         />
                                     </div>
+
+                                    <div className="space-y-1 py-4 border-b border-white/5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Plano Estratégico:</span>
+                                        <AutoHeightTextarea
+                                            className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-sm leading-relaxed px-0"
+                                            placeholder="Defina a estratégia geral..."
+                                            value={analysisResult.sugestao_meta.plano_estrategico || ""}
+                                            onChange={(e: any) => setAnalysisResult({
+                                                ...analysisResult,
+                                                sugestao_meta: { ...analysisResult.sugestao_meta, plano_estrategico: e.target.value }
+                                            })}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1 py-4 border-b border-white/5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Plano de Ações:</span>
+                                        <AutoHeightTextarea
+                                            className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-sm leading-relaxed px-0"
+                                            placeholder="Liste as ações práticas..."
+                                            value={analysisResult.sugestao_meta.plano_acoes || ""}
+                                            onChange={(e: any) => setAnalysisResult({
+                                                ...analysisResult,
+                                                sugestao_meta: { ...analysisResult.sugestao_meta, plano_acoes: e.target.value }
+                                            })}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1 py-4 border-b border-white/5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Rotinas:</span>
+                                        <AutoHeightTextarea
+                                            className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-sm leading-relaxed px-0"
+                                            placeholder="Sugestões de rotina diária/semanal..."
+                                            value={analysisResult.sugestao_meta.rotinas || ""}
+                                            onChange={(e: any) => setAnalysisResult({
+                                                ...analysisResult,
+                                                sugestao_meta: { ...analysisResult.sugestao_meta, rotinas: e.target.value }
+                                            })}
+                                        />
+                                    </div>
+                                    <InboxActivityCalendar type="meta" />
                                 </div>
                                 <div className="space-y-3">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Checklist de Execução:</span>
                                     <div className="space-y-2">
                                         {analysisResult.sugestao_meta.checklist_passos?.map((step: string, i: number) => (
-                                            <div key={i} className="flex gap-3 text-xs items-center group/item">
-                                                <div className="w-4 h-4 rounded-full border border-emerald-500/30 flex items-center justify-center text-[8px] text-emerald-500 font-bold shrink-0">{i + 1}</div>
-                                                <input
+                                            <div key={i} className="flex gap-3 text-xs items-start group/item">
+                                                <div className="w-4 h-4 rounded-full border border-emerald-500/30 flex items-center justify-center text-[8px] text-emerald-500 font-bold shrink-0 mt-1">{i + 1}</div>
+                                                <AutoHeightTextarea
                                                     className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg py-1 px-0 text-foreground/80"
                                                     value={step}
-                                                    onChange={(e) => {
+                                                    onChange={(e: any) => {
                                                         const newSteps = [...analysisResult.sugestao_meta.checklist_passos];
                                                         newSteps[i] = e.target.value;
                                                         setAnalysisResult({
@@ -889,10 +1436,10 @@ export default function IdeiaInbox() {
                                         {analysisResult.sugestao_insight.como_influencia_yah?.map((impact: string, i: number) => (
                                             <div key={i} className="flex gap-3 text-xs italic text-foreground/70 group/item">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-2" />
-                                                <input
+                                                <AutoHeightTextarea
                                                     className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg py-1 px-0 text-foreground/70 italic"
                                                     value={impact}
-                                                    onChange={(e) => {
+                                                    onChange={(e: any) => {
                                                         const newImpacts = [...analysisResult.sugestao_insight.como_influencia_yah];
                                                         newImpacts[i] = e.target.value;
                                                         setAnalysisResult({
@@ -932,7 +1479,7 @@ export default function IdeiaInbox() {
                                         onClick={() => setIsSelectingWeek(!isSelectingWeek)}
                                         className="w-full h-14 rounded-2xl gradient-primary text-white font-bold shadow-xl flex items-center gap-2"
                                     >
-                                        <Calendar className="w-4 h-4" />
+                                        <CalendarIcon className="w-4 h-4" />
                                         {isSelectingWeek ? "Cancelar" : "Enviar p/ semana"}
                                     </Button>
                                     {isSelectingWeek && renderWeekSelection()}
@@ -947,6 +1494,52 @@ export default function IdeiaInbox() {
                             )}
                         </div>
                     </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderSuccessPopup = () => {
+        if (!showSuccessDialog || !successData) return null;
+
+        return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="w-full max-w-sm bg-card border border-white/10 rounded-[40px] shadow-2xl p-8 text-center space-y-6 animate-in zoom-in-95 duration-300">
+                    <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto relative">
+                        <div className="absolute inset-0 rounded-full border border-primary/30 animate-ping opacity-20" />
+                        <Sparkles className="w-10 h-10 text-primary" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <h2 className="text-2xl font-black italic uppercase tracking-tight text-foreground">Enviado com Sucesso!</h2>
+                        <p className="text-muted-foreground text-sm font-medium">Sua ideia já está no cronograma.</p>
+                    </div>
+
+                    <div className="bg-secondary/30 rounded-3xl p-6 border border-white/5 space-y-4">
+                        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+                            <span>Destino</span>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-black uppercase tracking-widest text-primary">Semana {successData.week}</span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-secondary text-foreground uppercase">{successData.type}</span>
+                            </div>
+                            <div className="text-xl font-bold text-foreground text-left">
+                                {successData.day}
+                            </div>
+                        </div>
+                    </div>
+
+                    <Button
+                        onClick={() => {
+                            setShowSuccessDialog(false);
+                            setInboxState("initial");
+                            setSuccessData(null);
+                        }}
+                        className="w-full h-14 rounded-2xl gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+                    >
+                        Continuar
+                    </Button>
                 </div>
             </div>
         );
@@ -1131,12 +1724,13 @@ export default function IdeiaInbox() {
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
                                     <span className={cn(
-                                        "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter",
-                                        idea.category === 'content' ? 'bg-amber-500/20 text-amber-500' :
-                                            idea.category === 'goal' ? 'bg-green-500/20 text-green-500' :
-                                                'bg-blue-500/20 text-blue-500'
+                                        "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest",
+                                        idea.category === 'conteudo' ? 'bg-primary/20 text-primary' :
+                                            idea.category === 'meta' ? 'bg-emerald-500/20 text-emerald-500' :
+                                                idea.category === 'projeto' ? 'bg-blue-500/20 text-blue-500' :
+                                                    'bg-amber-500/20 text-amber-500'
                                     )}>
-                                        {idea.category}
+                                        {idea.category?.toUpperCase()}
                                     </span>
                                     <span className="text-[10px] text-muted-foreground">{format(new Date(idea.created_at), "dd/MM/yyyy")}</span>
                                 </div>
@@ -1172,9 +1766,10 @@ export default function IdeiaInbox() {
                                     "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
                                     currentIdea.category === 'conteudo' ? 'bg-primary/10 text-primary border-primary/20' :
                                         currentIdea.category === 'meta' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                            currentIdea.category === 'projeto' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
                                 )}>
-                                    {currentIdea.category}
+                                    {currentIdea.category?.toUpperCase()}
                                 </span>
                                 <div className="text-sm text-muted-foreground flex items-center gap-1.5">
                                     <Clock className="w-4 h-4" />
@@ -1182,27 +1777,114 @@ export default function IdeiaInbox() {
                                 </div>
                             </div>
 
-                            <input
-                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-3xl font-black tracking-tight leading-tight px-0 py-2"
+                            <AutoHeightTextarea
+                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-2xl sm:text-3xl font-black tracking-tight leading-tight px-0 py-2"
                                 value={meta.title || "Sua Ideia"}
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     const updated = { ...currentIdea, metadata: { ...meta, title: e.target.value } };
                                     setEditingIdea(updated);
                                 }}
                             />
                         </div>
 
-                        <div className="p-8 rounded-[32px] bg-card/60 border border-white/5 shadow-xl space-y-4">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Conteúdo Original</h3>
-                            <AutoHeightTextarea
-                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-lg leading-relaxed italic px-0"
-                                value={currentIdea.content}
-                                onChange={(e: any) => {
-                                    const updated = { ...currentIdea, content: e.target.value };
-                                    setEditingIdea(updated);
-                                }}
-                            />
-                        </div>
+                        {currentIdea.category !== 'projeto' && (
+                            <div className="p-8 rounded-[32px] bg-card/60 border border-white/5 shadow-xl space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <ScrollText className="w-4 h-4" /> Conteúdo Original
+                                </h4>
+                                <AutoHeightTextarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-lg leading-relaxed italic px-0"
+                                    value={currentIdea.content}
+                                    onChange={(e: any) => {
+                                        const updated = { ...currentIdea, content: e.target.value };
+                                        setEditingIdea(updated);
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {currentIdea.category !== 'meta' && currentIdea.category !== 'projeto' && (
+                            <div className="p-8 rounded-[32px] bg-card/40 border border-white/5 shadow-xl space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
+                                    <Plus className="w-4 h-4" /> Conteúdo Adicional
+                                </h4>
+                                <AutoHeightTextarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-base leading-relaxed text-foreground/80 px-0"
+                                    placeholder="Adicione observações extras aqui..."
+                                    value={meta.additional_content || ""}
+                                    onChange={(e: any) => {
+                                        const updated = {
+                                            ...currentIdea,
+                                            metadata: { ...meta, additional_content: e.target.value }
+                                        };
+                                        setEditingIdea(updated);
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Projeto Planning Details in Detail View */}
+                        {currentIdea.category === 'projeto' && meta.sugestao_projeto && (
+                            <div className="p-8 rounded-[32px] bg-blue-500/5 border border-blue-500/10 space-y-8 shadow-2xl animate-in zoom-in-95 duration-500">
+                                <h4 className="text-sm font-bold uppercase tracking-widest text-blue-500 flex items-center gap-2">
+                                    <Rocket className="w-5 h-5" /> Planejamento Estratégico do Projeto
+                                </h4>
+
+                                <div className="grid grid-cols-1 gap-6">
+                                    {[
+                                        { key: 'visao', label: 'Visão', icon: Eye },
+                                        { key: 'objetivo', label: 'Objetivo', icon: Target },
+                                        { key: 'estrutura', label: 'Estrutura', icon: Layers },
+                                        { key: 'acoes', label: 'Ações', icon: ListTodo },
+                                        { key: 'execucao', label: 'Execução', icon: Play },
+                                        { key: 'organizacao', label: 'Organização', icon: FolderSync },
+                                        { key: 'recursos', label: 'Recursos', icon: Wrench },
+                                        { key: 'comunicacao', label: 'Comunicação', icon: Megaphone },
+                                        { key: 'metricas', label: 'Métricas', icon: BarChart3 },
+                                        { key: 'ajustes', label: 'Ajustes', icon: Settings2 }
+                                    ].map((field) => (
+                                        <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <field.icon className="w-4 h-4 text-blue-500/70 group-hover:text-blue-500 transition-colors" />
+                                                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500/70 transition-colors">{field.label}</span>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    disabled={generatingField === field.key}
+                                                    onClick={() => handleGenerateProjectField(field.key, field.label, true)}
+                                                    className="h-8 px-4 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-blue-500/20 shadow-lg shadow-blue-500/5 active:scale-95 translate-y-[-2px]"
+                                                >
+                                                    {generatingField === field.key ? (
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Sparkles className="w-3.5 h-3.5" />
+                                                    )}
+                                                    {generatingField === field.key ? "GERANDO..." : "GERAR COM IA"}
+                                                </Button>
+                                            </div>
+                                            <AutoHeightTextarea
+                                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-blue-500/20 rounded-lg text-base leading-relaxed px-0 text-foreground/90 transition-all font-medium"
+                                                placeholder={`Descreva a ${field.label.toLowerCase()}...`}
+                                                value={(meta.sugestao_projeto as any)?.[field.key] || ""}
+                                                onChange={(e: any) => {
+                                                    const updated = {
+                                                        ...currentIdea,
+                                                        metadata: {
+                                                            ...meta,
+                                                            sugestao_projeto: { ...meta.sugestao_projeto, [field.key]: e.target.value }
+                                                        }
+                                                    };
+                                                    setEditingIdea(updated);
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                                <InboxActivityCalendar type="projeto" />
+                            </div>
+                        )}
 
                         {/* Category Specific suggestions inside Item Detail */}
                         {currentIdea.category === 'conteudo' && meta.sugestao_conteudo && (
@@ -1214,10 +1896,10 @@ export default function IdeiaInbox() {
                                     <span className="text-[10px] font-bold text-muted-foreground uppercase">{meta.sugestao_conteudo.dia_ideal} • Semana {meta.sugestao_conteudo.semana_ideal}</span>
                                 </div>
                                 <div className="space-y-4">
-                                    <input
-                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-lg font-bold leading-none px-0"
+                                    <AutoHeightTextarea
+                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-lg font-bold leading-tight px-0"
                                         value={meta.sugestao_conteudo.headline}
-                                        onChange={(e) => {
+                                        onChange={(e: any) => {
                                             const updated = {
                                                 ...currentIdea,
                                                 metadata: {
@@ -1228,10 +1910,10 @@ export default function IdeiaInbox() {
                                             setEditingIdea(updated);
                                         }}
                                     />
-                                    <input
+                                    <AutoHeightTextarea
                                         className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-xs text-muted-foreground italic px-0"
                                         value={meta.sugestao_conteudo.micro_headline}
-                                        onChange={(e) => {
+                                        onChange={(e: any) => {
                                             const updated = {
                                                 ...currentIdea,
                                                 metadata: {
@@ -1248,10 +1930,10 @@ export default function IdeiaInbox() {
                                         {meta.sugestao_conteudo.mini_roteiro?.map((step: string, i: number) => (
                                             <div key={i} className="flex gap-3 text-xs leading-relaxed">
                                                 <span className="text-primary font-bold mt-2">{i + 1}.</span>
-                                                <input
+                                                <AutoHeightTextarea
                                                     className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg py-2 px-0 text-foreground/80"
                                                     value={step}
-                                                    onChange={(e) => {
+                                                    onChange={(e: any) => {
                                                         const newSteps = [...meta.sugestao_conteudo.mini_roteiro];
                                                         newSteps[i] = e.target.value;
                                                         const updated = {
@@ -1277,10 +1959,10 @@ export default function IdeiaInbox() {
                                     <Target className="w-4 h-4" /> Plano de Meta
                                 </h4>
                                 <div className="space-y-1">
-                                    <input
+                                    <AutoHeightTextarea
                                         className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xl font-bold px-0 text-emerald-500"
                                         value={meta.sugestao_meta.descricao_meta}
-                                        onChange={(e) => {
+                                        onChange={(e: any) => {
                                             const updated = {
                                                 ...currentIdea,
                                                 metadata: {
@@ -1291,31 +1973,92 @@ export default function IdeiaInbox() {
                                             setEditingIdea(updated);
                                         }}
                                     />
-                                    <input
-                                        className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xs text-muted-foreground italic px-0"
-                                        value={meta.sugestao_meta.sugestao_inicio_calendario}
-                                        onChange={(e) => {
-                                            const updated = {
-                                                ...currentIdea,
-                                                metadata: {
-                                                    ...meta,
-                                                    sugestao_meta: { ...meta.sugestao_meta, sugestao_inicio_calendario: e.target.value }
-                                                }
-                                            };
-                                            setEditingIdea(updated);
-                                        }}
-                                    />
+                                    <div className="flex items-start gap-2 pb-6 border-b border-white/5">
+                                        <span className="text-xs text-muted-foreground italic shrink-0 mt-2">Início sugerido:</span>
+                                        <AutoHeightTextarea
+                                            className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-xs text-muted-foreground italic px-0"
+                                            value={meta.sugestao_meta.sugestao_inicio_calendario}
+                                            onChange={(e: any) => {
+                                                const updated = {
+                                                    ...currentIdea,
+                                                    metadata: {
+                                                        ...meta,
+                                                        sugestao_meta: { ...meta.sugestao_meta, sugestao_inicio_calendario: e.target.value }
+                                                    }
+                                                };
+                                                setEditingIdea(updated);
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2 py-4 border-b border-white/5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Plano Estratégico:</span>
+                                        <AutoHeightTextarea
+                                            className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-sm leading-relaxed px-0"
+                                            placeholder="Defina a estratégia geral..."
+                                            value={meta.sugestao_meta.plano_estrategico || ""}
+                                            onChange={(e: any) => {
+                                                const updated = {
+                                                    ...currentIdea,
+                                                    metadata: {
+                                                        ...meta,
+                                                        sugestao_meta: { ...meta.sugestao_meta, plano_estrategico: e.target.value }
+                                                    }
+                                                };
+                                                setEditingIdea(updated);
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2 py-4 border-b border-white/5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Plano de Ações:</span>
+                                        <AutoHeightTextarea
+                                            className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-sm leading-relaxed px-0"
+                                            placeholder="Liste as ações práticas..."
+                                            value={meta.sugestao_meta.plano_acoes || ""}
+                                            onChange={(e: any) => {
+                                                const updated = {
+                                                    ...currentIdea,
+                                                    metadata: {
+                                                        ...meta,
+                                                        sugestao_meta: { ...meta.sugestao_meta, plano_acoes: e.target.value }
+                                                    }
+                                                };
+                                                setEditingIdea(updated);
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2 py-4 border-b border-white/5">
+                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Rotinas:</span>
+                                        <AutoHeightTextarea
+                                            className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-sm leading-relaxed px-0"
+                                            placeholder="Sugestões de rotina diária/semanal..."
+                                            value={meta.sugestao_meta.rotinas || ""}
+                                            onChange={(e: any) => {
+                                                const updated = {
+                                                    ...currentIdea,
+                                                    metadata: {
+                                                        ...meta,
+                                                        sugestao_meta: { ...meta.sugestao_meta, rotinas: e.target.value }
+                                                    }
+                                                };
+                                                setEditingIdea(updated);
+                                            }}
+                                        />
+                                    </div>
+                                    <InboxActivityCalendar type="meta" />
                                 </div>
                                 <div className="space-y-3">
-                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Checklist:</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Checklist Final:</span>
                                     <div className="space-y-2">
                                         {meta.sugestao_meta.checklist_passos?.map((step: string, i: number) => (
-                                            <div key={i} className="flex gap-3 text-xs items-center group/item">
-                                                <div className="w-4 h-4 rounded-full border border-emerald-500/30 flex items-center justify-center text-[8px] text-emerald-500 font-bold shrink-0">{i + 1}</div>
-                                                <input
+                                            <div key={i} className="flex gap-3 text-xs items-start group/item">
+                                                <div className="w-4 h-4 rounded-full border border-emerald-500/30 flex items-center justify-center text-[8px] text-emerald-500 font-bold shrink-0 mt-1">{i + 1}</div>
+                                                <AutoHeightTextarea
                                                     className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg py-1 px-0 text-foreground/80"
                                                     value={step}
-                                                    onChange={(e) => {
+                                                    onChange={(e: any) => {
                                                         const newSteps = [...meta.sugestao_meta.checklist_passos];
                                                         newSteps[i] = e.target.value;
                                                         const updated = {
@@ -1360,10 +2103,10 @@ export default function IdeiaInbox() {
                                         {meta.sugestao_insight.como_influencia_yah?.map((impact: string, i: number) => (
                                             <div key={i} className="flex gap-3 text-xs italic text-foreground/70 group/item">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-2" />
-                                                <input
+                                                <AutoHeightTextarea
                                                     className="flex-1 bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg py-1 px-0 text-foreground/70 italic"
                                                     value={impact}
-                                                    onChange={(e) => {
+                                                    onChange={(e: any) => {
                                                         const newImpacts = [...meta.sugestao_insight.como_influencia_yah];
                                                         newImpacts[i] = e.target.value;
                                                         const updated = {
@@ -1428,7 +2171,7 @@ export default function IdeiaInbox() {
                                             isSelectingWeek && "bg-primary/10 border-primary/30"
                                         )}
                                     >
-                                        <Calendar className="w-4 h-4 text-primary" />
+                                        <CalendarIcon className="w-4 h-4 text-primary" />
                                         {isSelectingWeek ? "Cancelar" : "Enviar para semana"}
                                     </Button>
 
@@ -1587,6 +2330,8 @@ export default function IdeiaInbox() {
                     </div>
                 </div>
             </div>
+
+            {renderSuccessPopup()}
 
             <style dangerouslySetInnerHTML={{
                 __html: `

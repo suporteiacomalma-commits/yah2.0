@@ -85,12 +85,42 @@ export function ActivityCalendar() {
     return true;
   });
 
+  const isActivityOnDay = (activity: any, day: Date) => {
+    if (!day) return false;
+    const activityDate = new Date(activity.date);
+
+    // Match exact date
+    if (isSameDay(activityDate, day)) return true;
+
+    // Pattern matching for recurring tasks
+    try {
+      const meta = JSON.parse(activity.description || "{}");
+      if (meta.isRecurring) {
+        // Ignore if day is before the start date
+        const dayStart = new Date(day);
+        dayStart.setHours(0, 0, 0, 0);
+        const activityStart = new Date(activityDate);
+        activityStart.setHours(0, 0, 0, 0);
+
+        if (dayStart < activityStart) return false;
+
+        if (meta.frequency === 'daily') return true;
+        if (meta.frequency === 'weekly') {
+          return meta.days.includes(day.getDay());
+        }
+      }
+    } catch (e) {
+      // Not recurring
+    }
+    return false;
+  };
+
   const selectedDateActivities = selectedDate
-    ? filteredActivities.filter((a) => isSameDay(a.date, selectedDate))
+    ? filteredActivities.filter((a) => isActivityOnDay(a, selectedDate))
     : filteredActivities;
 
   const getActivitiesForDay = (day: Date) => {
-    return filteredActivities.filter((a) => isSameDay(a.date, day));
+    return filteredActivities.filter((a) => isActivityOnDay(a, day));
   };
 
   const handleAddActivity = async (newActivity: Omit<Activity, "id">) => {
@@ -327,6 +357,7 @@ export function ActivityCalendar() {
           activities={selectedDateActivities}
           onToggleStatus={handleToggleStatus}
           onDelete={handleDeleteActivity}
+          selectedDate={selectedDate}
         />
       </div>
 

@@ -48,12 +48,42 @@ export function MiniCalendar() {
     }
   };
 
+  const isActivityOnDay = (activity: any, day: Date) => {
+    if (!day) return false;
+    const activityDate = new Date(activity.date);
+
+    // Match exact date
+    if (isSameDay(activityDate, day)) return true;
+
+    // Pattern matching for recurring tasks
+    try {
+      const meta = JSON.parse(activity.description || "{}");
+      if (meta.isRecurring) {
+        // Ignore if day is before the start date
+        const dayStart = new Date(day);
+        dayStart.setHours(0, 0, 0, 0);
+        const activityStart = new Date(activityDate);
+        activityStart.setHours(0, 0, 0, 0);
+
+        if (dayStart < activityStart) return false;
+
+        if (meta.frequency === 'daily') return true;
+        if (meta.frequency === 'weekly') {
+          return meta.days.includes(day.getDay());
+        }
+      }
+    } catch (e) {
+      // Not recurring
+    }
+    return false;
+  };
+
   const selectedDayActivities = activities.filter(a =>
-    date && isSameDay(new Date(a.date), date)
+    date && isActivityOnDay(a, date)
   );
 
   const modifiers = {
-    hasActivity: (day: Date) => activities.some(a => isSameDay(new Date(a.date), day))
+    hasActivity: (day: Date) => activities.some(a => isActivityOnDay(a, day))
   };
 
   return (

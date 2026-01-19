@@ -10,6 +10,7 @@ interface ActivityListProps {
   activities: Activity[];
   onToggleStatus: (id: string) => void;
   onDelete: (id: string) => void;
+  selectedDate?: Date | null;
 }
 
 const categoryLabels: Record<Activity["category"], string> = {
@@ -40,7 +41,7 @@ const statusColors: Record<Activity["status"], string> = {
   completed: "border-green-500 bg-green-500/20",
 };
 
-export function ActivityList({ activities, onToggleStatus, onDelete }: ActivityListProps) {
+export function ActivityList({ activities, onToggleStatus, onDelete, selectedDate }: ActivityListProps) {
   if (activities.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center py-12">
@@ -57,76 +58,105 @@ export function ActivityList({ activities, onToggleStatus, onDelete }: ActivityL
 
   return (
     <div className="flex-1 overflow-y-auto space-y-2">
-      {activities.map((activity) => (
-        <div
-          key={activity.id}
-          className={cn(
-            "group p-3 rounded-lg border bg-card transition-all hover:bg-muted/50",
-            statusColors[activity.status],
-            activity.status === "completed" && "opacity-60"
-          )}
-        >
-          <div className="flex items-start gap-3">
-            {/* Checkbox */}
-            <button
-              onClick={() => onToggleStatus(activity.id)}
-              className={cn(
-                "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0",
-                activity.status === "completed"
-                  ? "bg-green-500 border-green-500"
-                  : "border-muted-foreground/40 hover:border-primary"
-              )}
-            >
-              {activity.status === "completed" && (
-                <Check className="w-3 h-3 text-white" />
-              )}
-            </button>
+      {activities.map((activity) => {
+        // Determine the date to display
+        let displayDate = activity.date;
+        let isRecurring = false;
+        try {
+          const meta = JSON.parse(activity.description || "{}");
+          if (meta.isRecurring) {
+            isRecurring = true;
+            // If we are viewing a specific day, show that day with the activity's time
+            if (selectedDate) {
+              const dateWithTime = new Date(selectedDate);
+              const activityDateTime = new Date(activity.date);
+              dateWithTime.setHours(activityDateTime.getHours(), activityDateTime.getMinutes(), 0, 0);
+              displayDate = dateWithTime;
+            }
+          }
+        } catch (e) { }
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span
-                  className={cn(
-                    "font-medium text-sm",
-                    activity.status === "completed" && "line-through text-muted-foreground"
+        return (
+          <div
+            key={activity.id}
+            className={cn(
+              "group p-3 rounded-lg border bg-card transition-all hover:bg-muted/50",
+              statusColors[activity.status],
+              activity.status === "completed" && "opacity-60"
+            )}
+          >
+            <div className="flex items-start gap-3">
+              {/* Checkbox */}
+              <button
+                onClick={() => onToggleStatus(activity.id)}
+                className={cn(
+                  "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0",
+                  activity.status === "completed"
+                    ? "bg-green-500 border-green-500"
+                    : "border-muted-foreground/40 hover:border-primary"
+                )}
+              >
+                {activity.status === "completed" && (
+                  <Check className="w-3 h-3 text-white" />
+                )}
+              </button>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={cn(
+                      "font-medium text-sm",
+                      activity.status === "completed" && "line-through text-muted-foreground"
+                    )}
+                  >
+                    {activity.title}
+                  </span>
+                  {priorityIcons[activity.priority]}
+                  {isRecurring && (
+                    <Clock className="w-3 h-3 text-primary/50" />
                   )}
-                >
-                  {activity.title}
-                </span>
-                {priorityIcons[activity.priority]}
-              </div>
-              
-              {activity.description && (
-                <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
-                  {activity.description}
-                </p>
-              )}
+                </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge
-                  variant="outline"
-                  className={cn("text-[10px] px-1.5 py-0", categoryColors[activity.category])}
-                >
-                  {categoryLabels[activity.category]}
-                </Badge>
-                <span className="text-[10px] text-muted-foreground">
-                  {format(activity.date, "dd MMM, HH:mm", { locale: ptBR })}
-                </span>
+                {activity.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+                    {(() => {
+                      try {
+                        const meta = JSON.parse(activity.description);
+                        return meta.notes || "";
+                      } catch (e) {
+                        return activity.description;
+                      }
+                    })()}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[10px] px-1.5 py-0", categoryColors[activity.category])}
+                  >
+                    {categoryLabels[activity.category]}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(displayDate, "dd MMM, HH:mm", { locale: ptBR })}
+                  </span>
+                </div>
               </div>
+
+              {/* Actions */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7"
+                onClick={() => onDelete(activity.id)}
+              >
+                <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+              </Button>
             </div>
-
-            {/* Actions */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7"
-              onClick={() => onDelete(activity.id)}
-            >
-              <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-            </Button>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

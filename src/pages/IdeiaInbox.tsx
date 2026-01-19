@@ -69,6 +69,9 @@ export default function IdeiaInbox() {
         intention: string;
     } | null>(null);
 
+    const [isTriageFolderOpen, setIsTriageFolderOpen] = useState(false);
+    const [isDetailFolderOpen, setIsDetailFolderOpen] = useState(false);
+
     // Refs
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -699,33 +702,39 @@ export default function IdeiaInbox() {
                         <div className="pt-4 border-t border-white/5 flex items-center justify-between">
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Categoria: {analysisResult.category}</span>
 
-                            <div className="relative group/folder">
+                            <div className="relative">
                                 <Button
                                     variant="ghost"
                                     size="sm"
+                                    onClick={() => setIsTriageFolderOpen(!isTriageFolderOpen)}
                                     className="h-8 gap-2 rounded-full bg-secondary/50 hover:bg-secondary text-[10px] font-black uppercase tracking-widest px-3 border border-white/5"
                                 >
                                     <Folder className="w-3 h-3" />
                                     {analysisResult.suggested_destination}
-                                    <ChevronRight className="w-3 h-3 opacity-50" />
+                                    <ChevronRight className={cn("w-3 h-3 opacity-50 transition-transform", isTriageFolderOpen && "rotate-90")} />
                                 </Button>
 
-                                <div className="absolute bottom-full right-0 mb-2 w-48 bg-card border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-focus-within/folder:opacity-100 group-focus-within/folder:visible transition-all z-20 overflow-hidden">
-                                    <div className="p-2 space-y-1">
-                                        {FOLDERS.map(f => (
-                                            <button
-                                                key={f.name}
-                                                onClick={() => setAnalysisResult({ ...analysisResult, suggested_destination: f.name })}
-                                                className={cn(
-                                                    "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10",
-                                                    analysisResult.suggested_destination === f.name ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
-                                                )}
-                                            >
-                                                {f.icon} {f.name}
-                                            </button>
-                                        ))}
+                                {isTriageFolderOpen && (
+                                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-card border border-white/10 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+                                        <div className="p-2 space-y-1">
+                                            {FOLDERS.map(f => (
+                                                <button
+                                                    key={f.name}
+                                                    onClick={() => {
+                                                        setAnalysisResult({ ...analysisResult, suggested_destination: f.name });
+                                                        setIsTriageFolderOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10",
+                                                        analysisResult.suggested_destination === f.name ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                                                    )}
+                                                >
+                                                    {f.icon} {f.name}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1414,34 +1423,38 @@ export default function IdeiaInbox() {
 
                         <div className="p-4 space-y-3">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pasta</h4>
-                            <div className="relative group/folder">
+                            <div className="relative">
                                 <Button
                                     variant="outline"
+                                    onClick={() => setIsDetailFolderOpen(!isDetailFolderOpen)}
                                     className="w-full justify-start gap-3 rounded-xl h-12 border-border/50 bg-card font-bold text-sm"
                                 >
                                     <Folder className="w-4 h-4 text-primary" />
                                     {currentIdea.folder || "Sem Pasta"}
                                 </Button>
 
-                                <div className="absolute bottom-full left-0 mb-2 w-full bg-card border border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-focus-within/folder:opacity-100 group-focus-within/folder:visible transition-all z-20 overflow-hidden">
-                                    <div className="p-2 space-y-1">
-                                        {FOLDERS.map(f => (
-                                            <button
-                                                key={f.name}
-                                                onClick={() => {
-                                                    const updated = { ...currentIdea, folder: f.name };
-                                                    setEditingIdea(updated);
-                                                }}
-                                                className={cn(
-                                                    "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10",
-                                                    currentIdea.folder === f.name ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
-                                                )}
-                                            >
-                                                {f.icon} {f.name}
-                                            </button>
-                                        ))}
+                                {isDetailFolderOpen && (
+                                    <div className="absolute bottom-full left-0 mb-2 w-full bg-card border border-white/10 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+                                        <div className="p-2 space-y-1">
+                                            {FOLDERS.map(f => (
+                                                <button
+                                                    key={f.name}
+                                                    onClick={() => {
+                                                        const updated = { ...currentIdea, folder: f.name };
+                                                        setEditingIdea(updated);
+                                                        setIsDetailFolderOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10",
+                                                        currentIdea.folder === f.name ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
+                                                    )}
+                                                >
+                                                    {f.icon} {f.name}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     </div>

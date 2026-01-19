@@ -42,6 +42,33 @@ const FOLDERS = [
     { name: "Construção", icon: "🤔", description: "Ideias em rascunho", color: "#D1D5DB" }
 ];
 
+const AutoHeightTextarea = ({ value, onChange, className, placeholder, autoFocus }: any) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustHeight = () => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = "auto";
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    };
+
+    useEffect(() => {
+        adjustHeight();
+    }, [value]);
+
+    return (
+        <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            autoFocus={autoFocus}
+            className={cn("resize-none overflow-hidden", className)}
+        />
+    );
+};
+
 export default function IdeiaInbox() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -598,10 +625,10 @@ export default function IdeiaInbox() {
             </div>
 
             <div className="relative p-8 rounded-[40px] bg-card/60 border border-white/5 shadow-2xl focus-within:border-primary/30 transition-all">
-                <textarea
-                    className="w-full bg-transparent border-none focus:ring-0 text-xl leading-relaxed italic selection:bg-primary/20 min-h-[200px] resize-none"
+                <AutoHeightTextarea
+                    className="w-full bg-transparent border-none focus:ring-0 text-xl leading-relaxed italic selection:bg-primary/20"
                     value={editingTranscript}
-                    onChange={(e) => setEditingTranscript(e.target.value)}
+                    onChange={(e: any) => setEditingTranscript(e.target.value)}
                     autoFocus
                 />
             </div>
@@ -673,9 +700,9 @@ export default function IdeiaInbox() {
                     <p className="text-muted-foreground text-lg">Identificamos o melhor destino para seu insight.</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-5xl">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-5xl px-4 sm:px-0">
                     {/* Main Summary Card */}
-                    <div className="p-10 rounded-[48px] bg-card/40 border border-white/5 shadow-2xl space-y-6 flex flex-col hover:border-primary/20 transition-all group">
+                    <div className="p-6 sm:p-10 rounded-[32px] sm:rounded-[48px] bg-card/40 border border-white/5 shadow-2xl space-y-6 flex flex-col hover:border-primary/20 transition-all group">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
@@ -689,25 +716,25 @@ export default function IdeiaInbox() {
                         </div>
                         <div className="flex-1 space-y-4">
                             <input
-                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-2xl font-bold leading-tight group-hover:text-primary transition-colors px-0 cursor-text"
+                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-xl sm:text-2xl font-bold leading-tight group-hover:text-primary transition-colors px-0 cursor-text"
                                 value={analysisResult.title}
                                 onChange={(e) => setAnalysisResult({ ...analysisResult, title: e.target.value })}
                             />
-                            <textarea
-                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-muted-foreground leading-relaxed resize-none px-0 cursor-text min-h-[60px]"
+                            <AutoHeightTextarea
+                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-lg text-muted-foreground leading-relaxed px-0 cursor-text text-sm sm:text-base"
                                 value={analysisResult.summary}
-                                onChange={(e) => setAnalysisResult({ ...analysisResult, summary: e.target.value })}
+                                onChange={(e: any) => setAnalysisResult({ ...analysisResult, summary: e.target.value })}
                             />
                         </div>
-                        <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+                        <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <span className="text-[10px] font-black uppercase tracking-widest text-primary">Categoria: {analysisResult.category}</span>
 
-                            <div className="relative">
+                            <div className="relative w-full sm:w-auto">
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setIsTriageFolderOpen(!isTriageFolderOpen)}
-                                    className="h-8 gap-2 rounded-full bg-secondary/50 hover:bg-secondary text-[10px] font-black uppercase tracking-widest px-3 border border-white/5"
+                                    className="h-8 w-full sm:w-auto gap-2 rounded-full bg-secondary/50 hover:bg-secondary text-[10px] font-black uppercase tracking-widest px-3 border border-white/5 justify-between sm:justify-center"
                                 >
                                     <Folder className="w-3 h-3" />
                                     {analysisResult.suggested_destination}
@@ -715,7 +742,7 @@ export default function IdeiaInbox() {
                                 </Button>
 
                                 {isTriageFolderOpen && (
-                                    <div className="absolute bottom-full right-0 mb-2 w-48 bg-card border border-white/10 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+                                    <div className="absolute bottom-full right-0 sm:right-0 mb-2 w-full sm:w-48 bg-card border border-white/10 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
                                         <div className="p-2 space-y-1">
                                             {FOLDERS.map(f => (
                                                 <button
@@ -740,9 +767,9 @@ export default function IdeiaInbox() {
                     </div>
 
                     {/* Dynamic Suggestion Details */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 px-4 sm:px-0">
                         {analysisResult.category === 'conteudo' && analysisResult.sugestao_conteudo && (
-                            <div className="p-8 rounded-[40px] bg-primary/5 border border-primary/10 space-y-6">
+                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-primary/5 border border-primary/10 space-y-6">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                         <FileText className="w-4 h-4" /> Plano de Conteúdo
@@ -793,7 +820,7 @@ export default function IdeiaInbox() {
                         )}
 
                         {analysisResult.category === 'meta' && analysisResult.sugestao_meta && (
-                            <div className="p-8 rounded-[40px] bg-emerald-500/5 border border-emerald-500/10 space-y-6">
+                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-emerald-500/5 border border-emerald-500/10 space-y-6">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 flex items-center gap-2">
                                     <Target className="w-4 h-4" /> Plano de Meta
                                 </h4>
@@ -844,14 +871,14 @@ export default function IdeiaInbox() {
                         )}
 
                         {analysisResult.category === 'insight' && analysisResult.sugestao_insight && (
-                            <div className="p-8 rounded-[40px] bg-amber-500/5 border border-amber-500/10 space-y-6">
+                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-amber-500/5 border border-amber-500/10 space-y-6">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500 flex items-center gap-2">
                                     <Zap className="w-4 h-4" /> Regra do Insight
                                 </h4>
-                                <textarea
-                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg text-lg font-bold leading-tight italic px-0 resize-none min-h-[60px] text-amber-500"
+                                <AutoHeightTextarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg text-lg font-bold leading-tight italic px-0 text-amber-500"
                                     value={analysisResult.sugestao_insight.descricao_regra}
-                                    onChange={(e) => setAnalysisResult({
+                                    onChange={(e: any) => setAnalysisResult({
                                         ...analysisResult,
                                         sugestao_insight: { ...analysisResult.sugestao_insight, descricao_regra: e.target.value }
                                     })}
@@ -883,7 +910,7 @@ export default function IdeiaInbox() {
 
                         {/* Fallback AI Insight if no specific category suggestion */}
                         {(!analysisResult.sugestao_conteudo && !analysisResult.sugestao_meta && !analysisResult.sugestao_insight) && (
-                            <div className="p-8 rounded-[40px] bg-primary/5 border border-primary/10 space-y-4">
+                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-primary/5 border border-primary/10 space-y-4">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Brain className="w-4 h-4" /> AI Insight
                                 </h4>
@@ -891,7 +918,7 @@ export default function IdeiaInbox() {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <Button
                                 variant="outline"
                                 onClick={() => setInboxState("initial")}
@@ -1167,10 +1194,10 @@ export default function IdeiaInbox() {
 
                         <div className="p-8 rounded-[32px] bg-card/60 border border-white/5 shadow-xl space-y-4">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Conteúdo Original</h3>
-                            <textarea
-                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-lg leading-relaxed italic px-0 min-h-[100px] resize-none"
+                            <AutoHeightTextarea
+                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-lg leading-relaxed italic px-0"
                                 value={currentIdea.content}
-                                onChange={(e) => {
+                                onChange={(e: any) => {
                                     const updated = { ...currentIdea, content: e.target.value };
                                     setEditingIdea(updated);
                                 }}
@@ -1313,10 +1340,10 @@ export default function IdeiaInbox() {
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500 flex items-center gap-2">
                                     <Zap className="w-4 h-4" /> Regra do Insight
                                 </h4>
-                                <textarea
-                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg text-lg font-bold leading-tight italic px-0 resize-none min-h-[60px] text-amber-500"
+                                <AutoHeightTextarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-amber-500/20 rounded-lg text-lg font-bold leading-tight italic px-0 text-amber-500"
                                     value={meta.sugestao_insight.descricao_regra}
-                                    onChange={(e) => {
+                                    onChange={(e: any) => {
                                         const updated = {
                                             ...currentIdea,
                                             metadata: {
@@ -1361,10 +1388,10 @@ export default function IdeiaInbox() {
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Sparkles className="w-4 h-4" /> AI Insights & Sugestões
                                 </h3>
-                                <textarea
-                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-foreground/90 leading-relaxed px-0 min-h-[100px] resize-none"
+                                <AutoHeightTextarea
+                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-primary/20 rounded-xl text-foreground/90 leading-relaxed px-0"
                                     value={meta.ai_insights}
-                                    onChange={(e) => {
+                                    onChange={(e: any) => {
                                         const updated = {
                                             ...currentIdea,
                                             metadata: { ...meta, ai_insights: e.target.value }

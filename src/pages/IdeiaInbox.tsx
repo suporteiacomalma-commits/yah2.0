@@ -38,7 +38,7 @@ const FOLDERS = [
     { name: "Conteúdo", icon: "✍️", description: "Ideias de posts e campanhas", color: "#A855F7" },
     { name: "Metas", icon: "🎯", description: "Objetivos com progresso", color: "#EC4899" },
     { name: "Insights", icon: "💡", description: "Aprendizados estratégicos", color: "#EAB308" },
-    { name: "Produto", icon: "🚀", description: "Ofertas e serviços", color: "#22D3EE" },
+    { name: "Produto / serviço", icon: "🚀", description: "Defina claramente o que você oferece e como entrega.", color: "#22D3EE" },
     { name: "Projeto", icon: "📂", description: "Iniciativas e eventos", color: "#3B82F6" },
     { name: "Stand-by", icon: "🕰️", description: "Ideias para o futuro", color: "#8B5CF6" }
 ];
@@ -413,6 +413,10 @@ export default function IdeiaInbox() {
     const [showSuccessDialog, setShowSuccessDialog] = useState(false);
     const [successData, setSuccessData] = useState<{ week: number; day: string; type: string } | null>(null);
 
+    const getFolderConfig = (folderName: string) => {
+        return FOLDERS.find(f => f.name === folderName) || { name: folderName || "Insights", color: "#EAB308" };
+    };
+
     // Refs
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -582,7 +586,7 @@ export default function IdeiaInbox() {
             - Conteúdo (conteudo): Posts, vídeos, reels, stories, temas de feed, educação, dor, identificação, polêmica.
             - Meta (meta): Objetivo concreto com número ou resultado (ex: fechar clientes, bater seguidores).
             - Insight (insight): Percepção, regra ou padrão (ex: horários de postagem, comportamento do público).
-            - Produto (produto): Oferta específica (curso, mentoria, app, evento pago).
+            - Produto / serviço (produto): Oferta específica (curso, mentoria, app, serviço, evento pago).
             - Projeto (projeto): Iniciativa ampla com várias ações (evento, reforma, nova temporada).
             - Stand-by (standby): Ideia de conteúdo guardada para depois ou não definida.
 
@@ -611,7 +615,17 @@ export default function IdeiaInbox() {
                - ajustes: Pontos de atenção e possíveis correções.
 
             5. Se categoria = "produto":
-               Gere o checklist inicial e próximos passos específicos.
+               Gere "sugestao_produto" com os 10 campos estratégicos para definição de oferta:
+               - nome: Nome do Produto / Serviço.
+               - categoria_produto: Categoria do produto ou serviço.
+               - o_que_e: O que é (descrição curta).
+               - problema: Problema que resolve.
+               - solucao: Solução / Abordagem.
+               - entregaveis: Entregáveis / Componentes do serviço.
+               - publico_ideal: Público ideal.
+               - preco_entrega: Preço e forma de entrega.
+               - argumentos_valor: Array com exatamente 3 argumentos de valor.
+               - promessa: A promessa em uma frase.
 
             MODO RAJADA:
             Se modo = "rajada", separe o conteúdo em itens individuais. Cada item deve ter "id_interno", "trecho_original" e sua própria análise completa.
@@ -636,7 +650,18 @@ export default function IdeiaInbox() {
                     "rotinas": "string"
                 },
                 "sugestao_insight": { ... },
-                "sugestao_produto": { ... },
+                "sugestao_produto": {
+                    "nome": "string",
+                    "categoria_produto": "string",
+                    "o_que_e": "string",
+                    "problema": "string",
+                    "solucao": "string",
+                    "entregaveis": "string",
+                    "publico_ideal": "string",
+                    "preco_entrega": "string",
+                    "argumentos_valor": ["string"],
+                    "promessa": "string"
+                },
                 "sugestao_projeto": {
                     "visao": "string",
                     "objetivo": "string",
@@ -751,6 +776,121 @@ export default function IdeiaInbox() {
             toast.error("Erro ao gerar campo: " + error.message);
         } finally {
             setGeneratingField(null);
+        }
+    };
+
+    const handleGenerateProductField = async (fieldKey: string, fieldLabel: string, isFromDetail: boolean = false, customIndex?: number) => {
+        const apiKey = getSetting('openai_api_key')?.value;
+        if (!apiKey || !apiKey.startsWith('sk-')) {
+            toast.error("Configure sua chave OpenAI válida nas configurações.");
+            return;
+        }
+
+        const currentSource = isFromDetail ? (editingIdea || selectedIdea) : { metadata: analysisResult, content: editingTranscript };
+        if (!currentSource) return;
+
+        const metadata = currentSource.metadata || {};
+        const title = metadata.title || "Produto/Serviço sem título";
+        const summary = metadata.summary || (isFromDetail ? (currentSource as any).content : editingTranscript) || "Sem descrição";
+        const sugestao_produto = metadata.sugestao_produto || {};
+        const customFields = sugestao_produto.custom_fields || [];
+
+        const targetFieldKey = customIndex !== undefined ? `custom_${customIndex}` : fieldKey;
+        setGeneratingField(targetFieldKey);
+        try {
+            const prompt = `Você é a Yah, especialista em estratégia.
+            Gere uma sugestão curta, direta e estratégica para o campo "${fieldLabel}" de um produto ou serviço.
+
+            NOME DO PRODUTO: ${title}
+            RESUMO/CONTEXTO: ${summary}
+            
+            OUTROS CAMPOS JÁ DEFINIDOS:
+            ${Object.entries(sugestao_produto)
+                    .filter(([key, val]) => key !== 'custom_fields' && key !== fieldKey && val)
+                    .map(([key, val]) => `- ${key}: ${val}`)
+                    .join('\n')}
+            ${customFields.map((f: any) => `- ${f.label}: ${f.value}`).join('\n')}
+
+            Regra de ouro: Seja específico, não genérico. Use tom de voz encorajador mas profissional. 
+            Se for "Argumentos de Valor", retorne exatamente 3 argumentos em formato de lista.
+            Retorne APENAS o texto da sugestão para este campo específico.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: "Expert em estratégia para mentes atípicas." },
+                        { role: "user", content: prompt }
+                    ]
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            let content = data.choices[0].message.content.trim();
+
+            if (fieldKey === 'argumentos_valor') {
+                content = content.split('\n').map((s: string) => s.replace(/^[0-9.-]\s*/, '').trim()).filter(Boolean).slice(0, 3);
+            }
+
+            if (isFromDetail) {
+                const newMetadata = { ...metadata };
+                if (customIndex !== undefined) {
+                    const newCustom = [...customFields];
+                    newCustom[customIndex] = { ...newCustom[customIndex], value: content };
+                    newMetadata.sugestao_produto = { ...sugestao_produto, custom_fields: newCustom };
+                } else {
+                    newMetadata.sugestao_produto = { ...sugestao_produto, [fieldKey]: content };
+                }
+                setEditingIdea({ ...currentSource, metadata: newMetadata });
+            } else {
+                const newAnalysis = { ...analysisResult };
+                if (customIndex !== undefined) {
+                    const newCustom = [...customFields];
+                    newCustom[customIndex] = { ...newCustom[customIndex], value: content };
+                    newAnalysis.sugestao_produto = { ...sugestao_produto, custom_fields: newCustom };
+                } else {
+                    newAnalysis.sugestao_produto = { ...sugestao_produto, [fieldKey]: content };
+                }
+                setAnalysisResult(newAnalysis);
+            }
+            toast.success(`${fieldLabel} atualizado com IA!`);
+        } catch (error: any) {
+            toast.error("Erro ao gerar campo: " + error.message);
+        } finally {
+            setGeneratingField(null);
+        }
+    };
+
+    const addCustomProductField = (isFromDetail: boolean = false) => {
+        const currentSource = isFromDetail ? (editingIdea || selectedIdea) : { metadata: analysisResult };
+        if (!currentSource) return;
+
+        const metadata = currentSource.metadata || {};
+        const sugestao_produto = metadata.sugestao_produto || {};
+        const customFields = sugestao_produto.custom_fields || [];
+
+        const newField = { label: "Novo Campo", value: "" };
+        const updatedCustom = [...customFields, newField];
+
+        if (isFromDetail) {
+            setEditingIdea({
+                ...currentSource,
+                metadata: {
+                    ...metadata,
+                    sugestao_produto: { ...sugestao_produto, custom_fields: updatedCustom }
+                }
+            });
+        } else {
+            setAnalysisResult({
+                ...analysisResult,
+                sugestao_produto: { ...(analysisResult.sugestao_produto || {}), custom_fields: updatedCustom }
+            });
         }
     };
 
@@ -1149,7 +1289,7 @@ export default function IdeiaInbox() {
 
                         </div>
                         <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-primary">Categoria: {analysisResult.category}</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: getFolderConfig(analysisResult.suggested_destination).color }}>Categoria: {getFolderConfig(analysisResult.suggested_destination).name}</span>
 
                             <div className="relative w-full sm:w-auto">
                                 <Button
@@ -1191,7 +1331,7 @@ export default function IdeiaInbox() {
                     {/* Dynamic Suggestion Details */}
                     <div className="space-y-6 px-4 sm:px-0">
                         {/* Original Content Box in Triage */}
-                        {analysisResult.category !== 'projeto' && (
+                        {analysisResult.category !== 'projeto' && analysisResult.category !== 'produto' && analysisResult.suggested_destination !== 'Produto / serviço' && (
                             <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-card/60 border border-white/5 shadow-xl space-y-4">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <ScrollText className="w-4 h-4" /> Conteúdo Original
@@ -1204,7 +1344,7 @@ export default function IdeiaInbox() {
                             </div>
                         )}
 
-                        {analysisResult.category !== 'meta' && analysisResult.category !== 'projeto' && (
+                        {analysisResult.category !== 'meta' && analysisResult.category !== 'projeto' && analysisResult.category !== 'produto' && analysisResult.suggested_destination !== 'Produto / serviço' && (
                             <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-card/60 border border-white/5 shadow-xl space-y-4">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <Plus className="w-4 h-4" /> Conteúdo Adicional
@@ -1417,6 +1557,135 @@ export default function IdeiaInbox() {
                             </div>
                         )}
 
+                        {(analysisResult.category === 'produto' || analysisResult.suggested_destination === 'Produto / serviço') && (
+                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-cyan-500/5 border border-cyan-500/10 space-y-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-cyan-500 flex items-center gap-2">
+                                    <Rocket className="w-4 h-4" /> Definição do Produto / Serviço
+                                </h4>
+
+                                <div className="grid grid-cols-1 gap-6">
+                                    {[
+                                        { key: 'nome', label: '1. Nome do Produto / Serviço', icon: Tag },
+                                        { key: 'categoria_produto', label: '2. Categoria', icon: Layers },
+                                        { key: 'o_que_e', label: '3. O que é (descrição curta)', icon: FileText },
+                                        { key: 'problema', label: '4. Problema que resolve', icon: Zap },
+                                        { key: 'solucao', label: '5. Solução / Abordagem', icon: Brain },
+                                        { key: 'entregaveis', label: '6. Entregáveis / Componentes', icon: ListTodo },
+                                        { key: 'publico_ideal', label: '7. Público ideal', icon: Target },
+                                        { key: 'preco_entrega', label: '8. Preço e forma de entrega', icon: Clock },
+                                        { key: 'argumentos_valor', label: '9. Defina 3 argumentos de valor', icon: Sparkles, type: 'list' },
+                                        { key: 'promessa', label: '10. Crie a promessa em uma frase', icon: Megaphone }
+                                    ].map((field) => (
+                                        <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <field.icon className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-cyan-500 transition-colors">{field.label}</span>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    disabled={generatingField === field.key}
+                                                    onClick={() => handleGenerateProductField(field.key, field.label)}
+                                                    className="h-8 px-4 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-cyan-500/20"
+                                                >
+                                                    {generatingField === field.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                                    {generatingField === field.key ? "GERANDO..." : "Sugerir com IA"}
+                                                </Button>
+                                            </div>
+
+                                            {field.type === 'list' ? (
+                                                <div className="space-y-2">
+                                                    {((analysisResult.sugestao_produto as any)[field.key] || ["", "", ""]).map((item: string, i: number) => (
+                                                        <div key={i} className="flex gap-2 items-center">
+                                                            <span className="text-cyan-500 font-bold text-xs">{i + 1}.</span>
+                                                            <input
+                                                                className="flex-1 bg-transparent border-b border-white/5 focus:border-cyan-500/50 outline-none text-sm py-1"
+                                                                value={item}
+                                                                onChange={(e) => {
+                                                                    const newList = [...((analysisResult.sugestao_produto as any)[field.key] || ["", "", ""])];
+                                                                    newList[i] = e.target.value;
+                                                                    setAnalysisResult({
+                                                                        ...analysisResult,
+                                                                        sugestao_produto: { ...analysisResult.sugestao_produto, [field.key]: newList }
+                                                                    });
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <AutoHeightTextarea
+                                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-cyan-500/20 rounded-lg text-sm leading-relaxed px-0 text-foreground/90 transition-all font-medium"
+                                                    placeholder={`Preencha ${field.label.toLowerCase()}...`}
+                                                    value={(analysisResult.sugestao_produto as any)[field.key] || ""}
+                                                    onChange={(e: any) => setAnalysisResult({
+                                                        ...analysisResult,
+                                                        sugestao_produto: { ...analysisResult.sugestao_produto, [field.key]: e.target.value }
+                                                    })}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* Custom Fields */}
+                                    {((analysisResult.sugestao_produto as any)?.custom_fields || []).map((field: any, idx: number) => (
+                                        <div key={`custom-${idx}`} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Plus className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors" />
+                                                    <input
+                                                        className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-cyan-500 transition-colors bg-transparent border-none outline-none focus:ring-0 w-full"
+                                                        value={field.label}
+                                                        onChange={(e) => {
+                                                            const newCustom = [...(analysisResult.sugestao_produto?.custom_fields || [])];
+                                                            newCustom[idx] = { ...newCustom[idx], label: e.target.value };
+                                                            setAnalysisResult({
+                                                                ...analysisResult,
+                                                                sugestao_produto: { ...analysisResult.sugestao_produto, custom_fields: newCustom }
+                                                            });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    disabled={generatingField === `custom_${idx}`}
+                                                    onClick={() => handleGenerateProductField('custom', field.label, false, idx)}
+                                                    className="h-8 px-4 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-cyan-500/20"
+                                                >
+                                                    {generatingField === `custom_${idx}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                                    {generatingField === `custom_${idx}` ? "GERANDO..." : "Sugerir com IA"}
+                                                </Button>
+                                            </div>
+
+                                            <AutoHeightTextarea
+                                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-cyan-500/20 rounded-lg text-sm leading-relaxed px-0 text-foreground/90 transition-all font-medium"
+                                                placeholder={`Preencha ${field.label.toLowerCase()}...`}
+                                                value={field.value || ""}
+                                                onChange={(e: any) => {
+                                                    const newCustom = [...(analysisResult.sugestao_produto?.custom_fields || [])];
+                                                    newCustom[idx] = { ...newCustom[idx], value: e.target.value };
+                                                    setAnalysisResult({
+                                                        ...analysisResult,
+                                                        sugestao_produto: { ...analysisResult.sugestao_produto, custom_fields: newCustom }
+                                                    });
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => addCustomProductField(false)}
+                                        className="w-full h-14 rounded-2xl border-dashed border-cyan-500/30 hover:border-cyan-500/60 hover:bg-cyan-500/5 text-cyan-500 font-bold flex items-center justify-center gap-2 transition-all mt-4"
+                                    >
+                                        <Plus className="w-5 h-5" /> Adicionar Campo Personalizado
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
                         {analysisResult.category === 'insight' && analysisResult.sugestao_insight && (
                             <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-amber-500/5 border border-amber-500/10 space-y-6">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500 flex items-center gap-2">
@@ -1456,7 +1725,7 @@ export default function IdeiaInbox() {
                         )}
 
                         {/* Fallback AI Insight if no specific category suggestion */}
-                        {(!analysisResult.sugestao_conteudo && !analysisResult.sugestao_meta && !analysisResult.sugestao_insight) && (
+                        {(!analysisResult.sugestao_conteudo && !analysisResult.sugestao_meta && !analysisResult.sugestao_insight && !analysisResult.sugestao_produto) && (
                             <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-primary/5 border border-primary/10 space-y-4">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Brain className="w-4 h-4" /> AI Insight
@@ -1650,8 +1919,10 @@ export default function IdeiaInbox() {
                                         className="min-w-[220px] p-5 rounded-3xl bg-card border border-border/50 hover:border-primary/30 cursor-pointer transition-all space-y-3 text-left shrink-0"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{idea.category}</span>
+                                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: getFolderConfig(idea.folder).color }} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: getFolderConfig(idea.folder).color }}>
+                                                {getFolderConfig(idea.folder).name.toUpperCase()}
+                                            </span>
                                         </div>
                                         <h4 className="text-sm font-bold line-clamp-2 leading-tight">{idea.metadata?.title || idea.content}</h4>
                                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -1723,14 +1994,14 @@ export default function IdeiaInbox() {
                             </div>
                             <div className="space-y-3">
                                 <div className="flex items-center gap-2">
-                                    <span className={cn(
-                                        "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest",
-                                        idea.category === 'conteudo' ? 'bg-primary/20 text-primary' :
-                                            idea.category === 'meta' ? 'bg-emerald-500/20 text-emerald-500' :
-                                                idea.category === 'projeto' ? 'bg-blue-500/20 text-blue-500' :
-                                                    'bg-amber-500/20 text-amber-500'
-                                    )}>
-                                        {idea.category?.toUpperCase()}
+                                    <span
+                                        className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest"
+                                        style={{
+                                            backgroundColor: `${getFolderConfig(idea.folder).color}20`,
+                                            color: getFolderConfig(idea.folder).color
+                                        }}
+                                    >
+                                        {getFolderConfig(idea.folder).name.toUpperCase()}
                                     </span>
                                     <span className="text-[10px] text-muted-foreground">{format(new Date(idea.created_at), "dd/MM/yyyy")}</span>
                                 </div>
@@ -1762,14 +2033,15 @@ export default function IdeiaInbox() {
                     <div className="flex-1 space-y-6">
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <span className={cn(
-                                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
-                                    currentIdea.category === 'conteudo' ? 'bg-primary/10 text-primary border-primary/20' :
-                                        currentIdea.category === 'meta' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                            currentIdea.category === 'projeto' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                                )}>
-                                    {currentIdea.category?.toUpperCase()}
+                                <span
+                                    className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border"
+                                    style={{
+                                        backgroundColor: `${getFolderConfig(currentIdea.folder).color}10`,
+                                        color: getFolderConfig(currentIdea.folder).color,
+                                        borderColor: `${getFolderConfig(currentIdea.folder).color}20`
+                                    }}
+                                >
+                                    {getFolderConfig(currentIdea.folder).name.toUpperCase()}
                                 </span>
                                 <div className="text-sm text-muted-foreground flex items-center gap-1.5">
                                     <Clock className="w-4 h-4" />
@@ -1787,7 +2059,7 @@ export default function IdeiaInbox() {
                             />
                         </div>
 
-                        {currentIdea.category !== 'projeto' && (
+                        {currentIdea.category !== 'projeto' && currentIdea.category !== 'produto' && currentIdea.folder !== 'Produto / serviço' && (
                             <div className="p-8 rounded-[32px] bg-card/60 border border-white/5 shadow-xl space-y-4">
                                 <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <ScrollText className="w-4 h-4" /> Conteúdo Original
@@ -1803,7 +2075,7 @@ export default function IdeiaInbox() {
                             </div>
                         )}
 
-                        {currentIdea.category !== 'meta' && currentIdea.category !== 'projeto' && (
+                        {currentIdea.category !== 'meta' && currentIdea.category !== 'projeto' && currentIdea.category !== 'produto' && currentIdea.folder !== 'Produto / serviço' && (
                             <div className="p-8 rounded-[32px] bg-card/40 border border-white/5 shadow-xl space-y-4">
                                 <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
                                     <Plus className="w-4 h-4" /> Conteúdo Adicional
@@ -2078,6 +2350,149 @@ export default function IdeiaInbox() {
                             </div>
                         )}
 
+                        {(currentIdea.category === 'produto' || currentIdea.folder === 'Produto / serviço') && (
+                            <div className="p-8 rounded-[32px] bg-cyan-500/5 border border-cyan-500/10 space-y-8 shadow-2xl animate-in zoom-in-95 duration-500">
+                                <h4 className="text-sm font-bold uppercase tracking-widest text-cyan-500 flex items-center gap-2">
+                                    <Rocket className="w-5 h-5" /> Definição do Produto / Serviço
+                                </h4>
+
+                                <div className="grid grid-cols-1 gap-6">
+                                    {[
+                                        { key: 'nome', label: '1. Nome do Produto / Serviço', icon: Tag },
+                                        { key: 'categoria_produto', label: '2. Categoria', icon: Layers },
+                                        { key: 'o_que_e', label: '3. O que é (descrição curta)', icon: FileText },
+                                        { key: 'problema', label: '4. Problema que resolve', icon: Zap },
+                                        { key: 'solucao', label: '5. Solução / Abordagem', icon: Brain },
+                                        { key: 'entregaveis', label: '6. Entregáveis / Componentes', icon: ListTodo },
+                                        { key: 'publico_ideal', label: '7. Público ideal', icon: Target },
+                                        { key: 'preco_entrega', label: '8. Preço e forma de entrega', icon: Clock },
+                                        { key: 'argumentos_valor', label: '9. Defina 3 argumentos de valor', icon: Sparkles, type: 'list' },
+                                        { key: 'promessa', label: '10. Crie a promessa em uma frase', icon: Megaphone }
+                                    ].map((field) => (
+                                        <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <field.icon className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors" />
+                                                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-cyan-500/70 transition-colors">{field.label}</span>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    disabled={generatingField === field.key}
+                                                    onClick={() => handleGenerateProductField(field.key, field.label, true)}
+                                                    className="h-8 px-4 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-cyan-500/20"
+                                                >
+                                                    {generatingField === field.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                                    {generatingField === field.key ? "GERANDO..." : "Sugerir com IA"}
+                                                </Button>
+                                            </div>
+
+                                            {field.type === 'list' ? (
+                                                <div className="space-y-2">
+                                                    {(meta.sugestao_produto?.[field.key] || ["", "", ""]).map((item: string, i: number) => (
+                                                        <div key={i} className="flex gap-2 items-center">
+                                                            <span className="text-cyan-500 font-bold text-xs">{i + 1}.</span>
+                                                            <input
+                                                                className="flex-1 bg-transparent border-b border-white/5 focus:border-cyan-500/50 outline-none text-sm py-1"
+                                                                value={item}
+                                                                onChange={(e) => {
+                                                                    const newList = [...(meta.sugestao_produto?.[field.key] || ["", "", ""])];
+                                                                    newList[i] = e.target.value;
+                                                                    setEditingIdea({
+                                                                        ...currentIdea,
+                                                                        metadata: {
+                                                                            ...meta,
+                                                                            sugestao_produto: { ...meta.sugestao_produto, [field.key]: newList }
+                                                                        }
+                                                                    });
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <AutoHeightTextarea
+                                                    className="w-full bg-transparent border-none focus:ring-1 focus:ring-cyan-500/20 rounded-lg text-base leading-relaxed px-0 text-foreground/90 transition-all font-medium"
+                                                    placeholder={`Preencha ${field.label.toLowerCase()}...`}
+                                                    value={meta.sugestao_produto?.[field.key] || ""}
+                                                    onChange={(e: any) => {
+                                                        setEditingIdea({
+                                                            ...currentIdea,
+                                                            metadata: {
+                                                                ...meta,
+                                                                sugestao_produto: { ...meta.sugestao_produto, [field.key]: e.target.value }
+                                                            }
+                                                        });
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* Custom Fields */}
+                                    {(meta.sugestao_produto?.custom_fields || []).map((field: any, idx: number) => (
+                                        <div key={`custom-${idx}`} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Plus className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors" />
+                                                    <input
+                                                        className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-cyan-500/70 transition-colors bg-transparent border-none outline-none focus:ring-0 w-full"
+                                                        value={field.label}
+                                                        onChange={(e) => {
+                                                            const newCustom = [...(meta.sugestao_produto?.custom_fields || [])];
+                                                            newCustom[idx] = { ...newCustom[idx], label: e.target.value };
+                                                            setEditingIdea({
+                                                                ...currentIdea,
+                                                                metadata: {
+                                                                    ...meta,
+                                                                    sugestao_produto: { ...meta.sugestao_produto, custom_fields: newCustom }
+                                                                }
+                                                            });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    disabled={generatingField === `custom_${idx}`}
+                                                    onClick={() => handleGenerateProductField('custom', field.label, true, idx)}
+                                                    className="h-8 px-4 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-cyan-500/20"
+                                                >
+                                                    {generatingField === `custom_${idx}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                                    {generatingField === `custom_${idx}` ? "GERANDO..." : "Sugerir com IA"}
+                                                </Button>
+                                            </div>
+
+                                            <AutoHeightTextarea
+                                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-cyan-500/20 rounded-lg text-base leading-relaxed px-0 text-foreground/90 transition-all font-medium"
+                                                placeholder={`Preencha ${field.label.toLowerCase()}...`}
+                                                value={field.value || ""}
+                                                onChange={(e: any) => {
+                                                    const newCustom = [...(meta.sugestao_produto?.custom_fields || [])];
+                                                    newCustom[idx] = { ...newCustom[idx], value: e.target.value };
+                                                    setEditingIdea({
+                                                        ...currentIdea,
+                                                        metadata: {
+                                                            ...meta,
+                                                            sugestao_produto: { ...meta.sugestao_produto, custom_fields: newCustom }
+                                                        }
+                                                    });
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => addCustomProductField(true)}
+                                        className="w-full h-14 rounded-2xl border-dashed border-cyan-500/30 hover:border-cyan-500/60 hover:bg-cyan-500/5 text-cyan-500 font-bold flex items-center justify-center gap-2 transition-all mt-4"
+                                    >
+                                        <Plus className="w-5 h-5" /> Adicionar Campo Personalizado
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
                         {currentIdea.category === 'insight' && meta.sugestao_insight && (
                             <div className="p-8 rounded-[32px] bg-amber-500/5 border border-amber-500/10 space-y-6">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500 flex items-center gap-2">
@@ -2126,7 +2541,7 @@ export default function IdeiaInbox() {
                             </div>
                         )}
 
-                        {(!meta.sugestao_conteudo && !meta.sugestao_meta && !meta.sugestao_insight && meta.ai_insights) && (
+                        {(!meta.sugestao_conteudo && !meta.sugestao_meta && !meta.sugestao_insight && !meta.sugestao_produto && meta.ai_insights) && (
                             <div className="p-8 rounded-[32px] bg-primary/5 border border-primary/20 space-y-4">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Sparkles className="w-4 h-4" /> AI Insights & Sugestões

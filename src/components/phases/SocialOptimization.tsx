@@ -581,24 +581,24 @@ export function SocialOptimization() {
 
             {/* Screen 3A: Bio Edit */}
             {step === "tela3a" && (
-                <Screen3A data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} />
+                <Screen3A data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} updateSocialData={updateSocialData} />
             )}
 
             {/* Screen 3B: Highlights Edit */}
             {step === "tela3b" && (
-                <Screen3B data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} />
+                <Screen3B data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} updateSocialData={updateSocialData} />
             )}
 
             {/* Screen 3C: Pinned Posts Edit */}
             {step === "tela3c" && (
-                <Screen3C data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} />
+                <Screen3C data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} updateSocialData={updateSocialData} />
             )}
         </div>
     );
 }
 
 // SUB-COMPONENTS FOR STEP 3A/B/C
-function Screen3A({ data, onBack, onSave }: { data: any, onBack: () => void, onSave: (updates: any) => void }) {
+function Screen3A({ data, onBack, onSave, updateSocialData }: { data: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any }) {
     const { getSetting } = useSystemSettings();
     const [bio, setBio] = useState(data.bio || "");
     const [chatInput, setChatInput] = useState("");
@@ -646,6 +646,12 @@ function Screen3A({ data, onBack, onSave }: { data: any, onBack: () => void, onS
             const refinedBio = aiData.choices[0].message.content.trim();
 
             setBio(refinedBio);
+            // Persistent save
+            await updateSocialData.mutateAsync({
+                updates: { bio: refinedBio },
+                silent: true
+            });
+
             setChatInput("");
             toast.success("Bio refinada com sucesso!");
         } catch (error: any) {
@@ -813,7 +819,7 @@ function Screen3A({ data, onBack, onSave }: { data: any, onBack: () => void, onS
     );
 }
 
-function Screen3B({ data, onBack, onSave }: { data: any, onBack: () => void, onSave: (updates: any) => void }) {
+function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any }) {
     const { getSetting } = useSystemSettings();
     const [highlights, setHighlights] = useState(data.highlights || []);
     const [generatingIdx, setGeneratingIdx] = useState<number | null>(null);
@@ -844,6 +850,13 @@ function Screen3B({ data, onBack, onSave }: { data: any, onBack: () => void, onS
             const newHighlights = [...highlights];
             newHighlights[idx].cover_url = res.data[0].url;
             setHighlights(newHighlights);
+
+            // Persistent save
+            await updateSocialData.mutateAsync({
+                updates: { highlights: newHighlights },
+                silent: true
+            });
+
             toast.success("Ícone gerado com sucesso!");
         } catch (e: any) {
             toast.error("Erro ao gerar ícone: " + e.message);
@@ -879,6 +892,13 @@ function Screen3B({ data, onBack, onSave }: { data: any, onBack: () => void, onS
             const newHighlights = [...highlights];
             newHighlights[idx].description = content;
             setHighlights(newHighlights);
+
+            // Persistent save
+            await updateSocialData.mutateAsync({
+                updates: { highlights: newHighlights },
+                silent: true
+            });
+
             toast.success("Insights estratégicos gerados!");
         } catch (e: any) {
             toast.error("Erro ao gerar insights: " + e.message);
@@ -914,6 +934,13 @@ function Screen3B({ data, onBack, onSave }: { data: any, onBack: () => void, onS
             const newHighlights = [...highlights];
             newHighlights[idx].content = contentResult;
             setHighlights(newHighlights);
+
+            // Persistent save
+            await updateSocialData.mutateAsync({
+                updates: { highlights: newHighlights },
+                silent: true
+            });
+
             toast.success("Conteúdo detalhado gerado com sucesso!");
         } catch (e: any) {
             toast.error("Erro ao gerar conteúdo: " + e.message);
@@ -999,7 +1026,7 @@ function Screen3B({ data, onBack, onSave }: { data: any, onBack: () => void, onS
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="w-full mt-2 rounded-xl text-[10px] uppercase font-black tracking-widest gap-2 hover:bg-primary/10 hover:text-primary transition-all group"
+                                        className="w-full mt-2 rounded-xl text-[10px] uppercase font-black tracking-tight gap-1.5 hover:bg-primary/10 hover:text-primary transition-all group"
                                         onClick={() => handleGenerateInsights(idx, h.title)}
                                         disabled={insightGeneratingIdx !== null}
                                     >
@@ -1014,7 +1041,7 @@ function Screen3B({ data, onBack, onSave }: { data: any, onBack: () => void, onS
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        className="w-full mt-1 border-primary/20 rounded-xl text-[10px] uppercase font-black tracking-widest gap-2 hover:bg-primary/10 hover:text-primary transition-all group"
+                                        className="w-full mt-1 border-primary/20 rounded-xl text-[10px] uppercase font-black tracking-tight gap-1.5 hover:bg-primary/10 hover:text-primary transition-all group"
                                         onClick={() => handleGenerateContent(idx, h.title, h.description)}
                                         disabled={contentGeneratingIdx !== null || !h.description}
                                     >
@@ -1090,7 +1117,7 @@ function Screen3B({ data, onBack, onSave }: { data: any, onBack: () => void, onS
     );
 }
 
-function Screen3C({ data, onBack, onSave }: { data: any, onBack: () => void, onSave: (updates: any) => void }) {
+function Screen3C({ data, onBack, onSave, updateSocialData }: { data: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any }) {
     const { getSetting } = useSystemSettings();
     const [posts, setPosts] = useState(data.pinned_posts || []);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -1127,6 +1154,12 @@ function Screen3C({ data, onBack, onSave }: { data: any, onBack: () => void, onS
             newPosts[idx].content = content;
             newPosts[idx].thumbnail_url = imgData.data[0].url;
             setPosts(newPosts);
+
+            // Persistent save
+            await updateSocialData.mutateAsync({
+                updates: { pinned_posts: newPosts },
+                silent: true
+            });
         } catch (e) {
             toast.error("Erro na geração");
         } finally {

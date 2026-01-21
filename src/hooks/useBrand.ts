@@ -49,6 +49,7 @@ export interface Brand {
   routine_fixed_hours?: string[];
   weekly_structure_data?: any;
   monthly_structure_data?: any;
+  trained_ais_chats?: any;
   dna_nicho: string | null;
   dna_produto: string | null;
   dna_objetivo: string | null;
@@ -63,6 +64,7 @@ export interface Brand {
   dna_competidores: any[] | null;
   dna_comparativo: string | null;
   dna_uvp: string | null;
+  trunk_categories?: string[] | null;
   current_phase: number;
   phases_completed: number[];
   created_at: string;

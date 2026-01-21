@@ -10,6 +10,8 @@ import { PersonalityNotebook } from "@/components/phases/PersonalityNotebook";
 import { BrandDNANotebook } from "@/components/phases/BrandDNANotebook";
 import { WeeklyFixedNotebook } from "@/components/phases/WeeklyFixedNotebook";
 import { SocialOptimization } from "@/components/phases/SocialOptimization";
+import { TrainedAIs } from "@/components/phases/TrainedAIs";
+import { BrandTrunk } from "@/components/phases/BrandTrunk";
 
 export default function PhasePage() {
   const { phaseId } = useParams();
@@ -25,7 +27,16 @@ export default function PhasePage() {
   }
 
   const isCompleted = brand?.phases_completed?.includes(phaseNumber);
-  const isLocked = phaseNumber > (brand?.current_phase || 1) && !isCompleted;
+
+  // Logic alignment with PhaseMap: Phases 6, 7, 8 are locked if first 4 are not done
+  const firstFourCompleted = [1, 2, 3, 4].every(id => brand?.phases_completed?.includes(id));
+
+  let isLocked = false;
+  if ([6, 7, 8].includes(phaseNumber)) {
+    isLocked = !firstFourCompleted && phaseNumber !== brand?.current_phase && !isCompleted;
+  } else {
+    isLocked = phaseNumber > (brand?.current_phase || 1) && !isCompleted;
+  }
 
   if (isLocked) {
     navigate("/dashboard");
@@ -41,7 +52,10 @@ export default function PhasePage() {
   return (
     <MinimalLayout brandName={brand?.name}>
       <div className="flex-1 p-6 md:p-8">
-        <div className="max-w-3xl mx-auto">
+        <div className={cn(
+          "mx-auto",
+          (phaseNumber === 4) ? "max-w-[1700px]" : "max-w-3xl"
+        )}>
           {/* Back Button */}
           <Button
             variant="ghost"
@@ -86,6 +100,10 @@ export default function PhasePage() {
               <SocialOptimization />
             ) : phaseNumber === 5 ? (
               <ActivityCalendar />
+            ) : phaseNumber === 6 ? (
+              <TrainedAIs />
+            ) : phaseNumber === 8 ? (
+              <BrandTrunk />
             ) : (
               <div className="text-center py-12">
                 <Icon className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
@@ -100,7 +118,7 @@ export default function PhasePage() {
           </div>
 
           {/* Complete Button */}
-          {!isCompleted && (
+          {!isCompleted && phaseNumber !== 6 && phaseNumber !== 8 && (
             <div className="flex justify-end animate-fade-in" style={{ animationDelay: "0.2s" }}>
               <Button
                 onClick={handleComplete}
@@ -113,7 +131,7 @@ export default function PhasePage() {
             </div>
           )}
 
-          {isCompleted && (
+          {isCompleted && phaseNumber !== 6 && phaseNumber !== 8 && (
             <div className="text-center py-4 animate-fade-in">
               <p className="text-green-600 font-medium flex items-center justify-center gap-2">
                 <Check className="w-5 h-5" />

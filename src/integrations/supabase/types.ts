@@ -7,13 +7,49 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.1"
-  }
   public: {
     Tables: {
+      brand_documents: {
+        Row: {
+          brand_id: string | null
+          created_at: string | null
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          name: string
+          user_id: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string | null
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          name: string
+          user_id?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string | null
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          name?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_documents_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           accent_color: string | null
@@ -23,38 +59,60 @@ export type Database = {
           current_phase: number
           description: string | null
           desires: string | null
+          dna_comparativo: string | null
+          dna_competidores: Json | null
+          dna_diferencial: string | null
+          dna_dor_principal: string | null
+          dna_nicho: string | null
+          dna_objetivo: string | null
+          dna_objecao_comum: string | null
+          dna_persona_data: Json | null
+          dna_pilares: Json | null
+          dna_produto: string | null
+          dna_sonho_principal: string | null
+          dna_tese: string | null
+          dna_transformacao: string | null
+          dna_uvp: string | null
           graphic_elements: string | null
           id: string
           key_messages: string | null
           logo_description: string | null
           mission: string | null
+          monthly_structure_data: Json | null
           name: string
           pain_points: string | null
           personality: string | null
           personas: string | null
-          phases_completed: number[]
+          phases_completed: number[] | null
           primary_color: string | null
           purpose: string | null
+          result_como_funciona: string | null
+          result_essencia: string | null
+          result_tom_voz: string | null
+          routine_execution_days: string[] | null
+          routine_feed_format_prefs: Json | null
+          routine_fixed_hours: string[] | null
+          routine_intentions_prefs: Json | null
+          routine_planning_days: string[] | null
+          routine_posts_per_week: number | null
+          routine_posting_days: string[] | null
           secondary_color: string | null
           sector: string | null
           segments: string | null
+          trained_ais_chats: Json | null
           typography: string | null
           updated_at: string
-          user_id: string
-          values: string | null
-          vision: string | null
-          vocabulary: string | null
-          writing_style: string | null
-          user_role: string | null
-          user_motivation: string | null
+          user_blockers: string | null
           user_change_world: string | null
-          user_tone_selected: string[] | null
           user_creative_profile: string[] | null
           user_energy_times: string[] | null
-          user_blockers: string | null
-          result_essencia: string | null
-          result_tom_voz: string | null
-          result_como_funciona: string | null
+          user_id: string
+          user_motivation: string | null
+          user_role: string | null
+          user_tone_selected: string[] | null
+          values: string | null
+          vision: string | null
+          weekly_structure_data: Json | null
         }
         Insert: {
           accent_color?: string | null
@@ -64,38 +122,60 @@ export type Database = {
           current_phase?: number
           description?: string | null
           desires?: string | null
+          dna_comparativo?: string | null
+          dna_competidores?: Json | null
+          dna_diferencial?: string | null
+          dna_dor_principal?: string | null
+          dna_nicho?: string | null
+          dna_objetivo?: string | null
+          dna_objecao_comum?: string | null
+          dna_persona_data?: Json | null
+          dna_pilares?: Json | null
+          dna_produto?: string | null
+          dna_sonho_principal?: string | null
+          dna_tese?: string | null
+          dna_transformacao?: string | null
+          dna_uvp?: string | null
           graphic_elements?: string | null
           id?: string
           key_messages?: string | null
           logo_description?: string | null
           mission?: string | null
+          monthly_structure_data?: Json | null
           name: string
           pain_points?: string | null
           personality?: string | null
           personas?: string | null
-          phases_completed?: number[]
+          phases_completed?: number[] | null
           primary_color?: string | null
           purpose?: string | null
+          result_como_funciona?: string | null
+          result_essencia?: string | null
+          result_tom_voz?: string | null
+          routine_execution_days?: string[] | null
+          routine_feed_format_prefs?: Json | null
+          routine_fixed_hours?: string[] | null
+          routine_intentions_prefs?: Json | null
+          routine_planning_days?: string[] | null
+          routine_posts_per_week?: number | null
+          routine_posting_days?: string[] | null
           secondary_color?: string | null
           sector?: string | null
           segments?: string | null
+          trained_ais_chats?: Json | null
           typography?: string | null
           updated_at?: string
-          user_id: string
-          values?: string | null
-          vision?: string | null
-          vocabulary?: string | null
-          writing_style?: string | null
-          user_role?: string | null
-          user_motivation?: string | null
+          user_blockers?: string | null
           user_change_world?: string | null
-          user_tone_selected?: string[] | null
           user_creative_profile?: string[] | null
           user_energy_times?: string[] | null
-          user_blockers?: string | null
-          result_essencia?: string | null
-          result_tom_voz?: string | null
-          result_como_funciona?: string | null
+          user_id: string
+          user_motivation?: string | null
+          user_role?: string | null
+          user_tone_selected?: string[] | null
+          values?: string | null
+          vision?: string | null
+          weekly_structure_data?: Json | null
         }
         Update: {
           accent_color?: string | null
@@ -105,77 +185,145 @@ export type Database = {
           current_phase?: number
           description?: string | null
           desires?: string | null
+          dna_comparativo?: string | null
+          dna_competidores?: Json | null
+          dna_diferencial?: string | null
+          dna_dor_principal?: string | null
+          dna_nicho?: string | null
+          dna_objetivo?: string | null
+          dna_objecao_comum?: string | null
+          dna_persona_data?: Json | null
+          dna_pilares?: Json | null
+          dna_produto?: string | null
+          dna_sonho_principal?: string | null
+          dna_tese?: string | null
+          dna_transformacao?: string | null
+          dna_uvp?: string | null
           graphic_elements?: string | null
           id?: string
           key_messages?: string | null
           logo_description?: string | null
           mission?: string | null
+          monthly_structure_data?: Json | null
           name?: string
           pain_points?: string | null
           personality?: string | null
           personas?: string | null
-          phases_completed?: number[]
+          phases_completed?: number[] | null
           primary_color?: string | null
           purpose?: string | null
+          result_como_funciona?: string | null
+          result_essencia?: string | null
+          result_tom_voz?: string | null
+          routine_execution_days?: string[] | null
+          routine_feed_format_prefs?: Json | null
+          routine_fixed_hours?: string[] | null
+          routine_intentions_prefs?: Json | null
+          routine_planning_days?: string[] | null
+          routine_posts_per_week?: number | null
+          routine_posting_days?: string[] | null
           secondary_color?: string | null
           sector?: string | null
           segments?: string | null
+          trained_ais_chats?: Json | null
           typography?: string | null
           updated_at?: string
-          user_id?: string
-          values?: string | null
-          vision?: string | null
-          vocabulary?: string | null
-          writing_style?: string | null
-          user_role?: string | null
-          user_motivation?: string | null
+          user_blockers?: string | null
           user_change_world?: string | null
-          user_tone_selected?: string[] | null
           user_creative_profile?: string[] | null
           user_energy_times?: string[] | null
-          user_blockers?: string | null
-          result_essencia?: string | null
-          result_tom_voz?: string | null
-          result_como_funciona?: string | null
+          user_id?: string
+          user_motivation?: string | null
+          user_role?: string | null
+          user_tone_selected?: string[] | null
+          values?: string | null
+          vision?: string | null
+          weekly_structure_data?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "brands_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       calendar_activities: {
         Row: {
-          category: string
-          created_at: string
+          brand_id: string | null
+          completed: boolean | null
+          content: string | null
+          created_at: string | null
           date: string
-          description: string | null
           id: string
-          priority: string
-          status: string
           title: string
-          updated_at: string
-          user_id: string
+          type: string
+          user_id: string | null
         }
         Insert: {
-          category: string
-          created_at?: string
+          brand_id?: string | null
+          completed?: boolean | null
+          content?: string | null
+          created_at?: string | null
           date: string
-          description?: string | null
           id?: string
-          priority?: string
-          status?: string
           title: string
-          updated_at?: string
-          user_id: string
+          type: string
+          user_id?: string | null
         }
         Update: {
-          category?: string
-          created_at?: string
+          brand_id?: string | null
+          completed?: boolean | null
+          content?: string | null
+          created_at?: string | null
           date?: string
+          id?: string
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_activities_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      idea_inbox: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          status: string | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
           description?: string | null
           id?: string
-          priority?: string
-          status?: string
+          metadata?: Json | null
+          status?: string | null
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string | null
           title?: string
-          updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -189,7 +337,7 @@ export type Database = {
           main_goal: string | null
           onboarding_completed: boolean | null
           updated_at: string
-          user_id: string
+          user_id: string | null
           user_name: string | null
         }
         Insert: {
@@ -201,7 +349,7 @@ export type Database = {
           main_goal?: string | null
           onboarding_completed?: boolean | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
           user_name?: string | null
         }
         Update: {
@@ -213,26 +361,74 @@ export type Database = {
           main_goal?: string | null
           onboarding_completed?: boolean | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
           user_name?: string | null
+        }
+        Relationships: []
+      }
+      social_optimizer: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          diagnosis: string | null
+          handle: string | null
+          highlights: Json | null
+          id: string
+          name: string | null
+          pinned_posts: Json | null
+          print_url: string | null
+          profile_image_url: string | null
+          stats: Json | null
+          updated_at: string | null
+          user_id: string | null
+          website: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          diagnosis?: string | null
+          handle?: string | null
+          highlights?: Json | null
+          id?: string
+          name?: string | null
+          pinned_posts?: Json | null
+          print_url?: string | null
+          profile_image_url?: string | null
+          stats?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+          website?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          diagnosis?: string | null
+          handle?: string | null
+          highlights?: Json | null
+          id?: string
+          name?: string | null
+          pinned_posts?: Json | null
+          print_url?: string | null
+          profile_image_url?: string | null
+          stats?: Json | null
+          updated_at?: string | null
+          user_id?: string | null
+          website?: string | null
         }
         Relationships: []
       }
       user_roles: {
         Row: {
-          created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
-          created_at?: string
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
-          created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
@@ -244,13 +440,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
@@ -261,58 +451,47 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type PublicSchema = Database["public"]
 
 export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  PublicTableNameOrOptions extends
+  | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
+  | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+  ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+    Database[PublicTableNameOrOptions["schema"]]["Views"])
   : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+    Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
   ? R
   : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
+  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
+    PublicSchema["Views"])
+  ? (PublicSchema["Tables"] & PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+    Row: infer R
+  }
   ? R
   : never
   : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  PublicTableNameOrOptions extends
+  | keyof PublicSchema["Tables"]
+  | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+  ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
   : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
     Insert: infer I
   }
   ? I
   : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+  ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
     Insert: infer I
   }
   ? I
@@ -320,24 +499,20 @@ export type TablesInsert<
   : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  PublicTableNameOrOptions extends
+  | keyof PublicSchema["Tables"]
+  | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+  ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
   : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
     Update: infer U
   }
   ? U
   : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
+  ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
     Update: infer U
   }
   ? U
@@ -345,43 +520,14 @@ export type TablesUpdate<
   : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  PublicEnumNameOrOptions extends
+  | keyof PublicSchema["Enums"]
+  | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
   : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
+  ? PublicSchema["Enums"][PublicEnumNameOrOptions]
   : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
-
-export const Constants = {
-  public: {
-    Enums: {
-      app_role: ["admin", "moderator", "user"],
-    },
-  },
-} as const

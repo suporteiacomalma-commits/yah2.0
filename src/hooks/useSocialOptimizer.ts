@@ -23,9 +23,11 @@ export interface SocialOptimizerData {
         type: "transformation" | "journey" | "faq" | "custom";
     }[];
     pinned_posts: {
+        theme: string;
         content: string;
         thumbnail_url: string;
         logic: string;
+        link: string;
         type: "pain" | "process" | "transformation";
     }[];
     diagnosis: string | null;

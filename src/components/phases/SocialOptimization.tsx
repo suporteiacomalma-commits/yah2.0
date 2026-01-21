@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
     Camera, Plus, Pencil, Save, Upload, Link,
-    Loader2, Sparkles, ChevronRight, ArrowLeft,
+    Loader2, Sparkles, ChevronRight, ArrowLeft, ChevronLeft,
     Instagram, MessageSquare, Image as ImageIcon,
     MoreHorizontal, Grid, Film, UserSquare,
     TrendingUp, Compass, PlayCircle, History,
-    Trash2, Wand2, Brain, Check, ChevronDown, Menu
+    Trash2, Wand2, Brain, Check, ChevronDown, Menu, Sparkle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,12 +36,14 @@ export function SocialOptimization() {
     const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const profilePhotoInputRef = useRef<HTMLInputElement>(null);
+    const isDirty = useRef(false);
 
     // Initialize local data when socialData loads
     useEffect(() => {
         if (socialData) {
             setLocalData(socialData);
-            if (socialData.diagnosis || socialData.print_url || socialData.bio || socialData.name) {
+            // Only redirect to mockup (tela2) if we are still on the initial screen
+            if (step === "tela1" && (socialData.diagnosis || socialData.print_url || socialData.bio || socialData.name)) {
                 setStep("tela2");
             }
         } else {
@@ -54,13 +56,45 @@ export function SocialOptimization() {
                     { title: "Dúvidas", description: "", cover_url: "", type: "faq" }
                 ],
                 pinned_posts: [
-                    { content: "", thumbnail_url: "", logic: "Post 1 — Dor e Promessa: validar a dor real, explicar por que essa dor existe, apresentar promessa específica.", type: "pain" },
-                    { content: "", thumbnail_url: "", logic: "Post 2 — Processo/Ferramenta: mostrar como o método funciona e demonstrar o mecanismo antes → depois.", type: "process" },
-                    { content: "", thumbnail_url: "", logic: "Post 3 — Transformação + CTA: apresentar resultado concreto, prova e CTA direto.", type: "transformation" }
+                    { theme: "", content: "", thumbnail_url: "", logic: "Post 1 — Dor e Promessa: validar a dor real, explicar por que essa dor existe, apresentar promessa específica.", link: "", type: "pain" },
+                    { theme: "", content: "", thumbnail_url: "", logic: "Post 2 — Processo/Ferramenta: mostrar como o método funciona e demonstrar o mecanismo antes → depois.", link: "", type: "process" },
+                    { theme: "", content: "", thumbnail_url: "", logic: "Post 3 — Transformação + CTA: apresentar resultado concreto, prova e CTA direto.", link: "", type: "transformation" }
                 ]
             });
         }
     }, [socialData]);
+
+    const markAsDirty = () => {
+        isDirty.current = true;
+    };
+
+    // Auto-save logic with debounce
+
+    // Auto-save logic with debounce
+    useEffect(() => {
+        if (!socialData || !isDirty.current) return;
+
+        const timer = setTimeout(async () => {
+            const updates: Partial<SocialOptimizerData> = {};
+            let hasChanges = false;
+
+            // Compare localData with socialData
+            Object.keys(localData).forEach((key) => {
+                const k = key as keyof SocialOptimizerData;
+                if (JSON.stringify(localData[k]) !== JSON.stringify(socialData[k])) {
+                    (updates as any)[k] = localData[k];
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges) {
+                await updateSocialData.mutateAsync({ updates, silent: true });
+                isDirty.current = false;
+            }
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [localData, socialData]);
 
     const handleUploadPrint = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -263,7 +297,10 @@ export function SocialOptimization() {
     if (isLoading) return <div className="flex items-center justify-center p-20"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>;
 
     return (
-        <div className="w-full max-w-4xl mx-auto min-h-[600px] flex flex-col">
+        <div className={cn(
+            "w-full mx-auto min-h-[600px] flex flex-col transition-all duration-500",
+            step === "tela3b" ? "max-w-3xl" : "max-w-4xl"
+        )}>
             {step === "tela1" && (
                 <div className="flex-1 flex flex-col items-center justify-center space-y-10 animate-in fade-in zoom-in-95 duration-700 text-center py-10 px-6">
                     <div className="space-y-6 max-w-xl">
@@ -490,13 +527,13 @@ export function SocialOptimization() {
                                             </div>
                                         ))}
                                         {/* + IA / + Adicionado suggested in image 0 */}
-                                        <div className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0">
+                                        <div className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => setStep("tela3b")}>
                                             <div className="w-[66px] h-[66px] rounded-full border border-primary/20 p-0.5 bg-primary/5 flex items-center justify-center">
                                                 <Sparkles className="w-6 h-6 text-primary" />
                                             </div>
                                             <span className="text-[10px] font-medium text-primary text-center">+ IA</span>
                                         </div>
-                                        <div className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0">
+                                        <div className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => setStep("tela3b")}>
                                             <div className="w-[66px] h-[66px] rounded-full border border-slate-200 p-0.5 bg-white flex items-center justify-center">
                                                 <Plus className="w-8 h-8 text-slate-300" />
                                             </div>
@@ -581,24 +618,24 @@ export function SocialOptimization() {
 
             {/* Screen 3A: Bio Edit */}
             {step === "tela3a" && (
-                <Screen3A data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} updateSocialData={updateSocialData} />
+                <Screen3A data={localData} onBack={() => setStep("tela2")} onSave={(updates) => { setLocalData({ ...localData, ...updates }); markAsDirty(); }} updateSocialData={updateSocialData} markAsDirty={markAsDirty} />
             )}
 
             {/* Screen 3B: Highlights Edit */}
             {step === "tela3b" && (
-                <Screen3B data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} updateSocialData={updateSocialData} />
+                <Screen3B data={localData} brand={brand} onBack={() => setStep("tela2")} onSave={(updates) => { setLocalData({ ...localData, ...updates }); markAsDirty(); }} updateSocialData={updateSocialData} markAsDirty={markAsDirty} />
             )}
 
             {/* Screen 3C: Pinned Posts Edit */}
             {step === "tela3c" && (
-                <Screen3C data={localData} onBack={() => setStep("tela2")} onSave={(updates) => setLocalData({ ...localData, ...updates })} updateSocialData={updateSocialData} />
+                <Screen3C data={localData} brand={brand} onBack={() => setStep("tela2")} onSave={(updates) => { setLocalData({ ...localData, ...updates }); markAsDirty(); }} updateSocialData={updateSocialData} markAsDirty={markAsDirty} />
             )}
         </div>
     );
 }
 
 // SUB-COMPONENTS FOR STEP 3A/B/C
-function Screen3A({ data, onBack, onSave, updateSocialData }: { data: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any }) {
+function Screen3A({ data, onBack, onSave, updateSocialData, markAsDirty }: { data: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any, markAsDirty: () => void }) {
     const { getSetting } = useSystemSettings();
     const [bio, setBio] = useState(data.bio || "");
     const [chatInput, setChatInput] = useState("");
@@ -819,12 +856,31 @@ function Screen3A({ data, onBack, onSave, updateSocialData }: { data: any, onBac
     );
 }
 
-function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any }) {
+function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }: { data: any, brand: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any, markAsDirty: () => void }) {
     const { getSetting } = useSystemSettings();
     const [highlights, setHighlights] = useState(data.highlights || []);
     const [generatingIdx, setGeneratingIdx] = useState<number | null>(null);
     const [insightGeneratingIdx, setInsightGeneratingIdx] = useState<number | null>(null);
     const [contentGeneratingIdx, setContentGeneratingIdx] = useState<number | null>(null);
+    const [activeIndex, setActiveIndex] = useState(0);
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const scrollLeft = e.currentTarget.scrollLeft;
+        const width = e.currentTarget.offsetWidth;
+        const index = Math.round(scrollLeft / width);
+        if (index !== activeIndex) setActiveIndex(index);
+    };
+
+    const scrollToIndex = (index: number) => {
+        if (!scrollRef.current) return;
+        const width = scrollRef.current.offsetWidth;
+        scrollRef.current.scrollTo({
+            left: index * width,
+            behavior: 'smooth'
+        });
+        setActiveIndex(index);
+    };
 
     const handleGenerateImage = async (idx: number, promptText: string) => {
         if (!promptText) {
@@ -865,7 +921,7 @@ function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBac
         }
     };
 
-    const handleGenerateInsights = async (idx: number, title: string) => {
+    const handleGenerateInsights = async (idx: number, type: string, title: string) => {
         if (!title) {
             toast.error("Por favor, defina um título para o destaque primeiro");
             return;
@@ -873,14 +929,34 @@ function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBac
         setInsightGeneratingIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
+            const brandContext = brand ? `
+        Persona: ${brand.dna_persona_data?.name || 'Não definido'}
+        Nicho: ${brand.dna_nicho || 'Não definido'}
+        Produto: ${brand.dna_produto || 'Não definido'}
+        Diferencial: ${brand.dna_diferencial || 'Não definido'}
+        Tese: ${brand.dna_tese || 'Não definida'}
+        Tom de Voz: ${brand.result_tom_voz || 'Não definido'}
+      ` : '';
+
+            let specificPrompt = "";
+            if (type === 'transformation') {
+                specificPrompt = "Gerar explicações específicas do que deve compor um destaque de transformação: microvitórias, evidências visuais, progresso, antes/depois sem rosto, contrastes claros, gatilhos de credibilidade e cenas que façam o público enxergar a mudança.";
+            } else if (type === 'journey') {
+                specificPrompt = "Gerar através do card DNA de marca e personalidade a explicação clara de como estruturar o destaque de jornada. Incluir: etapas do método, bastidores, o que acontece por dentro, como o processo conduz à transformação. Acrescentar bloco ‘Quem está por trás’, ‘Pra quem é’ e ‘Pra quem NÃO é’ para aumentar segurança cognitiva do público do usuário";
+            } else if (type === 'faq') {
+                specificPrompt = "Gerar lista de dúvidas reais do público, microexplicações claras, CTA objetivo. Priorizar próximo passo de baixo risco: teste, conversa, mini-formulário, amostra guiada. Evitar respostas genéricas.";
+            } else {
+                specificPrompt = "Gerar estrutura igual aos três destaques principais, adaptada ao tema escolhido pelo usuário.";
+            }
+
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        { role: "system", content: "Você é um estrategista de marca e especialista em Instagram. Sua tarefa é criar insights estratégicos e curtos sobre o que postar em um destaque específico." },
-                        { role: "user", content: `Gere 3 tópicos curtos e poderosos sobre o que postar no destaque intitulado "${title}" para uma marca premium. Foco em autoridade e conexão.` }
+                        { role: "system", content: "Você é um estrategista de marca e especialista em Instagram premium. Saída curta e estratégica." },
+                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nTITULO DO DESTAQUE: ${title}\n\nOBJETIVO: ${specificPrompt}\n\nGere 3 tópicos curtos e poderosos sobre o que deve conter na descrição deste destaque.` }
                     ]
                 })
             });
@@ -899,30 +975,49 @@ function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBac
                 silent: true
             });
 
-            toast.success("Insights estratégicos gerados!");
+            toast.success("Sugestões da IA geradas!");
         } catch (e: any) {
-            toast.error("Erro ao gerar insights: " + e.message);
+            toast.error("Erro ao gerar sugestões: " + e.message);
         } finally {
             setInsightGeneratingIdx(null);
         }
     };
 
-    const handleGenerateContent = async (idx: number, title: string, insights: string) => {
+    const handleGenerateContent = async (idx: number, type: string, title: string, insights: string) => {
         if (!insights) {
-            toast.error("Por favor, gere os insights primeiro");
+            toast.error("Por favor, gere as sugestões primeiro");
             return;
         }
         setContentGeneratingIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
+            const brandContext = brand ? `
+        Persona: ${brand.dna_persona_data?.name || 'Não definido'}
+        Nicho: ${brand.dna_nicho || 'Não definido'}
+        Produto: ${brand.dna_produto || 'Não definido'}
+        Diferencial: ${brand.dna_diferencial || 'Não definido'}
+        Tom de Voz: ${brand.result_tom_voz || 'Não definido'}
+      ` : '';
+
+            let specificPrompt = "";
+            if (type === 'transformation') {
+                specificPrompt = "Gerar roteiro estruturado para montar o destaque de transformação com exemplos reais. Dizer o que NÃO colocar (frases genéricas, promessas milagrosas, dados inventados). Deixar sempre uma frase final que é o que ele gostaria de visualizar para comprar um serviço ou produto.";
+            } else if (type === 'journey') {
+                specificPrompt = "Gerar roteiro detalhado do processo/método, incluindo etapas, bastidores e o que acontece por dentro. Gerar exemplos de descrição do processo sem promessas vazias.";
+            } else if (type === 'faq') {
+                specificPrompt = "Gerar roteiro de dúvidas frequentes com microexplicações claras e CTA objetivo de baixo risco.";
+            } else {
+                specificPrompt = "Gerar roteiro estruturado adaptado ao tema.";
+            }
+
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        { role: "system", content: "Você é um roteirista de mídias sociais e estrategista de branding. Sua tarefa é transformar insights de destaques do Instagram em roteiros detalhados e prontos para gravar/postar." },
-                        { role: "user", content: `Com base nos seguintes insights para o destaque "${title}":\n\n${insights}\n\nCrie um roteiro detalhado com sugestões de 3 a 5 stories. \n\nIMPORTANTE: Use exatamente o marcador [STORY] antes de começar cada story. \nCada story deve ter um Título curto, Descrição Visual e Texto/Fala.\n\nExemplo de formato:\n[STORY]\n**Story 1: Titulo**\nVisual: ...\nTexto: ...\n\nMantenha o tom premium e focado em conversão.` }
+                        { role: "system", content: "Você é um roteirista de mídias sociais e estrategista de branding. Saída estruturada por [STORY]." },
+                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nTITULO: ${title}\n\nINSIGHTS: ${insights}\n\nOBJETIVO: ${specificPrompt}\n\nCrie um roteiro detalhado de 3 a 5 stories. Use exatamente o marcador [STORY] antes de cada story.` }
                     ]
                 })
             });
@@ -941,9 +1036,9 @@ function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBac
                 silent: true
             });
 
-            toast.success("Conteúdo detalhado gerado com sucesso!");
+            toast.success("Roteiro gerado com sucesso!");
         } catch (e: any) {
-            toast.error("Erro ao gerar conteúdo: " + e.message);
+            toast.error("Erro ao gerar roteiro: " + e.message);
         } finally {
             setContentGeneratingIdx(null);
         }
@@ -967,120 +1062,292 @@ function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBac
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Carousel Navigation Info */}
+            <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-4">
+                    <div className="flex gap-1.5">
+                        {highlights.map((_: any, i: number) => (
+                            <div
+                                key={i}
+                                className={cn(
+                                    "h-1.5 rounded-full transition-all duration-500",
+                                    activeIndex === i ? "w-6 bg-primary" : "w-1.5 bg-primary/20"
+                                )}
+                            />
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-2">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 transition-all active:scale-95 disabled:opacity-20"
+                            onClick={() => scrollToIndex(Math.max(0, activeIndex - 1))}
+                            disabled={activeIndex === 0}
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-8 px-4 rounded-full font-black text-[10px] uppercase tracking-wider gradient-primary shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-20"
+                            onClick={() => scrollToIndex(Math.min(highlights.length - 1, activeIndex + 1))}
+                            disabled={activeIndex === highlights.length - 1}
+                        >
+                            Próximo <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                    </div>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary/40">Visualizando {activeIndex + 1} de {highlights.length}</span>
+            </div>
+
+            <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar pb-10 -mx-4 px-4 gap-6"
+            >
                 {highlights.map((h: any, idx: number) => (
-                    <Card key={idx} className="bg-card rounded-3xl overflow-hidden border-border group hover:border-primary/50 transition-all">
-                        <div className="p-6 space-y-4">
-                            <div className="flex justify-center">
-                                <div className="relative group">
-                                    <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center overflow-hidden border border-border relative">
-                                        {generatingIdx === idx ? (
-                                            <div className="absolute inset-0 bg-primary/10 flex flex-col items-center justify-center gap-2">
-                                                <Loader2 className="w-6 h-6 text-primary animate-spin" />
-                                                <span className="text-[6px] font-black uppercase tracking-tighter text-primary animate-pulse">Criando...</span>
-                                            </div>
-                                        ) : h.cover_url ? (
-                                            <img src={h.cover_url} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <ImageIcon className="w-8 h-8 opacity-20" />
-                                        )}
+                    <div key={idx} className="min-w-full snap-center relative group/card">
+                        {/* Glow Background Effect */}
+                        <div className="absolute -inset-0.5 bg-gradient-to-tr from-primary/20 via-primary/5 to-transparent rounded-[2.5rem] blur opacity-0 group-hover/card:opacity-100 transition duration-700" />
+
+                        <Card className="relative bg-background/40 backdrop-blur-2xl border-white/5 shadow-2xl rounded-[2.5rem] overflow-hidden transition-all duration-500 hover:translate-y-[-4px] hover:border-primary/20">
+                            {/* Visual Header */}
+                            <div className="p-6 pb-4 flex flex-col items-center gap-6">
+                                <div className="relative group/cover cursor-pointer" onClick={() => handleGenerateImage(idx, h.title)}>
+                                    <div className="w-28 h-28 rounded-full border-2 border-dashed border-primary/20 p-1.5 group-hover/cover:border-primary/40 transition-all duration-500">
+                                        <div className="w-full h-full rounded-full bg-secondary/20 flex items-center justify-center overflow-hidden border border-white/5">
+                                            {generatingIdx === idx ? (
+                                                <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+                                                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                                </div>
+                                            ) : h.cover_url ? (
+                                                <img src={h.cover_url} className="w-full h-full object-cover transition-transform duration-700 group-hover/cover:scale-110" />
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-1.5 opacity-40">
+                                                    <Camera className="w-8 h-8" />
+                                                    <span className="text-[9px] font-black uppercase tracking-tighter">Capa</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <Button
-                                        size="icon"
-                                        className={cn(
-                                            "absolute -bottom-1 -right-1 h-8 w-8 rounded-full shadow-lg transition-all",
-                                            generatingIdx === idx ? "bg-primary opacity-50 cursor-not-allowed" : "gradient-primary"
-                                        )}
-                                        onClick={() => handleGenerateImage(idx, h.title)}
-                                        disabled={generatingIdx !== null}
-                                    >
-                                        {generatingIdx === idx ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Wand2 className="w-4 h-4 text-white" />}
-                                    </Button>
+                                    <div className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center border-4 border-background opacity-0 group-hover/cover:opacity-100 transition-all scale-75 group-hover/cover:scale-100">
+                                        <Wand2 className="w-4 h-4 text-white" />
+                                    </div>
+                                </div>
+
+                                <div className="w-full space-y-4">
+                                    <div className="text-center space-y-2">
+                                        <Label className="text-[9px] uppercase font-black tracking-[0.3em] text-muted-foreground/40 leading-none">Título do Destaque</Label>
+                                        <Input
+                                            className="font-black text-center uppercase tracking-widest text-lg h-12 rounded-2xl bg-white/5 border-white/5 focus-visible:ring-primary/20 transition-all group-hover/card:bg-white/10"
+                                            value={h.title}
+                                            placeholder={h.type === 'transformation' ? 'EX: RESULTADOS' : h.type === 'journey' ? 'EX: MÉTODO' : 'EX: FAQ'}
+                                            onChange={(e) => {
+                                                const n = [...highlights];
+                                                n[idx].title = e.target.value;
+                                                setHighlights(n);
+                                                markAsDirty();
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-center">
+                                        <div className="px-4 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest">
+                                            {h.type}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="space-y-3">
-                                <Input
-                                    className="font-black text-center uppercase tracking-widest text-xs h-10 rounded-xl"
-                                    value={h.title}
-                                    onChange={(e) => {
-                                        const n = [...highlights];
-                                        n[idx].title = e.target.value;
-                                        setHighlights(n);
-                                    }}
-                                />
-                                <div className="p-3 rounded-2xl bg-secondary/20 text-[10px] font-bold uppercase tracking-wider text-primary text-center">
-                                    {h.type}
-                                </div>
-                                <div className="space-y-2 relative">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground/40 ml-1">Estratégia de Conteúdo</Label>
+
+                            {/* Strategy Section */}
+                            <div className="px-6 py-6 space-y-6 bg-gradient-to-b from-white/[0.02] to-transparent border-t border-white/5">
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 text-primary/60">
+                                        <div className="w-2 h-2 rounded-full bg-primary/40 animate-pulse" />
+                                        <Label className="text-[10px] uppercase font-black tracking-widest">Estratégia de Conteúdo</Label>
+                                    </div>
                                     <Textarea
-                                        className="text-xs font-medium leading-relaxed min-h-[120px] rounded-2xl bg-secondary/5 border-white/5 focus-visible:ring-primary/20 transition-all no-scrollbar"
-                                        placeholder="O que postar aqui..."
+                                        className="text-xs font-medium leading-relaxed min-h-[120px] rounded-2xl bg-white/5 border-white/5 focus-visible:ring-primary/20 transition-all no-scrollbar resize-none p-4"
+                                        placeholder={
+                                            h.type === 'transformation' ? 'Lógica da transformação: antes/depois, vitórias, evidências claras...' :
+                                                h.type === 'journey' ? 'Processo/método, experiência e bastidores do seu DNA...' :
+                                                    'Dúvidas reais, autoridade e CTA de baixo risco...'
+                                        }
                                         value={h.description}
                                         onChange={(e) => {
                                             const n = [...highlights];
                                             n[idx].description = e.target.value;
                                             setHighlights(n);
+                                            markAsDirty();
                                         }}
                                     />
+                                </div>
+
+                                {h.type === 'journey' && (
+                                    <div className="space-y-4 p-5 bg-primary/5 rounded-[2rem] border border-primary/10 animate-in fade-in duration-500">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-black tracking-widest text-primary/50 ml-1">Quem está por trás</Label>
+                                            <Input
+                                                className="h-12 text-xs rounded-xl bg-white/5 border-white/5 focus:bg-white/10 transition-all font-medium"
+                                                value={h.who_behind || ""}
+                                                placeholder="Sua história, autoridade..."
+                                                onChange={(e) => {
+                                                    const n = [...highlights];
+                                                    n[idx].who_behind = e.target.value;
+                                                    setHighlights(n);
+                                                    markAsDirty();
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-primary/50 ml-1">Ideal para</Label>
+                                                <Input
+                                                    className="h-12 text-xs rounded-xl bg-white/5 border-white/5 hover:bg-white/10 transition-all font-medium"
+                                                    value={h.for_who || ""}
+                                                    placeholder="Público-alvo..."
+                                                    onChange={(e) => {
+                                                        const n = [...highlights];
+                                                        n[idx].for_who = e.target.value;
+                                                        setHighlights(n);
+                                                        markAsDirty();
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-red-500/50 ml-1">Não é para</Label>
+                                                <Input
+                                                    className="h-12 text-xs rounded-xl bg-red-500/5 border-red-500/10 focus-visible:ring-red-500/20 hover:bg-red-500/10 transition-all font-medium"
+                                                    value={h.not_for_who || ""}
+                                                    placeholder="Quem você não atende..."
+                                                    onChange={(e) => {
+                                                        const n = [...highlights];
+                                                        n[idx].not_for_who = e.target.value;
+                                                        setHighlights(n);
+                                                        markAsDirty();
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40 flex items-center gap-2">
+                                        <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" />
+                                        URL Estratégica
+                                    </Label>
+                                    <div className="relative">
+                                        <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/40" />
+                                        <Input
+                                            className="h-14 pl-12 text-xs rounded-2xl bg-white/5 border-white/5 focus:bg-white/10 transition-all font-mono"
+                                            value={h.link || ""}
+                                            placeholder="https://sua-oferta.com"
+                                            onChange={(e) => {
+                                                const n = [...highlights];
+                                                n[idx].link = e.target.value;
+                                                setHighlights(n);
+                                                markAsDirty();
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Buttons Footer */}
+                            <div className="p-6 space-y-6">
+                                <div className="flex flex-col gap-3">
                                     <Button
-                                        size="sm"
+                                        size="lg"
                                         variant="ghost"
-                                        className="w-full mt-2 rounded-xl text-[10px] uppercase font-black tracking-tight gap-1.5 hover:bg-primary/10 hover:text-primary transition-all group"
-                                        onClick={() => handleGenerateInsights(idx, h.title)}
+                                        className="w-full h-14 rounded-2xl bg-primary/10 hover:bg-primary/20 text-primary transition-all group/ia border border-primary/20"
+                                        onClick={() => handleGenerateInsights(idx, h.type, h.title)}
                                         disabled={insightGeneratingIdx !== null}
                                     >
-                                        {insightGeneratingIdx === idx ? (
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (
-                                            <Sparkles className="w-3 h-3 group-hover:rotate-12 transition-transform" />
-                                        )}
-                                        {insightGeneratingIdx === idx ? "Analisando..." : "Gerar Insights IA"}
+                                        <div className="flex items-center gap-3 w-full px-4">
+                                            {insightGeneratingIdx === idx ? (
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <Sparkles className="w-5 h-5 group-hover/ia:rotate-12 transition-transform" />
+                                            )}
+                                            <span className="text-[11px] font-black uppercase tracking-[0.2em] flex-1 text-left">Extrair Insights Premium</span>
+                                            <ChevronRight className="w-4 h-4 opacity-20 group-hover/ia:opacity-100 group-hover/ia:translate-x-1 transition-all" />
+                                        </div>
                                     </Button>
 
                                     <Button
-                                        size="sm"
+                                        size="lg"
                                         variant="outline"
-                                        className="w-full mt-1 border-primary/20 rounded-xl text-[10px] uppercase font-black tracking-tight gap-1.5 hover:bg-primary/10 hover:text-primary transition-all group"
-                                        onClick={() => handleGenerateContent(idx, h.title, h.description)}
+                                        className="w-full h-14 rounded-2xl border-primary/30 hover:bg-primary/5 transition-all group/roteiro"
+                                        onClick={() => handleGenerateContent(idx, h.type, h.title, h.description)}
                                         disabled={contentGeneratingIdx !== null || !h.description}
                                     >
-                                        {contentGeneratingIdx === idx ? (
-                                            <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (
-                                            <TrendingUp className="w-3 h-3 group-hover:scale-110 transition-transform" />
-                                        )}
-                                        {contentGeneratingIdx === idx ? "Roteirizando..." : "Gerar Conteúdo Detalhado"}
+                                        <div className="flex items-center gap-3 w-full px-4">
+                                            {contentGeneratingIdx === idx ? (
+                                                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                            ) : (
+                                                <TrendingUp className="w-5 h-5 text-primary group-hover/roteiro:scale-110 transition-transform" />
+                                            )}
+                                            <span className="text-[11px] font-black uppercase tracking-[0.2em] flex-1 text-left">Criar Roteiro Estratégico</span>
+                                            <ChevronRight className="w-4 h-4 opacity-20 group-hover/roteiro:opacity-100 group-hover/roteiro:translate-x-1 transition-all" />
+                                        </div>
                                     </Button>
+                                </div>
 
-                                    {h.content && (
-                                        <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                                            <div className="flex items-center justify-between ml-1">
-                                                <Label className="text-[10px] uppercase font-bold text-primary/60">Roteiro dos Stories</Label>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-6 px-2 text-[8px] uppercase font-black gap-1.5 text-green-500 hover:text-green-400 hover:bg-green-500/10 rounded-lg"
-                                                    onClick={() => handleShareWhatsApp(h)}
-                                                >
-                                                    <MessageSquare className="w-3 h-3" /> WhatsApp
-                                                </Button>
-                                            </div>
+                                <div className="flex items-center gap-3 pt-4 border-t border-white/5">
+                                    <Button
+                                        variant="secondary"
+                                        className="flex-1 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/5 transition-all group/save"
+                                        onClick={async () => {
+                                            const n = [...highlights];
+                                            await updateSocialData.mutateAsync({ updates: { highlights: n } });
+                                            toast.success("Estratégia salva!");
+                                        }}
+                                    >
+                                        <Save className="w-4 h-4 mr-2 group-hover/save:scale-110 transition-transform" /> Salvar Destaque
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="h-14 w-14 p-0 rounded-2xl border-white/5 hover:bg-white/10 transition-all hover:border-green-500/30 group/ws"
+                                        onClick={() => handleShareWhatsApp(h)}
+                                    >
+                                        <MessageSquare className="w-4 h-4 text-green-500 group-hover/ws:scale-110 transition-transform" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="h-14 w-14 p-0 rounded-2xl text-red-500/40 hover:text-red-500 hover:bg-red-500/10 transition-all group/del"
+                                        onClick={() => {
+                                            const n = [...highlights];
+                                            n[idx] = { ...n[idx], description: "", content: "", link: "", who_behind: "", for_who: "", not_for_who: "" };
+                                            setHighlights(n);
+                                        }}
+                                    >
+                                        <Trash2 className="w-4 h-4 group-hover/del:scale-110 transition-transform" />
+                                    </Button>
+                                </div>
 
-                                            <div className="space-y-3">
-                                                {h.content.split('[STORY]').filter(Boolean).map((story: string, sIdx: number) => (
-                                                    <div key={sIdx} className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2 relative group/story">
-                                                        <div className="absolute -left-2 top-4 w-1 h-8 bg-primary rounded-full opacity-0 group-hover/story:opacity-100 transition-opacity" />
+                                {h.content && (
+                                    <div className="mt-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-primary/20" />
+                                            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-primary">Script Sugerido</span>
+                                            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-primary/20" />
+                                        </div>
+
+                                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
+                                            {h.content.split('[STORY]').filter(Boolean).map((story: string, sIdx: number) => (
+                                                <div key={sIdx} className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-3 relative group/story transition-all hover:bg-white/[0.06]">
+                                                    <div className="absolute left-0 top-6 bottom-6 w-1 bg-primary rounded-r-full" />
+                                                    <div className="flex items-center justify-between opacity-40">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">Story {sIdx + 1}</span>
+                                                        <Sparkle className="w-3 h-3" />
+                                                    </div>
+                                                    <div className="text-[11px] leading-relaxed font-medium selection:bg-primary/20">
                                                         <Textarea
-                                                            className="text-[11px] font-medium leading-relaxed min-h-[100px] bg-transparent border-none p-0 focus-visible:ring-0 resize-none no-scrollbar"
+                                                            className="text-[11px] font-medium leading-relaxed min-h-[100px] bg-transparent border-none p-0 focus-visible:ring-0 resize-none no-scrollbar overflow-hidden"
                                                             value={story.trim()}
                                                             onChange={(e) => {
-                                                                const n = [...highlights];
-                                                                const stories = h.content.split('[STORY]');
-                                                                stories[sIdx + 1] = e.target.value; // +1 because split filter(Boolean) might shift if first is empty
-                                                                // Actually, let's be safer with the update logic
                                                                 const rawStories = h.content.split('[STORY]');
-                                                                // Find the index in rawStories
                                                                 let count = 0;
                                                                 for (let i = 0; i < rawStories.length; i++) {
                                                                     if (rawStories[i].trim()) {
@@ -1091,23 +1358,26 @@ function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBac
                                                                         count++;
                                                                     }
                                                                 }
+                                                                const n = [...highlights];
                                                                 n[idx].content = rawStories.join('[STORY]');
                                                                 setHighlights(n);
+                                                                markAsDirty();
                                                             }}
                                                         />
                                                     </div>
-                                                ))}
-                                            </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    </Card>
+                        </Card>
+                    </div>
                 ))}
             </div>
+
             <Button
-                className="w-full h-20 rounded-3xl text-lg font-black gradient-primary shadow-2xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3"
+                className="w-full h-20 rounded-3xl text-lg font-black gradient-primary shadow-2xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 mt-12"
                 onClick={() => { onSave({ highlights }); onBack(); toast.success("Estratégia salva!"); }}
             >
                 <Save className="w-6 h-6" />
@@ -1117,94 +1387,309 @@ function Screen3B({ data, onBack, onSave, updateSocialData }: { data: any, onBac
     );
 }
 
-function Screen3C({ data, onBack, onSave, updateSocialData }: { data: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any }) {
+function Screen3C({ data, brand, onBack, onSave, updateSocialData, markAsDirty }: { data: any, brand: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any, markAsDirty: () => void }) {
     const { getSetting } = useSystemSettings();
     const [posts, setPosts] = useState(data.pinned_posts || []);
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [generatingContentIdx, setGeneratingContentIdx] = useState<number | null>(null);
+    const [generatingCoverIdx, setGeneratingCoverIdx] = useState<number | null>(null);
 
-    const handleGeneratePost = async (idx: number) => {
-        setIsGenerating(true);
+    const handleGeneratePostContent = async (idx: number) => {
+        setGeneratingContentIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
-            // 1. Text content
-            const textResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            const brandContext = brand ? `
+                Persona: ${brand.dna_persona_data?.name || 'Não definido'}
+                Nicho: ${brand.dna_nicho || 'Não definido'}
+                Produto: ${brand.dna_produto || 'Não definido'}
+                Diferencial: ${brand.dna_diferencial || 'Não definido'}
+                Tese: ${brand.dna_tese || 'Não definida'}
+                Tom de Voz: ${brand.result_tom_voz || 'Não definido'}
+                Método: ${brand.dna_metodo || 'Não definido'}
+            ` : '';
+
+            let specificPrompt = "";
+            const postType = posts[idx].type;
+
+            if (postType === 'pain') {
+                specificPrompt = "Gerar explicação profunda sobre a raiz da dor do público do usuário. Busque dados do card personalidade e DNA de marca. Evitar clichês. Criar metáforas, cenas e exemplos que façam o cérebro visualizar a situação. Construir promessa específica baseada no método do usuário.";
+            } else if (postType === 'process') {
+                specificPrompt = "Descrever o passo-a-passo do mecanismo usando o DNA de Marca, a Personalidade, o Tom de Voz e o Método do usuário. Explicar como a mudança acontece na prática, mostrando as funções reais do produto/serviço, o fluxo, o ambiente, a ferramenta e o que a pessoa experimenta. Gerar narrativa clara e específica, sem mistério e sem frases genéricas. Criar cenas realistas que representem o processo (ambiente de atendimento, ferramenta sendo usada, etapas visíveis). Transformar tudo isso em um roteiro estruturado que ajude o público a visualizar exatamente como o resultado é gerado.";
+            } else if (postType === 'transformation') {
+                specificPrompt = "Gerar narrativa de transformação com prova concreta, antes/depois sem rosto, depoimentos e finalização com CTA direto.";
+            }
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
-                    messages: [{ role: "user", content: `Gere um mini-roteiro para um post fixado do tipo ${posts[idx].type}. Lógica: ${posts[idx].logic}.` }]
+                    messages: [
+                        { role: "system", content: "Você é um estrategista de conteúdo para Instagram premium. Saída estruturada e visual." },
+                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nTEMA: ${posts[idx].theme}\n\nOBJETIVO: ${specificPrompt}\n\nCrie um roteiro de legenda para post fixado.` }
+                    ]
                 })
             });
-            const textData = await textResponse.json();
-            const content = textData.choices[0].message.content;
+            const res = await response.json();
+            if (res.error) throw new Error(res.error.message);
 
-            // 2. Image
-            const imgResponse = await fetch('https://api.openai.com/v1/images/generations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    prompt: `Premium aesthetic instagram post cover for ${posts[idx].type}. Realistic, professional lighting, elegant textures, no faces. Style: ${data.diagnosis || 'Minimalist'}.`,
-                    n: 1,
-                    size: "1024x1024"
-                })
-            });
-            const imgData = await imgResponse.json();
-
+            const content = res.choices[0].message.content;
             const newPosts = [...posts];
             newPosts[idx].content = content;
-            newPosts[idx].thumbnail_url = imgData.data[0].url;
             setPosts(newPosts);
 
-            // Persistent save
             await updateSocialData.mutateAsync({
                 updates: { pinned_posts: newPosts },
                 silent: true
             });
-        } catch (e) {
-            toast.error("Erro na geração");
+
+            toast.success("Roteiro gerado com sucesso!");
+        } catch (e: any) {
+            toast.error("Erro ao gerar roteiro: " + e.message);
         } finally {
-            setIsGenerating(false);
+            setGeneratingContentIdx(null);
+        }
+    };
+
+    const handleGeneratePostCover = async (idx: number) => {
+        setGeneratingCoverIdx(idx);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            const prompt = `Premium aesthetic professional cover for Instagram post. Type: ${posts[idx].type}. Theme: ${posts[idx].theme || 'Business strategy'}. Style: ultra-high-end luxury photography, cinematic lighting, professional branding, elegant textures, no faces.`;
+
+            const response = await fetch('https://api.openai.com/v1/images/generations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    prompt,
+                    n: 1,
+                    size: "1024x1024"
+                })
+            });
+            const res = await response.json();
+            if (res.error) throw new Error(res.error.message);
+
+            const newPosts = [...posts];
+            newPosts[idx].thumbnail_url = res.data[0].url;
+            setPosts(newPosts);
+
+            await updateSocialData.mutateAsync({
+                updates: { pinned_posts: newPosts },
+                silent: true
+            });
+
+            toast.success("Capa gerada com sucesso!");
+        } catch (e: any) {
+            toast.error("Erro ao gerar capa: " + e.message);
+        } finally {
+            setGeneratingCoverIdx(null);
+        }
+    };
+
+    const handleExportPost = (post: any) => {
+        const text = `*Post Fixado: ${post.theme || 'Sem Tema'}*\n\n*Tipo:* ${post.type.toUpperCase()}\n\n*Roteiro/Legenda:*\n${post.content}\n\n*Link:* ${post.link || 'Não definido'}`;
+        const encodedText = encodeURIComponent(text);
+        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    };
+
+    const descriptions = {
+        pain: {
+            title: "Post 1 — Dor e Promessa",
+            desc: "Ajudar o público a visualizar a própria dor (situação que ele vive) e entender por que essa dor existe.\n• Descreva o que causa essa dor\n• Traga clareza do que muda quando a pessoa resolve isso."
+        },
+        process: {
+            title: "Post 2 — Processo / Ferramenta",
+            desc: "Mostrar o “como” — o mecanismo que gera o resultado.\n• Objetivo: fazer o público visualizar como será feito a transformação, através de cenas reais da ferramenta, atendimento ou serviço.\n• Mostra o “como” → reduz medo de enganação."
+        },
+        transformation: {
+            title: "Post 3 — Transformação + CTA",
+            desc: "Mostrar o resultado real e guiar para a decisão.\n• Objetivo: fazer o público visualizar como o serviço ou produto aliviou a vida de alguém, através de depoimentos, feedbacks ou narrativas de antes e depois.\n• Finalize com um CTA direto e leve."
         }
     };
 
     return (
-        <div className="flex-1 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="w-5 h-5" /></Button>
-                <h2 className="text-2xl font-black">Estratégia dos Posts Fixados</h2>
+        <div className="flex-1 space-y-8 animate-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto pb-20">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full bg-white/5 hover:bg-white/10">
+                        <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                    <div>
+                        <h2 className="text-2xl font-black tracking-tight">Estratégia dos Posts Fixados</h2>
+                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-[0.2em] mt-1 opacity-50">Configuração de autoridade no topo do perfil</p>
+                    </div>
+                </div>
             </div>
 
-            <div className="space-y-6">
-                {posts.map((post: any, idx: number) => (
-                    <Card key={idx} className="bg-card rounded-[32px] overflow-hidden border-border group">
-                        <div className="flex flex-col md:flex-row gap-6 p-6">
-                            <div className="w-full md:w-1/3 aspect-square rounded-2xl bg-secondary relative overflow-hidden shrink-0">
-                                {post.thumbnail_url ? <img src={post.thumbnail_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center opacity-10"><Sparkles className="w-12 h-12" /></div>}
-                                <Button className="absolute bottom-4 right-4 h-12 w-12 rounded-xl shadow-2xl" onClick={() => handleGeneratePost(idx)} disabled={isGenerating}>
-                                    {isGenerating ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                                </Button>
-                            </div>
-                            <div className="flex-1 space-y-4">
-                                <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Post {idx + 1} — {post.type?.toUpperCase()}</span>
-                                    <p className="text-xs text-muted-foreground font-medium italic">{post.logic}</p>
+            <div className="space-y-12">
+                {posts.map((post: any, idx: number) => {
+                    const info = (descriptions as any)[post.type] || { title: `Post ${idx + 1}`, desc: "" };
+                    return (
+                        <Card key={idx} className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border-white/5 overflow-hidden group/post relative">
+                            {/* Accent Background */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[100px] -mr-32 -mt-32 rounded-full pointer-events-none" />
+
+                            <div className="p-8 space-y-8 relative">
+                                {/* Header Info */}
+                                <div className="flex flex-col md:flex-row gap-8">
+                                    <div className="w-full md:w-[280px] space-y-4 shrink-0">
+                                        <div
+                                            className="aspect-square rounded-[2rem] bg-white/5 border border-white/10 relative overflow-hidden group/cover cursor-pointer hover:border-primary/30 transition-all shadow-2xl"
+                                            onClick={() => handleGeneratePostCover(idx)}
+                                        >
+                                            {post.thumbnail_url ? (
+                                                <img src={post.thumbnail_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Capa" />
+                                            ) : (
+                                                <div className="w-full h-full flex flex-col items-center justify-center gap-3 opacity-30 group-hover:opacity-100 transition-opacity">
+                                                    <div className="p-4 bg-white/5 rounded-2xl">
+                                                        <ImageIcon className="w-8 h-8" />
+                                                    </div>
+                                                    <span className="text-[8px] font-black uppercase tracking-[0.2em]">Gerar Capa</span>
+                                                </div>
+                                            )}
+
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                                                {generatingCoverIdx === idx ? (
+                                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                                ) : (
+                                                    <Wand2 className="w-8 h-8 text-white animate-pulse" />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-primary/60 ml-1">Tema Principal</Label>
+                                                <Input
+                                                    className="h-12 rounded-2xl bg-white/5 border-white/5 focus:bg-white/10 transition-all font-black uppercase text-xs tracking-widest"
+                                                    value={post.theme}
+                                                    placeholder="EX: MUDANDO O JOGO"
+                                                    onChange={(e) => {
+                                                        const n = [...posts];
+                                                        n[idx].theme = e.target.value;
+                                                        setPosts(n);
+                                                        markAsDirty();
+                                                    }}
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40 ml-1">Link Estratégico</Label>
+                                                <div className="relative">
+                                                    <Link className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                                                    <Input
+                                                        className="h-11 pl-12 rounded-xl bg-white/5 border-white/5 focus:bg-white/10 transition-all text-[10px] font-mono"
+                                                        value={post.link}
+                                                        placeholder="https://link-do-post.com"
+                                                        onChange={(e) => {
+                                                            const n = [...posts];
+                                                            n[idx].link = e.target.value;
+                                                            setPosts(n);
+                                                            markAsDirty();
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 space-y-6">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-4 w-1 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
+                                                <h3 className="text-lg font-black tracking-tight">{info.title}</h3>
+                                            </div>
+                                            <div className="p-5 rounded-3xl bg-primary/5 border border-primary/10">
+                                                <p className="text-[11px] leading-relaxed text-primary/80 font-medium whitespace-pre-line">{info.desc}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3 relative group/script">
+                                            <div className="flex items-center justify-between ml-1">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40">Roteiro / Legenda IA</Label>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 text-[9px] font-black uppercase tracking-widest text-primary hover:text-primary/100 transition-all"
+                                                    onClick={() => handleGeneratePostContent(idx)}
+                                                    disabled={generatingContentIdx === idx}
+                                                >
+                                                    {generatingContentIdx === idx ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                                                    {post.content ? "Gerar Nova Versão" : "Criar Roteiro"}
+                                                </Button>
+                                            </div>
+                                            <Textarea
+                                                className="min-h-[200px] rounded-[2rem] p-6 bg-white/[0.03] border-white/5 focus-visible:ring-primary/20 transition-all text-xs font-medium leading-relaxed resize-none no-scrollbar"
+                                                value={post.content}
+                                                placeholder="Aguardando geração da estratégia..."
+                                                onChange={(e) => {
+                                                    const n = [...posts];
+                                                    n[idx].content = e.target.value;
+                                                    setPosts(n);
+                                                    markAsDirty();
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                                <Textarea
-                                    className="min-h-[150px] rounded-2xl p-4 bg-background/50 border-none focus:ring-1 focus:ring-primary/20"
-                                    value={post.content}
-                                    onChange={(e) => {
-                                        const n = [...posts];
-                                        n[idx].content = e.target.value;
-                                        setPosts(n);
-                                    }}
-                                    placeholder="Roteiro ou legenda estratégica..."
-                                />
+
+                                {/* Footer Actions */}
+                                <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-white/5">
+                                    <Button
+                                        className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest gradient-primary shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all group/save"
+                                        onClick={async () => {
+                                            await updateSocialData.mutateAsync({ updates: { pinned_posts: posts } });
+                                            toast.success("Post salvo com sucesso!");
+                                        }}
+                                    >
+                                        <Save className="w-4 h-4 mr-2 group-hover/save:scale-110 transition-transform" /> Salvar Post
+                                    </Button>
+
+                                    <Button
+                                        variant="outline"
+                                        className="h-14 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest border-white/5 bg-white/5 hover:bg-white/10 transition-all group/export"
+                                        onClick={() => handleExportPost(post)}
+                                    >
+                                        <MessageSquare className="w-4 h-4 mr-2 text-green-500 group-export:scale-110 transition-transform" /> Exportar
+                                    </Button>
+
+                                    <Button
+                                        variant="ghost"
+                                        className="h-14 w-14 rounded-2xl text-red-500/40 hover:text-red-500 hover:bg-red-500/5 transition-all group/clear"
+                                        onClick={() => {
+                                            const n = [...posts];
+                                            n[idx] = { ...n[idx], theme: "", content: "", thumbnail_url: "", link: "" };
+                                            setPosts(n);
+                                        }}
+                                    >
+                                        <Trash2 className="w-4 h-4 group-hover/clear:scale-110 transition-transform" />
+                                    </Button>
+
+                                    <div className="flex-1" />
+
+                                    <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/5">
+                                        <Brain className="w-3 h-3 text-primary/40" />
+                                        <span className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-widest">IA Chat Sugestões</span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </Card>
-                ))}
+                        </Card>
+                    );
+                })}
             </div>
-            <Button className="w-full h-14 rounded-2xl" onClick={() => { onSave({ pinned_posts: posts }); onBack(); }}>Salvar Posts Fixados</Button>
+
+            <Button
+                className="w-full h-20 rounded-[2.5rem] text-lg font-black gradient-primary shadow-2xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-4 mt-8"
+                onClick={() => {
+                    onSave({ pinned_posts: posts });
+                    onBack();
+                    toast.success("Estratégia completa salva!");
+                }}
+            >
+                <div className="p-3 bg-white/20 rounded-2xl">
+                    <Check className="w-6 h-6" />
+                </div>
+                <span>Concluir Estratégia de Posts</span>
+            </Button>
         </div>
     );
 }

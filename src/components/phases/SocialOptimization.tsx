@@ -1040,27 +1040,45 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
         setGeneratingIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) throw new Error("Chave da API não configurada");
+
+            console.log("Generating image for:", promptText);
             const response = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
+                    model: "dall-e-3",
                     prompt: `Premium minimalist flat icon for Instagram highlight cover. Subject: ${promptText}. Stylized clean minimalist graphic, high-contrast solid bold background color, professional luxury branding, simple geometric design, vector style, flat design, no textures, no photorealism, no human faces.`,
                     n: 1,
                     size: "1024x1024"
                 })
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("OpenAI API error:", errorData);
+                throw new Error(errorData.error?.message || `Erro na API: ${response.status}`);
+            }
+
             const res = await response.json();
-
-            if (res.error) throw new Error(res.error.message);
-
             const tempUrl = res.data[0].url;
+            console.log("Image generated, temporary URL:", tempUrl);
 
             // PERSISTENCE: Download from OpenAI and Upload to Supabase
-            const imageRes = await fetch(tempUrl);
-            const imageBlob = await imageRes.blob();
+            console.log("Downloading image to persist in storage...");
+            let imageBlob;
+            try {
+                const imageRes = await fetch(tempUrl);
+                if (!imageRes.ok) throw new Error("Erro ao baixar imagem da OpenAI");
+                imageBlob = await imageRes.blob();
+            } catch (fetchErr: any) {
+                console.error("Fetch image error:", fetchErr);
+                throw new Error("Erro ao baixar imagem (CORS ou rede). Tente novamente.");
+            }
 
             const fileName = `ai_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
             const filePath = `highlight_covers/${brand.id}/${fileName}`;
+            console.log("Uploading to path:", filePath);
 
             const { error: uploadError } = await supabase.storage
                 .from("brand_documents")
@@ -1084,8 +1102,8 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
 
             toast.success("Ícone gerado e salvo com sucesso!");
         } catch (e: any) {
-            console.error("Error generating/persisting icon:", e);
-            toast.error("Erro ao gerar ícone: " + e.message);
+            console.error("Full error generating/persisting icon:", e);
+            toast.error("Erro ao gerar ícone: " + (e.message || "Erro desconhecido"));
         } finally {
             setGeneratingIdx(null);
         }

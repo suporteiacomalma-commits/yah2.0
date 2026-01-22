@@ -11,7 +11,7 @@ import { BrandDNANotebook } from "@/components/phases/BrandDNANotebook";
 import { WeeklyFixedNotebook } from "@/components/phases/WeeklyFixedNotebook";
 import { SocialOptimization } from "@/components/phases/SocialOptimization";
 import { TrainedAIs } from "@/components/phases/TrainedAIs";
-import { BrandTrunk } from "@/components/phases/BrandTrunk";
+import { BrandVault } from "@/components/phases/BrandVault";
 
 export default function PhasePage() {
   const { phaseId } = useParams();
@@ -54,7 +54,7 @@ export default function PhasePage() {
       <div className="flex-1 p-6 md:p-8">
         <div className={cn(
           "mx-auto",
-          (phaseNumber === 4) ? "max-w-[1700px]" : "max-w-3xl"
+          (phaseNumber === 4 || phaseNumber === 8) ? "max-w-[1700px]" : "max-w-3xl"
         )}>
           {/* Back Button */}
           <Button
@@ -103,7 +103,7 @@ export default function PhasePage() {
             ) : phaseNumber === 6 ? (
               <TrainedAIs />
             ) : phaseNumber === 8 ? (
-              <BrandTrunk />
+              <BrandVault />
             ) : (
               <div className="text-center py-12">
                 <Icon className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />

@@ -5,7 +5,7 @@ import {
     Instagram, MessageSquare, Image as ImageIcon,
     MoreHorizontal, Grid, Film, UserSquare,
     TrendingUp, Compass, PlayCircle, History,
-    Trash2, Wand2, Brain, Check, ChevronDown, Menu, Sparkle
+    Trash2, Wand2, Brain, Check, ChevronDown, Menu, Sparkle, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,8 @@ export function SocialOptimization() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [highlightIndex, setHighlightIndex] = useState(0);
+    const [postIndex, setPostIndex] = useState(0);
     const profilePhotoInputRef = useRef<HTMLInputElement>(null);
     const isDirty = useRef(false);
 
@@ -510,7 +512,7 @@ export function SocialOptimization() {
                                     <h3 className="text-xs font-bold text-slate-900">Destaques</h3>
                                     <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
                                         {localData.highlights?.map((highlight, idx) => (
-                                            <div key={idx} className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => setStep("tela3b")}>
+                                            <div key={idx} className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => { setHighlightIndex(idx); setStep("tela3b"); }}>
                                                 <div className="w-[66px] h-[66px] rounded-full border border-slate-200 p-0.5 bg-white flex items-center justify-center relative">
                                                     <div className="w-full h-full rounded-full bg-slate-50 flex items-center justify-center overflow-hidden">
                                                         {highlight.cover_url ? (
@@ -527,13 +529,13 @@ export function SocialOptimization() {
                                             </div>
                                         ))}
                                         {/* + IA / + Adicionado suggested in image 0 */}
-                                        <div className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => setStep("tela3b")}>
+                                        <div className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => { setHighlightIndex(localData.highlights?.length || 0); setStep("tela3b"); }}>
                                             <div className="w-[66px] h-[66px] rounded-full border border-primary/20 p-0.5 bg-primary/5 flex items-center justify-center">
                                                 <Sparkles className="w-6 h-6 text-primary" />
                                             </div>
                                             <span className="text-[10px] font-medium text-primary text-center">+ IA</span>
                                         </div>
-                                        <div className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => setStep("tela3b")}>
+                                        <div className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => { setHighlightIndex(localData.highlights?.length || 0); setStep("tela3b"); }}>
                                             <div className="w-[66px] h-[66px] rounded-full border border-slate-200 p-0.5 bg-white flex items-center justify-center">
                                                 <Plus className="w-8 h-8 text-slate-300" />
                                             </div>
@@ -556,7 +558,7 @@ export function SocialOptimization() {
                                     </div>
                                     <div className="grid grid-cols-3 gap-[1px]">
                                         {localData.pinned_posts?.map((post, idx) => (
-                                            <div key={idx} className="aspect-square relative group cursor-pointer bg-slate-100 overflow-hidden" onClick={() => setStep("tela3c")}>
+                                            <div key={idx} className="aspect-square relative group cursor-pointer bg-slate-100 overflow-hidden" onClick={() => { setPostIndex(idx); setStep("tela3c"); }}>
                                                 {post.thumbnail_url ? (
                                                     <img src={post.thumbnail_url} className="w-full h-full object-cover" />
                                                 ) : (
@@ -623,12 +625,12 @@ export function SocialOptimization() {
 
             {/* Screen 3B: Highlights Edit */}
             {step === "tela3b" && (
-                <Screen3B data={localData} brand={brand} onBack={() => setStep("tela2")} onSave={(updates) => { setLocalData({ ...localData, ...updates }); markAsDirty(); }} updateSocialData={updateSocialData} markAsDirty={markAsDirty} />
+                <Screen3B data={localData} brand={brand} initialIndex={highlightIndex} onBack={() => setStep("tela2")} onSave={(updates) => { setLocalData({ ...localData, ...updates }); markAsDirty(); }} updateSocialData={updateSocialData} markAsDirty={markAsDirty} />
             )}
 
             {/* Screen 3C: Pinned Posts Edit */}
             {step === "tela3c" && (
-                <Screen3C data={localData} brand={brand} onBack={() => setStep("tela2")} onSave={(updates) => { setLocalData({ ...localData, ...updates }); markAsDirty(); }} updateSocialData={updateSocialData} markAsDirty={markAsDirty} />
+                <Screen3C data={localData} brand={brand} initialIndex={postIndex} onBack={() => setStep("tela2")} onSave={(updates) => { setLocalData({ ...localData, ...updates }); markAsDirty(); }} updateSocialData={updateSocialData} markAsDirty={markAsDirty} />
             )}
         </div>
     );
@@ -856,30 +858,178 @@ function Screen3A({ data, onBack, onSave, updateSocialData, markAsDirty }: { dat
     );
 }
 
-function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }: { data: any, brand: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any, markAsDirty: () => void }) {
+interface AutoResizeTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { }
+
+const AutoResizeTextarea = (props: AutoResizeTextareaProps) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustHeight = () => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    };
+
+    useEffect(() => {
+        adjustHeight();
+    }, [props.value]);
+
+    return (
+        <Textarea
+            {...props}
+            ref={textareaRef}
+            onInput={(e) => {
+                adjustHeight();
+                if (props.onInput) props.onInput(e);
+            }}
+            style={{ ...props.style, overflow: 'hidden', resize: 'none' }}
+        />
+    );
+};
+
+function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialData, markAsDirty }: { data: any, brand: any, initialIndex?: number, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any, markAsDirty: () => void }) {
     const { getSetting } = useSystemSettings();
     const [highlights, setHighlights] = useState(data.highlights || []);
     const [generatingIdx, setGeneratingIdx] = useState<number | null>(null);
     const [insightGeneratingIdx, setInsightGeneratingIdx] = useState<number | null>(null);
     const [contentGeneratingIdx, setContentGeneratingIdx] = useState<number | null>(null);
-    const [activeIndex, setActiveIndex] = useState(0);
+    const [activeIndex, setActiveIndex] = useState(initialIndex);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const highlightRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+    useEffect(() => {
+        // Multiple attempts to ensure scroll happens after layout stabilizes
+        const scroll = () => scrollToIndex(initialIndex);
+
+        const timers = [
+            setTimeout(scroll, 50),   // Immediate
+            setTimeout(scroll, 200),  // Mid-animation
+            setTimeout(scroll, 500)   // End-animation
+        ];
+
+        return () => timers.forEach(clearTimeout);
+    }, [initialIndex]);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (!scrollRef.current) return;
         const scrollLeft = e.currentTarget.scrollLeft;
-        const width = e.currentTarget.offsetWidth;
-        const index = Math.round(scrollLeft / width);
-        if (index !== activeIndex) setActiveIndex(index);
+        const width = e.currentTarget.clientWidth;
+        if (width > 0) {
+            const index = Math.round(scrollLeft / width);
+            if (index !== activeIndex && index >= 0 && index < highlights.length) {
+                setActiveIndex(index);
+            }
+        }
     };
 
     const scrollToIndex = (index: number) => {
-        if (!scrollRef.current) return;
-        const width = scrollRef.current.offsetWidth;
-        scrollRef.current.scrollTo({
-            left: index * width,
-            behavior: 'smooth'
-        });
-        setActiveIndex(index);
+        const el = highlightRefs.current[index];
+        if (el) {
+            el.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+            setActiveIndex(index);
+        } else if (index < highlights.length) {
+            // Retry once if element not yet available
+            setTimeout(() => {
+                const retryEl = highlightRefs.current[index];
+                if (retryEl) {
+                    retryEl.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'center'
+                    });
+                    setActiveIndex(index);
+                }
+            }, 150);
+        }
+    };
+
+    const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+        const file = e.target.files?.[0];
+        if (!file || !brand) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("O arquivo deve ter menos de 5MB.");
+            return;
+        }
+
+        setGeneratingIdx(idx);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+            const filePath = `highlight_covers/${brand.id}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from("brand_documents")
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from("brand_documents")
+                .getPublicUrl(filePath);
+
+            const newHighlights = [...highlights];
+            newHighlights[idx].cover_url = publicUrl;
+            setHighlights(newHighlights);
+
+            await updateSocialData.mutateAsync({
+                updates: { highlights: newHighlights },
+                silent: true
+            });
+
+            toast.success("Capa enviada com sucesso!");
+        } catch (error: any) {
+            console.error("Upload error:", error);
+            toast.error("Erro ao enviar capa.");
+        } finally {
+            setGeneratingIdx(null);
+            if (e.target) e.target.value = "";
+        }
+    };
+
+    const handleDownloadCover = async (url: string, title: string) => {
+        if (!url) return;
+
+        const toastId = toast.loading("Preparando download...");
+        try {
+            // Add cache-busting to bypass aggressive caching
+            const fetchUrl = url.includes('?') ? `${url}&t=${Date.now()}` : `${url}?t=${Date.now()}`;
+
+            const response = await fetch(fetchUrl, {
+                mode: 'cors',
+                credentials: 'omit'
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            // Ensure filename is clean
+            const safeTitle = title.toLowerCase().trim().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+            link.download = `capa-${safeTitle || 'destaque'}.png`;
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Short delay before revoking to ensure click handled
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 100);
+
+            toast.success("Download concluído!", { id: toastId });
+        } catch (error: any) {
+            console.error("Download error:", error);
+            toast.error("Erro no download direto. Abrindo em nova aba...", { id: toastId });
+            // Fallback: Just open the URL in a new tab
+            window.open(url, '_blank');
+        }
     };
 
     const handleGenerateImage = async (idx: number, promptText: string) => {
@@ -894,7 +1044,7 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
                 body: JSON.stringify({
-                    prompt: `Premium 3D high-fidelity porcelain icon for Instagram highlight. Subject: ${promptText}. Style: futuristic Glassmorphism, ultra-elegant textures, clean luxury branding style, solid soft-gradient background, high-end professional graphic design, 8k resolution, cinematic lighting, no human faces.`,
+                    prompt: `Premium minimalist flat icon for Instagram highlight cover. Subject: ${promptText}. Stylized clean minimalist graphic, high-contrast solid bold background color, professional luxury branding, simple geometric design, vector style, flat design, no textures, no photorealism, no human faces.`,
                     n: 1,
                     size: "1024x1024"
                 })
@@ -903,8 +1053,27 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
 
             if (res.error) throw new Error(res.error.message);
 
+            const tempUrl = res.data[0].url;
+
+            // PERSISTENCE: Download from OpenAI and Upload to Supabase
+            const imageRes = await fetch(tempUrl);
+            const imageBlob = await imageRes.blob();
+
+            const fileName = `ai_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
+            const filePath = `highlight_covers/${brand.id}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from("brand_documents")
+                .upload(filePath, imageBlob);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from("brand_documents")
+                .getPublicUrl(filePath);
+
             const newHighlights = [...highlights];
-            newHighlights[idx].cover_url = res.data[0].url;
+            newHighlights[idx].cover_url = publicUrl;
             setHighlights(newHighlights);
 
             // Persistent save
@@ -913,8 +1082,9 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                 silent: true
             });
 
-            toast.success("Ícone gerado com sucesso!");
+            toast.success("Ícone gerado e salvo com sucesso!");
         } catch (e: any) {
+            console.error("Error generating/persisting icon:", e);
             toast.error("Erro ao gerar ícone: " + e.message);
         } finally {
             setGeneratingIdx(null);
@@ -1050,22 +1220,36 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
         window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     };
 
+    const handleShareAllStories = (h: any) => {
+        if (!h.content) return;
+
+        const stories = h.content.split('[STORY]').filter(Boolean);
+        let text = `*🚀 TODOS OS STORIES: ${h.title.toUpperCase()}*\n\n`;
+
+        stories.forEach((story, idx) => {
+            text += `*STORY ${idx + 1}*\n${story.trim()}\n\n---\n\n`;
+        });
+
+        const encodedText = encodeURIComponent(text);
+        window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    };
+
     return (
         <div className="flex-1 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="w-5 h-5" /></Button>
-                    <h2 className="text-2xl font-black">Estratégia dos Destaques</h2>
+                    <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0"><ArrowLeft className="w-5 h-5" /></Button>
+                    <h2 className="text-xl sm:text-2xl font-black truncate">Estratégia dos Destaques</h2>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => setHighlights([...highlights, { title: "Novo", description: "", cover_url: "", type: "custom" }])}>
+                <Button variant="outline" size="sm" className="rounded-xl gap-2 w-full sm:w-auto h-11" onClick={() => setHighlights([...highlights, { title: "Novo", description: "", cover_url: "", type: "custom" }])}>
                     <Plus className="w-4 h-4" /> Novo Destaque
                 </Button>
             </div>
 
             {/* Carousel Navigation Info */}
-            <div className="flex items-center justify-between px-2">
-                <div className="flex items-center gap-4">
-                    <div className="flex gap-1.5">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+                <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-6 mt-2 sm:mt-0">
+                    <div className="flex gap-1.5 order-2 sm:order-1">
                         {highlights.map((_: any, i: number) => (
                             <div
                                 key={i}
@@ -1077,11 +1261,11 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                         ))}
                     </div>
 
-                    <div className="flex items-center gap-2 ml-2">
+                    <div className="flex items-center gap-2 order-1 sm:order-2">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 transition-all active:scale-95 disabled:opacity-20"
+                            className="h-9 w-9 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 transition-all active:scale-95 disabled:opacity-20"
                             onClick={() => scrollToIndex(Math.max(0, activeIndex - 1))}
                             disabled={activeIndex === 0}
                         >
@@ -1090,31 +1274,38 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                         <Button
                             variant="secondary"
                             size="sm"
-                            className="h-8 px-4 rounded-full font-black text-[10px] uppercase tracking-wider gradient-primary shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-20"
+                            className="h-9 px-4 rounded-full font-black text-[10px] uppercase tracking-wider gradient-primary shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-20 flex items-center gap-2"
                             onClick={() => scrollToIndex(Math.min(highlights.length - 1, activeIndex + 1))}
                             disabled={activeIndex === highlights.length - 1}
                         >
-                            Próximo <ChevronRight className="w-4 h-4 ml-1" />
+                            <span>Próximo</span>
+                            <ChevronRight className="w-4 h-4" />
                         </Button>
                     </div>
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary/40">Visualizando {activeIndex + 1} de {highlights.length}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary/40 text-center sm:text-right w-full sm:w-auto bg-white/5 sm:bg-transparent py-1.5 sm:py-0 rounded-full sm:rounded-none">
+                    Visualizando {activeIndex + 1} de {highlights.length}
+                </span>
             </div>
 
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar pb-10 -mx-4 px-4 gap-6"
+                className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar pb-10"
             >
                 {highlights.map((h: any, idx: number) => (
-                    <div key={idx} className="min-w-full snap-center relative group/card">
+                    <div
+                        key={idx}
+                        ref={el => highlightRefs.current[idx] = el}
+                        className="w-full shrink-0 snap-center relative group/card px-4"
+                    >
                         {/* Glow Background Effect */}
                         <div className="absolute -inset-0.5 bg-gradient-to-tr from-primary/20 via-primary/5 to-transparent rounded-[2.5rem] blur opacity-0 group-hover/card:opacity-100 transition duration-700" />
 
                         <Card className="relative bg-background/40 backdrop-blur-2xl border-white/5 shadow-2xl rounded-[2.5rem] overflow-hidden transition-all duration-500 hover:translate-y-[-4px] hover:border-primary/20">
                             {/* Visual Header */}
-                            <div className="p-6 pb-4 flex flex-col items-center gap-6">
-                                <div className="relative group/cover cursor-pointer" onClick={() => handleGenerateImage(idx, h.title)}>
+                            <div className="p-4 sm:p-6 pb-4 flex flex-col items-center gap-4 sm:gap-6">
+                                <div className="relative group/cover cursor-pointer">
                                     <div className="w-28 h-28 rounded-full border-2 border-dashed border-primary/20 p-1.5 group-hover/cover:border-primary/40 transition-all duration-500">
                                         <div className="w-full h-full rounded-full bg-secondary/20 flex items-center justify-center overflow-hidden border border-white/5">
                                             {generatingIdx === idx ? (
@@ -1131,8 +1322,19 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                                             )}
                                         </div>
                                     </div>
-                                    <div className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center border-4 border-background opacity-0 group-hover/cover:opacity-100 transition-all scale-75 group-hover/cover:scale-100">
-                                        <Wand2 className="w-4 h-4 text-white" />
+                                    <div className="absolute -bottom-1 -right-1 flex gap-1">
+                                        <label className="h-9 w-9 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all" title="Anexar Foto">
+                                            <Upload className="w-4 h-4 text-white" />
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleCoverUpload(e, idx)} />
+                                        </label>
+                                        <div className="h-9 w-9 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all" onClick={() => handleGenerateImage(idx, h.title)} title="Gerar com IA">
+                                            <Wand2 className="w-4 h-4 text-white" />
+                                        </div>
+                                        {h.cover_url && (
+                                            <div className="h-9 w-9 rounded-full bg-white/10 backdrop-blur-md shadow-xl flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all" onClick={() => handleDownloadCover(h.cover_url, h.title)} title="Baixar Capa">
+                                                <Download className="w-4 h-4 text-white" />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1151,23 +1353,17 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                                             }}
                                         />
                                     </div>
-                                    <div className="flex justify-center">
-                                        <div className="px-4 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest">
-                                            {h.type}
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
-                            {/* Strategy Section */}
-                            <div className="px-6 py-6 space-y-6 bg-gradient-to-b from-white/[0.02] to-transparent border-t border-white/5">
+                            <div className="px-4 sm:px-6 py-6 space-y-6 bg-gradient-to-b from-white/[0.02] to-transparent border-t border-white/5">
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2 text-primary/60">
                                         <div className="w-2 h-2 rounded-full bg-primary/40 animate-pulse" />
                                         <Label className="text-[10px] uppercase font-black tracking-widest">Estratégia de Conteúdo</Label>
                                     </div>
-                                    <Textarea
-                                        className="text-xs font-medium leading-relaxed min-h-[120px] rounded-2xl bg-white/5 border-white/5 focus-visible:ring-primary/20 transition-all no-scrollbar resize-none p-4"
+                                    <AutoResizeTextarea
+                                        className="text-xs font-medium leading-relaxed rounded-2xl bg-white/5 border-white/5 focus-visible:ring-primary/20 transition-all p-4"
                                         placeholder={
                                             h.type === 'transformation' ? 'Lógica da transformação: antes/depois, vitórias, evidências claras...' :
                                                 h.type === 'journey' ? 'Processo/método, experiência e bastidores do seu DNA...' :
@@ -1183,54 +1379,56 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                                     />
                                 </div>
 
-                                {h.type === 'journey' && (
-                                    <div className="space-y-4 p-5 bg-primary/5 rounded-[2rem] border border-primary/10 animate-in fade-in duration-500">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-black tracking-widest text-primary/50 ml-1">Quem está por trás</Label>
-                                            <Input
-                                                className="h-12 text-xs rounded-xl bg-white/5 border-white/5 focus:bg-white/10 transition-all font-medium"
-                                                value={h.who_behind || ""}
-                                                placeholder="Sua história, autoridade..."
-                                                onChange={(e) => {
-                                                    const n = [...highlights];
-                                                    n[idx].who_behind = e.target.value;
-                                                    setHighlights(n);
-                                                    markAsDirty();
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="space-y-4">
+                                {
+                                    h.type === 'journey' && (
+                                        <div className="space-y-4 p-5 bg-primary/5 rounded-[2rem] border border-primary/10 animate-in fade-in duration-500">
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-widest text-primary/50 ml-1">Ideal para</Label>
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-primary/50 ml-1">Quem está por trás</Label>
                                                 <Input
-                                                    className="h-12 text-xs rounded-xl bg-white/5 border-white/5 hover:bg-white/10 transition-all font-medium"
-                                                    value={h.for_who || ""}
-                                                    placeholder="Público-alvo..."
+                                                    className="h-12 text-xs rounded-xl bg-white/5 border-white/5 focus:bg-white/10 transition-all font-medium"
+                                                    value={h.who_behind || ""}
+                                                    placeholder="Sua história, autoridade..."
                                                     onChange={(e) => {
                                                         const n = [...highlights];
-                                                        n[idx].for_who = e.target.value;
+                                                        n[idx].who_behind = e.target.value;
                                                         setHighlights(n);
                                                         markAsDirty();
                                                     }}
                                                 />
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-widest text-red-500/50 ml-1">Não é para</Label>
-                                                <Input
-                                                    className="h-12 text-xs rounded-xl bg-red-500/5 border-red-500/10 focus-visible:ring-red-500/20 hover:bg-red-500/10 transition-all font-medium"
-                                                    value={h.not_for_who || ""}
-                                                    placeholder="Quem você não atende..."
-                                                    onChange={(e) => {
-                                                        const n = [...highlights];
-                                                        n[idx].not_for_who = e.target.value;
-                                                        setHighlights(n);
-                                                        markAsDirty();
-                                                    }}
-                                                />
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase font-black tracking-widest text-primary/50 ml-1">Ideal para</Label>
+                                                    <Input
+                                                        className="h-12 text-xs rounded-xl bg-white/5 border-white/5 hover:bg-white/10 transition-all font-medium"
+                                                        value={h.for_who || ""}
+                                                        placeholder="Público-alvo..."
+                                                        onChange={(e) => {
+                                                            const n = [...highlights];
+                                                            n[idx].for_who = e.target.value;
+                                                            setHighlights(n);
+                                                            markAsDirty();
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase font-black tracking-widest text-red-500/50 ml-1">Não é para</Label>
+                                                    <Input
+                                                        className="h-12 text-xs rounded-xl bg-red-500/5 border-red-500/10 focus-visible:ring-red-500/20 hover:bg-red-500/10 transition-all font-medium"
+                                                        value={h.not_for_who || ""}
+                                                        placeholder="Quem você não atende..."
+                                                        onChange={(e) => {
+                                                            const n = [...highlights];
+                                                            n[idx].not_for_who = e.target.value;
+                                                            setHighlights(n);
+                                                            markAsDirty();
+                                                        }}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )
+                                }
 
                                 <div className="space-y-2">
                                     <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40 flex items-center gap-2">
@@ -1255,7 +1453,7 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                             </div>
 
                             {/* Buttons Footer */}
-                            <div className="p-6 space-y-6">
+                            < div className="p-4 sm:p-6 space-y-6" >
                                 <div className="flex flex-col gap-3">
                                     <Button
                                         size="lg"
@@ -1270,7 +1468,7 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                                             ) : (
                                                 <Sparkles className="w-5 h-5 group-hover/ia:rotate-12 transition-transform" />
                                             )}
-                                            <span className="text-[11px] font-black uppercase tracking-[0.2em] flex-1 text-left">Extrair Insights Premium</span>
+                                            <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider sm:tracking-[0.2em] flex-1 text-left">Extrair Insights Premium</span>
                                             <ChevronRight className="w-4 h-4 opacity-20 group-hover/ia:opacity-100 group-hover/ia:translate-x-1 transition-all" />
                                         </div>
                                     </Button>
@@ -1288,7 +1486,7 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                                             ) : (
                                                 <TrendingUp className="w-5 h-5 text-primary group-hover/roteiro:scale-110 transition-transform" />
                                             )}
-                                            <span className="text-[11px] font-black uppercase tracking-[0.2em] flex-1 text-left">Criar Roteiro Estratégico</span>
+                                            <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider sm:tracking-[0.2em] flex-1 text-left">Criar Roteiro Estratégico</span>
                                             <ChevronRight className="w-4 h-4 opacity-20 group-hover/roteiro:opacity-100 group-hover/roteiro:translate-x-1 transition-all" />
                                         </div>
                                     </Button>
@@ -1297,25 +1495,26 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                                 <div className="flex items-center gap-3 pt-4 border-t border-white/5">
                                     <Button
                                         variant="secondary"
-                                        className="flex-1 h-14 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/5 transition-all group/save"
+                                        className="flex-1 h-14 rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/5 transition-all group/save px-2 sm:px-4"
                                         onClick={async () => {
                                             const n = [...highlights];
                                             await updateSocialData.mutateAsync({ updates: { highlights: n } });
                                             toast.success("Estratégia salva!");
                                         }}
                                     >
-                                        <Save className="w-4 h-4 mr-2 group-hover/save:scale-110 transition-transform" /> Salvar Destaque
+                                        <Save className="w-4 h-4 mr-1 sm:mr-2 group-hover/save:scale-110 transition-transform shrink-0" />
+                                        <span className="truncate">Salvar Destaque</span>
                                     </Button>
                                     <Button
                                         variant="outline"
-                                        className="h-14 w-14 p-0 rounded-2xl border-white/5 hover:bg-white/10 transition-all hover:border-green-500/30 group/ws"
+                                        className="h-14 w-12 sm:w-14 p-0 rounded-2xl border-white/5 hover:bg-white/10 transition-all hover:border-green-500/30 group/ws shrink-0"
                                         onClick={() => handleShareWhatsApp(h)}
                                     >
                                         <MessageSquare className="w-4 h-4 text-green-500 group-hover/ws:scale-110 transition-transform" />
                                     </Button>
                                     <Button
                                         variant="ghost"
-                                        className="h-14 w-14 p-0 rounded-2xl text-red-500/40 hover:text-red-500 hover:bg-red-500/10 transition-all group/del"
+                                        className="h-14 w-12 sm:w-14 p-0 rounded-2xl text-red-500/40 hover:text-red-500 hover:bg-red-500/10 transition-all group/del shrink-0"
                                         onClick={() => {
                                             const n = [...highlights];
                                             n[idx] = { ...n[idx], description: "", content: "", link: "", who_behind: "", for_who: "", not_for_who: "" };
@@ -1326,50 +1525,59 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                                     </Button>
                                 </div>
 
-                                {h.content && (
-                                    <div className="mt-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-px flex-1 bg-gradient-to-r from-transparent to-primary/20" />
-                                            <span className="text-[9px] font-black uppercase tracking-[0.4em] text-primary">Script Sugerido</span>
-                                            <div className="h-px flex-1 bg-gradient-to-l from-transparent to-primary/20" />
-                                        </div>
+                                {
+                                    h.content && (
+                                        <div className="mt-8 space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-px flex-1 bg-gradient-to-r from-transparent to-primary/20" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-primary">Script Sugerido</span>
+                                                <div className="h-px flex-1 bg-gradient-to-l from-transparent to-primary/20" />
+                                            </div>
 
-                                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
-                                            {h.content.split('[STORY]').filter(Boolean).map((story: string, sIdx: number) => (
-                                                <div key={sIdx} className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-3 relative group/story transition-all hover:bg-white/[0.06]">
-                                                    <div className="absolute left-0 top-6 bottom-6 w-1 bg-primary rounded-r-full" />
-                                                    <div className="flex items-center justify-between opacity-40">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest">Story {sIdx + 1}</span>
-                                                        <Sparkle className="w-3 h-3" />
-                                                    </div>
-                                                    <div className="text-[11px] leading-relaxed font-medium selection:bg-primary/20">
-                                                        <Textarea
-                                                            className="text-[11px] font-medium leading-relaxed min-h-[100px] bg-transparent border-none p-0 focus-visible:ring-0 resize-none no-scrollbar overflow-hidden"
-                                                            value={story.trim()}
-                                                            onChange={(e) => {
-                                                                const rawStories = h.content.split('[STORY]');
-                                                                let count = 0;
-                                                                for (let i = 0; i < rawStories.length; i++) {
-                                                                    if (rawStories[i].trim()) {
-                                                                        if (count === sIdx) {
-                                                                            rawStories[i] = e.target.value;
-                                                                            break;
+                                            <div className="space-y-4">
+                                                {h.content.split('[STORY]').filter(Boolean).map((story: string, sIdx: number) => (
+                                                    <div key={sIdx} className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-3 relative group/story transition-all hover:bg-white/[0.06]">
+                                                        <div className="absolute left-0 top-6 bottom-6 w-1 bg-primary rounded-r-full" />
+                                                        <div className="flex items-center justify-between opacity-40">
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">Story {sIdx + 1}</span>
+                                                            <Sparkle className="w-3 h-3" />
+                                                        </div>
+                                                        <div className="text-[11px] leading-relaxed font-medium selection:bg-primary/20">
+                                                            <AutoResizeTextarea
+                                                                className="text-[11px] font-medium leading-relaxed bg-transparent border-none p-0 focus-visible:ring-0"
+                                                                value={story.trim()}
+                                                                onChange={(e) => {
+                                                                    const rawStories = h.content.split('[STORY]');
+                                                                    let count = 0;
+                                                                    for (let i = 0; i < rawStories.length; i++) {
+                                                                        if (rawStories[i].trim()) {
+                                                                            if (count === sIdx) {
+                                                                                rawStories[i] = e.target.value;
+                                                                                break;
+                                                                            }
+                                                                            count++;
                                                                         }
-                                                                        count++;
                                                                     }
-                                                                }
-                                                                const n = [...highlights];
-                                                                n[idx].content = rawStories.join('[STORY]');
-                                                                setHighlights(n);
-                                                                markAsDirty();
-                                                            }}
-                                                        />
+                                                                    const n = [...highlights];
+                                                                    n[idx].content = rawStories.join('[STORY]');
+                                                                    setHighlights(n);
+                                                                    markAsDirty();
+                                                                }}
+                                                            />
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
+
+                                            <Button
+                                                className="w-full h-14 rounded-2xl bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 transition-all gap-3 font-black text-[10px] uppercase tracking-widest mt-4"
+                                                onClick={() => handleShareAllStories(h)}
+                                            >
+                                                <MessageSquare className="w-4 h-4" />
+                                                Compartilhar Todos os Stories
+                                            </Button>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
                             </div>
                         </Card>
                     </div>
@@ -1387,11 +1595,20 @@ function Screen3B({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
     );
 }
 
-function Screen3C({ data, brand, onBack, onSave, updateSocialData, markAsDirty }: { data: any, brand: any, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any, markAsDirty: () => void }) {
+function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialData, markAsDirty }: { data: any, brand: any, initialIndex?: number, onBack: () => void, onSave: (updates: any) => void, updateSocialData: any, markAsDirty: () => void }) {
     const { getSetting } = useSystemSettings();
     const [posts, setPosts] = useState(data.pinned_posts || []);
     const [generatingContentIdx, setGeneratingContentIdx] = useState<number | null>(null);
     const [generatingCoverIdx, setGeneratingCoverIdx] = useState<number | null>(null);
+    const postRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+    useEffect(() => {
+        if (postRefs.current[initialIndex]) {
+            setTimeout(() => {
+                postRefs.current[initialIndex]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+    }, [initialIndex]);
 
     const handleGeneratePostContent = async (idx: number) => {
         setGeneratingContentIdx(idx);
@@ -1524,7 +1741,7 @@ function Screen3C({ data, brand, onBack, onSave, updateSocialData, markAsDirty }
                 {posts.map((post: any, idx: number) => {
                     const info = (descriptions as any)[post.type] || { title: `Post ${idx + 1}`, desc: "" };
                     return (
-                        <Card key={idx} className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border-white/5 overflow-hidden group/post relative">
+                        <Card key={idx} ref={(el) => (postRefs.current[idx] = el)} className="bg-card/50 backdrop-blur-xl rounded-[2.5rem] border-white/5 overflow-hidden group/post relative">
                             {/* Accent Background */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[100px] -mr-32 -mt-32 rounded-full pointer-events-none" />
 

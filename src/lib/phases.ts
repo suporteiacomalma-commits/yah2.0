@@ -73,9 +73,9 @@ export const phases: Phase[] = [
   },
   {
     id: 7,
-    title: "Automações",
-    shortTitle: "Automações",
-    description: "Automatize processos repetitivos",
+    title: "Carrosseis com IA",
+    shortTitle: "Carrosseis",
+    description: "Gere carrosséis estratégicos com auxílio de IA",
     icon: Zap,
     href: "/phase/7",
   },

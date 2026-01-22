@@ -1041,16 +1041,18 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
         try {
             const apiKey = getSetting("openai_api_key")?.value;
             if (!apiKey) throw new Error("Chave da API não configurada");
+            console.log("API Key loaded, length:", apiKey.length);
 
-            console.log("Generating image for:", promptText);
+            console.log("DEBUG: handleGenerateImage called for", promptText);
             const response = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey.trim()}` },
                 body: JSON.stringify({
-                    model: "dall-e-3",
-                    prompt: `Premium minimalist flat icon for Instagram highlight cover. Subject: ${promptText}. Stylized clean minimalist graphic, high-contrast solid bold background color, professional luxury branding, simple geometric design, vector style, flat design, no textures, no photorealism, no human faces.`,
+                    model: "dall-e-2",
+                    prompt: `Minimalist line art icon for Instagram. Subject: ${promptText}. Simple clean graphic, bold high-contrast background.`,
                     n: 1,
-                    size: "1024x1024"
+                    size: "256x256"
                 })
             });
 
@@ -1061,24 +1063,19 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             }
 
             const res = await response.json();
-            const tempUrl = res.data[0].url;
-            console.log("Image generated, temporary URL:", tempUrl);
+            const imageUrl = res.data[0].url;
+            if (!imageUrl) throw new Error("A IA não retornou a URL da imagem.");
 
-            // PERSISTENCE: Download from OpenAI and Upload to Supabase
-            console.log("Downloading image to persist in storage...");
-            let imageBlob;
-            try {
-                const imageRes = await fetch(tempUrl);
-                if (!imageRes.ok) throw new Error("Erro ao baixar imagem da OpenAI");
-                imageBlob = await imageRes.blob();
-            } catch (fetchErr: any) {
-                console.error("Fetch image error:", fetchErr);
-                throw new Error("Erro ao baixar imagem (CORS ou rede). Tente novamente.");
-            }
+            console.log("Image URL received:", imageUrl);
 
+            // Convert base64 to Blob
+            const imageRes = await fetch(imageUrl);
+            if (!imageRes.ok) throw new Error("Erro ao baixar a imagem gerada.");
+            const imageBlob = await imageRes.blob();
             const fileName = `ai_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
-            const filePath = `highlight_covers/${brand.id}/${fileName}`;
-            console.log("Uploading to path:", filePath);
+
+            const filePath = `highlight_covers/${brand?.id || 'default'}/${fileName}`;
+            console.log("Uploading to Storage path:", filePath);
 
             const { error: uploadError } = await supabase.storage
                 .from("brand_documents")

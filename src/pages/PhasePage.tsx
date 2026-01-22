@@ -12,6 +12,7 @@ import { WeeklyFixedNotebook } from "@/components/phases/WeeklyFixedNotebook";
 import { SocialOptimization } from "@/components/phases/SocialOptimization";
 import { TrainedAIs } from "@/components/phases/TrainedAIs";
 import { BrandVault } from "@/components/phases/BrandVault";
+import { AICarousels } from "@/components/phases/AICarousels";
 
 export default function PhasePage() {
   const { phaseId } = useParams();
@@ -54,7 +55,7 @@ export default function PhasePage() {
       <div className="flex-1 p-6 md:p-8">
         <div className={cn(
           "mx-auto",
-          (phaseNumber === 4 || phaseNumber === 8) ? "max-w-[1700px]" : "max-w-3xl"
+          (phaseNumber === 4 || phaseNumber === 7 || phaseNumber === 8) ? "max-w-[1700px]" : "max-w-3xl"
         )}>
           {/* Back Button */}
           <Button
@@ -102,6 +103,8 @@ export default function PhasePage() {
               <ActivityCalendar />
             ) : phaseNumber === 6 ? (
               <TrainedAIs />
+            ) : phaseNumber === 7 ? (
+              <AICarousels />
             ) : phaseNumber === 8 ? (
               <BrandVault />
             ) : (

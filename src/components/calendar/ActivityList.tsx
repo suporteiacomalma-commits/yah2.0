@@ -134,10 +134,40 @@ export function ActivityList({ activities, onToggleStatus, onDelete, selectedDat
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge
                     variant="outline"
-                    className={cn("text-[10px] px-1.5 py-0", categoryColors[activity.category])}
+                    className={cn("text-[10px] px-1.5 py-0 font-bold uppercase tracking-wider", categoryColors[activity.category])}
                   >
                     {categoryLabels[activity.category]}
                   </Badge>
+
+                  {/* Novos Marcadores de Bloco de Vida e Tipo */}
+                  {(() => {
+                    try {
+                      const meta = JSON.parse(activity.description || "{}");
+                      return (
+                        <>
+                          {meta.category && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[9px] px-1.5 py-0 bg-white/5 text-muted-foreground border-white/5 font-bold uppercase tracking-widest"
+                            >
+                              {meta.category}
+                            </Badge>
+                          )}
+                          {meta.type && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 border-primary/20 text-primary/70 font-bold uppercase tracking-widest bg-primary/5"
+                            >
+                              {meta.type}
+                            </Badge>
+                          )}
+                        </>
+                      );
+                    } catch (e) {
+                      return null;
+                    }
+                  })()}
+
                   <span className="text-[10px] text-muted-foreground">
                     {format(displayDate, "dd MMM, HH:mm", { locale: ptBR })}
                   </span>

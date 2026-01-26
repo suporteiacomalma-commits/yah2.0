@@ -253,19 +253,38 @@ Frase do usuário: "${inputText}"`;
             });
 
             // Sincronizar com calendário de atividades
-            // Resolvemos o desvio de fuso horário (-3h) adicionando o offset local
-            const timezoneOffset = format(new Date(), "xxx"); // Pega o offset local, ex: -03:00
-            const formattedDate = confirmData.hora
-                ? `${confirmData.data}T${confirmData.hora}:00${timezoneOffset}`
-                : `${confirmData.data}T09:00:00${timezoneOffset}`;
+            // 1. Criar data correta lidando com fuso horário local de forma nativa
+            const [hours, minutes] = (confirmData.hora || "09:00").split(':').map(Number);
+            const targetDate = new Date(confirmData.data + 'T00:00:00');
+            targetDate.setHours(hours, minutes, 0, 0);
+
+            // 2. Mapear recorrência para formato esperado pelo InboxActivityCalendar
+            const freqMap: Record<string, string> = {
+                "Diária": "daily",
+                "Semanal": "weekly",
+                "Mensal": "monthly",
+                "Anual": "yearly",
+                "Nenhuma": "none"
+            };
+            const freq = freqMap[confirmData.recorrencia] || "none";
+
+            // 3. Formatar metadados como JSON para exibição correta no calendário
+            const recurrenceData = {
+                isRecurring: freq !== "none",
+                frequency: freq,
+                time: confirmData.hora || "09:00",
+                days: freq === 'weekly' ? [targetDate.getDay()] : [0, 1, 2, 3, 4, 5, 6],
+                category: confirmData.categoria,
+                type: confirmData.tipo
+            };
 
             await supabase.from("calendar_activities").insert({
                 title: confirmData.titulo,
-                date: formattedDate,
+                date: targetDate.toISOString(),
                 category: confirmData.tipo === "Compromisso" ? "meeting" : "task",
                 user_id: user.id,
                 status: "pending",
-                description: confirmData.recorrencia !== "Nenhuma" ? `Recorrência: ${confirmData.recorrencia}` : ""
+                description: JSON.stringify(recurrenceData)
             });
 
             toast.success("Evento agendado com sucesso!");
@@ -282,7 +301,7 @@ Frase do usuário: "${inputText}"`;
 
     return (
         <MinimalLayout>
-            <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center justify-center pt-10 px-4 font-sans selection:bg-primary/30 relative overflow-hidden">
+            <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center md:justify-center py-10 px-4 font-sans selection:bg-primary/30 relative overflow-y-auto">
 
                 {/* Visual Background Glow (Subtle) */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.08)_0%,transparent_70%)] pointer-events-none" />
@@ -326,12 +345,12 @@ Frase do usuário: "${inputText}"`;
                     </div>
 
                     {/* Compact Headline */}
-                    <div className="text-center space-y-3 mb-10 max-w-lg">
-                        <h1 className="text-4xl font-black italic tracking-tighter uppercase text-white animate-in slide-in-from-bottom-4 duration-700 leading-tight">
+                    <div className="text-center space-y-3 mb-6 md:mb-10 max-w-lg">
+                        <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white animate-in slide-in-from-bottom-4 duration-700 leading-tight">
                             Diga tudo que precisa lembrar, <br className="hidden md:block" />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">que eu organizo para você.</span>
                         </h1>
-                        <p className="text-white/20 font-medium text-lg tracking-tight max-w-xs mx-auto">
+                        <p className="text-white/20 font-medium text-base md:text-lg tracking-tight max-w-xs mx-auto">
                             Pressione acima ou capture abaixo.
                         </p>
                     </div>
@@ -379,12 +398,12 @@ Frase do usuário: "${inputText}"`;
                     )}
 
                     {/* Prominent Search-style Pill Input Bar */}
-                    <div className="w-full max-w-xl relative group h-20 mb-16 transition-all duration-500">
+                    <div className="w-full max-w-xl relative group h-16 md:h-20 mb-8 md:mb-16 transition-all duration-500">
                         {/* More distinct outer glow when focused */}
                         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-full blur-3xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-700" />
 
-                        <div className="relative h-full flex items-center bg-[#0F0F0F] border-2 border-white/[0.08] hover:border-white/[0.15] group-focus-within:border-purple-500/50 rounded-full px-8 shadow-[0_32px_64px_rgba(0,0,0,0.6)] group-focus-within:bg-[#121212] transition-all duration-300">
-                            <Search className="w-7 h-7 text-white/10 group-focus-within:text-purple-500 transition-colors" />
+                        <div className="relative h-full flex items-center bg-[#0F0F0F] border-2 border-white/[0.08] hover:border-white/[0.15] group-focus-within:border-purple-500/50 rounded-full px-4 md:px-8 shadow-[0_32px_64px_rgba(0,0,0,0.6)] group-focus-within:bg-[#121212] transition-all duration-300">
+                            <Search className="w-5 h-5 md:w-7 md:h-7 text-white/10 group-focus-within:text-purple-500 transition-colors" />
                             <input
                                 type="text"
                                 value={inputText}
@@ -392,31 +411,31 @@ Frase do usuário: "${inputText}"`;
                                     setInputText(e.target.value);
                                     if (e.target.value.length === 0) setShowCapturedCard(false);
                                 }}
-                                placeholder="Ou digite sua ideia de produto, post..."
-                                className="flex-1 bg-transparent border-none focus:ring-0 text-xl px-6 placeholder:text-white/5 text-white/90 font-semibold"
+                                placeholder="Ou digite sua ideia..."
+                                className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 text-base md:text-xl px-3 md:px-6 placeholder:text-white/5 text-white/90 font-semibold"
                                 onKeyDown={(e) => e.key === 'Enter' && handleOrganize()}
                             />
 
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 md:gap-4 shrink-0">
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white/20 hover:text-white transition-all shadow-inner"
+                                    className="p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-white/5 hover:bg-white/10 text-white/20 hover:text-white transition-all shadow-inner"
                                     title="Capturar foto"
                                 >
-                                    <ImageIcon className="w-6 h-6" />
+                                    <ImageIcon className="w-5 h-5 md:w-6 md:h-6" />
                                 </button>
 
                                 {inputText.length > 0 ? (
                                     <button
                                         onClick={handleOrganize}
                                         disabled={isProcessing}
-                                        className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-[#A855F7] to-[#EC4899] flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xl shadow-purple-500/40"
+                                        className="w-10 h-10 md:w-12 md:h-12 rounded-[14px] md:rounded-[18px] bg-gradient-to-br from-[#A855F7] to-[#EC4899] flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xl shadow-purple-500/40"
                                     >
-                                        {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6 text-white" />}
+                                        {isProcessing ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : <Send className="w-5 h-5 md:w-6 md:h-6 text-white" />}
                                     </button>
                                 ) : (
-                                    <div className="w-12 h-12 rounded-[18px] bg-white/5 flex items-center justify-center border border-white/[0.03]">
-                                        <Keyboard className="w-6 h-6 text-white/5 opacity-40" />
+                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-[14px] md:rounded-[18px] bg-white/5 flex items-center justify-center border border-white/[0.03]">
+                                        <Keyboard className="w-5 h-5 md:w-6 md:h-6 text-white/5 opacity-40" />
                                     </div>
                                 )}
                             </div>
@@ -437,7 +456,7 @@ Frase do usuário: "${inputText}"`;
 
                 {/* MODAL CONFIRMACAO (Consistent glass styling) */}
                 <Dialog open={showModal} onOpenChange={setShowModal}>
-                    <DialogContent className="sm:max-w-md bg-[#0D0D0D]/95 backdrop-blur-[40px] border border-white/10 p-10 rounded-[48px] shadow-2xl overflow-hidden">
+                    <DialogContent className="sm:max-w-md w-[95vw] max-h-[90vh] bg-[#0D0D0D]/95 backdrop-blur-[40px] border border-white/10 p-6 md:p-10 rounded-[32px] md:rounded-[48px] shadow-2xl overflow-y-auto custom-scrollbar">
                         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 pointer-events-none" />
                         <DialogHeader className="relative z-10">
                             <DialogTitle className="flex items-center gap-4 text-3xl font-black italic uppercase tracking-tighter">

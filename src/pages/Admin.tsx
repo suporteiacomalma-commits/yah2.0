@@ -33,7 +33,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
-  const { users, isLoading: usersLoading, assignRole, removeRole } = useAdminUsers();
+  const { users, isLoading: usersLoading, assignRole, removeRole, updateSubscription } = useAdminUsers();
   const { settings, isLoading: settingsLoading, updateSetting, getSetting } = useSystemSettings();
 
   const [openaiKey, setOpenaiKey] = useState("");
@@ -71,6 +71,44 @@ export default function Admin() {
     } catch (error) {
       toast.error("Erro ao atualizar role");
       console.error(error);
+    }
+  };
+
+
+
+  const handleUpdateSubscription = async (userId: string, plan: 'premium' | 'trial') => {
+    try {
+      await updateSubscription.mutateAsync({
+        userId,
+        updates: {
+          subscription_plan: plan,
+          subscription_status: 'active',
+          // If premium, trial date becomes irrelevant but we keep it
+        }
+      });
+      toast.success(`Plano atualizado para ${plan}`);
+    } catch (error) {
+      toast.error("Erro ao atualizar plano");
+    }
+  };
+
+  const handleExtendTrial = async (userId: string) => {
+    try {
+      // Add 7 days to current time (or current trial end if in future? simpler to just add 7 days from now)
+      const newEndDate = new Date();
+      newEndDate.setDate(newEndDate.getDate() + 7);
+
+      await updateSubscription.mutateAsync({
+        userId,
+        updates: {
+          subscription_plan: 'trial',
+          subscription_status: 'active',
+          trial_ends_at: newEndDate.toISOString()
+        }
+      });
+      toast.success("Trial estendido por 7 dias");
+    } catch (error) {
+      toast.error("Erro ao estender trial");
     }
   };
 
@@ -195,66 +233,102 @@ export default function Admin() {
                 <CardTitle className="text-foreground">Usuários</CardTitle>
               </CardHeader>
               <CardContent>
-                {usersLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border">
-                        <TableHead className="text-muted-foreground">Nome</TableHead>
-                        <TableHead className="text-muted-foreground">Email</TableHead>
-                        <TableHead className="text-muted-foreground">Estágio</TableHead>
-                        <TableHead className="text-muted-foreground">Onboarding</TableHead>
-                        <TableHead className="text-muted-foreground">Role</TableHead>
-                        <TableHead className="text-muted-foreground">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((userItem) => (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border">
+                      <TableHead className="text-muted-foreground w-[100px]">Data</TableHead>
+                      <TableHead className="text-muted-foreground">Nome</TableHead>
+                      <TableHead className="text-muted-foreground">Status Assinatura</TableHead>
+                      <TableHead className="text-muted-foreground">Plano</TableHead>
+                      <TableHead className="text-muted-foreground">Trial (Dias)</TableHead>
+                      <TableHead className="text-muted-foreground">Role</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((userItem) => {
+                      const trialEnds = userItem.trial_ends_at ? new Date(userItem.trial_ends_at) : null;
+                      const daysLeft = trialEnds ? Math.ceil((trialEnds.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                      const isExpired = daysLeft < 0 && userItem.subscription_plan === 'trial';
+
+                      return (
                         <TableRow key={userItem.id} className="border-border">
-                          <TableCell className="text-foreground font-medium">
-                            {userItem.full_name || userItem.user_name || "—"}
+                          <TableCell className="text-muted-foreground text-xs">
+                            {new Date(userItem.created_at).toLocaleDateString()}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">{userItem.email || "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {userItem.business_stage || "—"}
+                          <TableCell className="text-foreground font-medium">
+                            <div className="flex flex-col">
+                              <span>{userItem.full_name || userItem.user_name || "—"}</span>
+                              <span className="text-xs text-muted-foreground">{userItem.email}</span>
+                            </div>
                           </TableCell>
                           <TableCell>
-                            {userItem.onboarding_completed ? (
-                              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                                Completo
-                              </Badge>
+                            <Badge variant={userItem.subscription_status === 'active' ? "default" : "secondary"} className={
+                              userItem.subscription_status === 'active' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : ''
+                            }>
+                              {userItem.subscription_status === 'active' ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              userItem.subscription_plan === 'premium'
+                                ? "border-purple-500 text-purple-400"
+                                : "text-muted-foreground"
+                            }>
+                              {userItem.subscription_plan === 'premium' ? 'Premium' : 'Trial'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {userItem.subscription_plan === 'trial' ? (
+                              <span className={isExpired ? "text-red-400 font-bold" : "text-muted-foreground"}>
+                                {daysLeft > 0 ? `${daysLeft} dias rest.` : "Expirado"}
+                              </span>
                             ) : (
-                              <Badge variant="outline" className="text-muted-foreground">
-                                Pendente
-                              </Badge>
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
                           <TableCell>{getRoleBadge(userItem.role)}</TableCell>
-                          <TableCell>
-                            <Select
-                              value={userItem.role || "none"}
-                              onValueChange={(value) => handleRoleChange(userItem.user_id, value)}
-                              disabled={assignRole.isPending || removeRole.isPending}
-                            >
-                              <SelectTrigger className="w-32 bg-background border-border">
-                                <SelectValue placeholder="Selecionar" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Sem role</SelectItem>
-                                <SelectItem value="user">Usuário</SelectItem>
-                                <SelectItem value="moderator">Moderador</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {userItem.subscription_plan !== 'premium' && (
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/50"
+                                  onClick={() => handleUpdateSubscription(userItem.user_id, 'premium')}
+                                >
+                                  Ativar Premium
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs"
+                                onClick={() => handleExtendTrial(userItem.user_id)}
+                              >
+                                +7 Dias
+                              </Button>
+                              <Select
+                                value={userItem.role || "none"}
+                                onValueChange={(value) => handleRoleChange(userItem.user_id, value)}
+                                disabled={assignRole.isPending || removeRole.isPending}
+                              >
+                                <SelectTrigger className="w-[100px] h-7 text-xs bg-background border-border">
+                                  <SelectValue placeholder="Role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Sem role</SelectItem>
+                                  <SelectItem value="user">Usuário</SelectItem>
+                                  <SelectItem value="moderator">Moderadora</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
+                      )
+                    })}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

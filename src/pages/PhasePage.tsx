@@ -121,7 +121,7 @@ export default function PhasePage() {
           </div>
 
           {/* Complete Button */}
-          {!isCompleted && phaseNumber !== 6 && phaseNumber !== 8 && (
+          {!isCompleted && phaseNumber !== 6 && phaseNumber !== 7 && phaseNumber !== 8 && (
             <div className="flex justify-end animate-fade-in" style={{ animationDelay: "0.2s" }}>
               <Button
                 onClick={handleComplete}
@@ -134,7 +134,7 @@ export default function PhasePage() {
             </div>
           )}
 
-          {isCompleted && phaseNumber !== 6 && phaseNumber !== 8 && (
+          {isCompleted && phaseNumber !== 6 && phaseNumber !== 7 && phaseNumber !== 8 && (
             <div className="text-center py-4 animate-fade-in">
               <p className="text-green-600 font-medium flex items-center justify-center gap-2">
                 <Check className="w-5 h-5" />

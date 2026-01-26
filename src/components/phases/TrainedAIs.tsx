@@ -291,7 +291,11 @@ interface Message {
     content: string;
 }
 
-export function TrainedAIs() {
+interface TrainedAIsProps {
+    initialAgentId?: string;
+}
+
+export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
     const { brand, updateBrand } = useBrand();
     const { getSetting } = useSystemSettings();
     const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -300,6 +304,15 @@ export function TrainedAIs() {
     const [isLoading, setIsLoading] = useState(false);
     const [copied, setCopied] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (initialAgentId && !selectedAgent) {
+            const agent = AGENTS.find(a => a.id === initialAgentId);
+            if (agent) {
+                handleSelectAgent(agent);
+            }
+        }
+    }, [initialAgentId]);
 
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });

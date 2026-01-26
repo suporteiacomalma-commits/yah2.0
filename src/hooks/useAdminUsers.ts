@@ -12,6 +12,10 @@ export interface AdminUser {
   onboarding_completed: boolean;
   created_at: string;
   role?: AppRole;
+  subscription_plan?: 'trial' | 'premium';
+  subscription_status?: 'active' | 'expired' | 'cancelled';
+  trial_ends_at?: string;
+  is_admin?: boolean;
 }
 
 export function useAdminUsers() {
@@ -20,7 +24,8 @@ export function useAdminUsers() {
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const { data: profiles, error: profilesError } = await supabase
+      // Cast supabase to any to access dynamic columns if types aren't updated yet
+      const { data: profiles, error: profilesError } = await (supabase as any)
         .from("profiles")
         .select("*")
         .order("created_at", { ascending: false });
@@ -33,7 +38,7 @@ export function useAdminUsers() {
 
       if (rolesError) throw rolesError;
 
-      const usersWithRoles: AdminUser[] = (profiles || []).map((profile) => {
+      const usersWithRoles: AdminUser[] = (profiles || []).map((profile: any) => {
         const userRole = roles?.find((r) => r.user_id === profile.user_id);
         return {
           ...profile,
@@ -47,16 +52,20 @@ export function useAdminUsers() {
 
   const assignRole = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
-      // First remove existing role
       await supabase.from("user_roles").delete().eq("user_id", userId);
-
-      // Then assign new role
       const { error } = await supabase.from("user_roles").insert({
         user_id: userId,
         role: role,
       });
 
       if (error) throw error;
+
+      // Also update is_admin flag in profiles for redundancy/ease of access
+      if (role === 'admin') {
+        await (supabase as any).from("profiles").update({ is_admin: true }).eq("user_id", userId);
+      } else {
+        await (supabase as any).from("profiles").update({ is_admin: false }).eq("user_id", userId);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
@@ -71,10 +80,26 @@ export function useAdminUsers() {
         .eq("user_id", userId);
 
       if (error) throw error;
+
+      await (supabase as any).from("profiles").update({ is_admin: false }).eq("user_id", userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
+  });
+
+  const updateSubscription = useMutation({
+    mutationFn: async ({ userId, updates }: { userId: string, updates: Partial<AdminUser> }) => {
+      const { error } = await (supabase as any)
+        .from("profiles")
+        .update(updates)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
   });
 
   return {
@@ -82,5 +107,6 @@ export function useAdminUsers() {
     isLoading,
     assignRole,
     removeRole,
+    updateSubscription
   };
 }

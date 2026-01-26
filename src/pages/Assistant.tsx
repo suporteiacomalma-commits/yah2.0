@@ -253,10 +253,11 @@ Frase do usuário: "${inputText}"`;
             });
 
             // Sincronizar com calendário de atividades
-            // Formatamos a data para o formato aceito: YYYY-MM-DDTHH:mm:ss
+            // Resolvemos o desvio de fuso horário (-3h) adicionando o offset local
+            const timezoneOffset = format(new Date(), "xxx"); // Pega o offset local, ex: -03:00
             const formattedDate = confirmData.hora
-                ? `${confirmData.data}T${confirmData.hora}:00`
-                : `${confirmData.data}T09:00:00`;
+                ? `${confirmData.data}T${confirmData.hora}:00${timezoneOffset}`
+                : `${confirmData.data}T09:00:00${timezoneOffset}`;
 
             await supabase.from("calendar_activities").insert({
                 title: confirmData.titulo,

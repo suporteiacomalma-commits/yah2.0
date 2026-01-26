@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MinimalLayout } from "@/components/layout/MinimalLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send } from "lucide-react";
-import { format } from "date-fns";
+import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send, MessageSquareText } from "lucide-react";
+import { format, addDays, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +47,7 @@ export default function Assistant() {
     const [isListening, setIsListening] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [showTextInput, setShowTextInput] = useState(false);
+    const [showCapturedCard, setShowCapturedCard] = useState(false);
 
     // Confirmation Modal
     const [showModal, setShowModal] = useState(false);
@@ -115,6 +117,7 @@ export default function Assistant() {
             const data = await res.json();
             const text = data.text;
             setInputText(text);
+            setShowCapturedCard(true); // Always show captured card after audio
         } catch (error) {
             toast.error("Houve um erro ao entender o áudio.");
         } finally {
@@ -159,6 +162,7 @@ export default function Assistant() {
                 if (!res.ok) throw new Error("Erro na visão");
                 const data = await res.json();
                 setInputText(data.choices[0].message.content);
+                setShowCapturedCard(true);
             };
         } catch (error) {
             toast.error("Erro ao processar imagem.");
@@ -175,7 +179,30 @@ export default function Assistant() {
             const apiKey = getSetting("openai_api_key")?.value;
             if (!apiKey) throw new Error("API Key não configurada");
 
-            const prompt = `Organizador de rotinas. Devolva JSON: { "titulo": "", "categoria": "Vida|Família|Trabalho|Conteúdo|Saúde|Casa|Contas|Estudos|Outro", "tipo": "Tarefa|Compromisso", "data": "YYYY-MM-DD", "hora": "HH:MM", "recorrencia": "Nenhuma|Diária|Semanal|Mensal|Anual" }. Frase: "${inputText}"`;
+            const now = new Date();
+            const todayStr = format(now, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+            const currentTimeStr = format(now, "HH:mm");
+
+            const prompt = `Você é um Assistente de Organização Pessoal.
+Hoje é: ${todayStr}, agora são: ${currentTimeStr}.
+Sua missão é extrair eventos de frases.
+Retorne um JSON com:
+{
+  "titulo": "Resumo curto e claro",
+  "categoria": "Vida|Família|Trabalho|Conteúdo|Saúde|Casa|Contas|Estudos|Outro",
+  "tipo": "Tarefa|Compromisso",
+  "data": "YYYY-MM-DD",
+  "hora": "HH:MM",
+  "recorrencia": "Nenhuma|Diária|Semanal|Mensal|Anual"
+}
+
+Observações importantes:
+- Se o usuário falar "amanhã", calcule a data correta baseada em ${todayStr}.
+- Se o usuário falar "toda segunda", "diário", etc., marque a "recorrencia" adequadamente.
+- Se o usuário não mencionar hora, use null se for tarefa ou 09:00 se for compromisso.
+- Seja inteligente com o contexto.
+
+Frase do usuário: "${inputText}"`;
 
             const res = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -194,16 +221,17 @@ export default function Assistant() {
             const json = JSON.parse(data.choices[0].message.content);
 
             setConfirmData({
-                titulo: json.titulo || inputText,
+                titulo: json.titulo || inputText.substring(0, 50),
                 categoria: json.categoria || "Outro",
                 tipo: json.tipo || "Tarefa",
                 data: json.data || format(new Date(), "yyyy-MM-dd"),
-                hora: json.hora || null,
+                hora: json.hora || (json.tipo === "Compromisso" ? "09:00" : null),
                 recorrencia: json.recorrencia || "Nenhuma"
             });
             setShowModal(true);
         } catch (error) {
-            toast.error("Erro na IA.");
+            console.error(error);
+            toast.error("Erro na IA ao organizar.");
         } finally {
             setIsProcessing(false);
         }
@@ -213,6 +241,7 @@ export default function Assistant() {
         if (!user) return;
         setIsProcessing(true);
         try {
+            // Salvar no log detalhado
             await (supabase.from("EventosDoCerebro") as any).insert({
                 titulo: confirmData.titulo,
                 categoria: confirmData.categoria,
@@ -223,20 +252,28 @@ export default function Assistant() {
                 user_id: user.id
             });
 
+            // Sincronizar com calendário de atividades
+            // Formatamos a data para o formato aceito: YYYY-MM-DDTHH:mm:ss
+            const formattedDate = confirmData.hora
+                ? `${confirmData.data}T${confirmData.hora}:00`
+                : `${confirmData.data}T09:00:00`;
+
             await supabase.from("calendar_activities").insert({
                 title: confirmData.titulo,
-                date: confirmData.hora ? `${confirmData.data}T${confirmData.hora}:00` : `${confirmData.data}T09:00:00`,
+                date: formattedDate,
                 category: confirmData.tipo === "Compromisso" ? "meeting" : "task",
                 user_id: user.id,
-                status: "pending"
+                status: "pending",
+                description: confirmData.recorrencia !== "Nenhuma" ? `Recorrência: ${confirmData.recorrencia}` : ""
             });
 
-            toast.success("Salvo com sucesso!");
+            toast.success("Evento agendado com sucesso!");
             setShowModal(false);
             setInputText("");
-            setShowTextInput(false);
+            setShowCapturedCard(false);
         } catch (error) {
-            toast.error("Erro ao salvar.");
+            console.error(error);
+            toast.error("Erro ao salvar no calendário.");
         } finally {
             setIsProcessing(false);
         }
@@ -260,7 +297,7 @@ export default function Assistant() {
 
                         {isListening && (
                             <>
-                                <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-2xl animate-pulse" />
+                                <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
                                 <div className="absolute inset-[-15px] bg-pink-500/10 rounded-full animate-ping" />
                             </>
                         )}
@@ -288,7 +325,7 @@ export default function Assistant() {
                     </div>
 
                     {/* Compact Headline */}
-                    <div className="text-center space-y-3 mb-12 max-w-lg">
+                    <div className="text-center space-y-3 mb-10 max-w-lg">
                         <h1 className="text-4xl font-black italic tracking-tighter uppercase text-white animate-in slide-in-from-bottom-4 duration-700 leading-tight">
                             Diga tudo que precisa lembrar, <br className="hidden md:block" />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">que eu organizo para você.</span>
@@ -297,6 +334,48 @@ export default function Assistant() {
                             Pressione acima ou capture abaixo.
                         </p>
                     </div>
+
+                    {/* Captured Insight Card - VISIBILITY FOCUS */}
+                    {showCapturedCard && inputText.length > 0 && (
+                        <div className="w-full mb-8 animate-in zoom-in-95 slide-in-from-top-4 duration-500">
+                            <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[32px] p-8 shadow-2xl relative">
+                                <button
+                                    onClick={() => setShowCapturedCard(false)}
+                                    className="absolute top-6 right-6 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-all"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                                        <MessageSquareText className="w-5 h-5 text-purple-500" />
+                                    </div>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">O que eu entendi:</span>
+                                </div>
+
+                                <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-4">
+                                    <p className="text-2xl font-bold text-white/90 leading-relaxed italic">
+                                        "{inputText}"
+                                    </p>
+                                </div>
+
+                                <div className="mt-8 flex justify-end">
+                                    <Button
+                                        onClick={handleOrganize}
+                                        disabled={isProcessing}
+                                        className="h-14 px-8 rounded-2xl bg-white text-black hover:bg-white/90 font-black text-lg transition-all flex items-center gap-3"
+                                    >
+                                        {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                            <>
+                                                <span>Organizar Agora</span>
+                                                <Sparkles className="w-5 h-5" />
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Prominent Search-style Pill Input Bar */}
                     <div className="w-full max-w-xl relative group h-20 mb-16 transition-all duration-500">
@@ -308,7 +387,10 @@ export default function Assistant() {
                             <input
                                 type="text"
                                 value={inputText}
-                                onChange={(e) => setInputText(e.target.value)}
+                                onChange={(e) => {
+                                    setInputText(e.target.value);
+                                    if (e.target.value.length === 0) setShowCapturedCard(false);
+                                }}
                                 placeholder="Ou digite sua ideia de produto, post..."
                                 className="flex-1 bg-transparent border-none focus:ring-0 text-xl px-6 placeholder:text-white/5 text-white/90 font-semibold"
                                 onKeyDown={(e) => e.key === 'Enter' && handleOrganize()}
@@ -401,6 +483,33 @@ export default function Assistant() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Data de Início</Label>
+                                    <Input type="date" value={confirmData.data} onChange={e => setConfirmData(p => ({ ...p, data: e.target.value }))} className="bg-white/5 border-white/5 h-12 rounded-2xl px-6 font-bold" />
+                                </div>
+                                <div className="space-y-3">
+                                    <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Horário</Label>
+                                    <Input type="time" value={confirmData.hora || ""} onChange={e => setConfirmData(p => ({ ...p, hora: e.target.value || null }))} className="bg-white/5 border-white/5 h-12 rounded-2xl px-6 font-bold" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Recorrência</Label>
+                                <Select value={confirmData.recorrencia} onValueChange={v => setConfirmData(p => ({ ...p, recorrencia: v }))}>
+                                    <SelectTrigger className="bg-white/5 border-white/5 h-12 rounded-2xl focus:ring-0 px-6 font-bold">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-2xl">
+                                        <SelectItem value="Nenhuma" className="focus:bg-white/10 py-3">Nenhuma</SelectItem>
+                                        <SelectItem value="Diária" className="focus:bg-white/10 py-3">Diária</SelectItem>
+                                        <SelectItem value="Semanal" className="focus:bg-white/10 py-3">Semanal</SelectItem>
+                                        <SelectItem value="Mensal" className="focus:bg-white/10 py-3">Mensal</SelectItem>
+                                        <SelectItem value="Anual" className="focus:bg-white/10 py-3">Anual</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 

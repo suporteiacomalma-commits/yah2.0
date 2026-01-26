@@ -1,9 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { MinimalLayout } from "@/components/layout/MinimalLayout";
 import { Button } from "@/components/ui/button";
-import { Mic, X, Sparkles, Brain, Loader2, Calendar } from "lucide-react";
-import { format, addDays, addWeeks, addMonths, isBefore, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send } from "lucide-react";
+import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,228 +15,169 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 
+const LIFE_BLOCKS = [
+    { name: "Vida", color: "bg-pink-500" },
+    { name: "Família", color: "bg-yellow-500" },
+    { name: "Trabalho", color: "bg-blue-500" },
+    { name: "Conteúdo", color: "bg-purple-500" },
+    { name: "Saúde", color: "bg-green-500" },
+    { name: "Casa", color: "bg-orange-500" },
+    { name: "Contas", color: "bg-red-500" },
+    { name: "Estudos", color: "bg-indigo-500" },
+    { name: "Outro", color: "bg-gray-500" },
+];
+
+interface EventoConfirmacao {
+    titulo: string;
+    categoria: string;
+    tipo: "Tarefa" | "Compromisso";
+    data: string;
+    hora: string | null;
+    recorrencia: string;
+}
+
 export default function Assistant() {
-    const { getSetting, isLoading: isLoadingSettings } = useSystemSettings();
-    const [isListening, setIsListening] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [showConfirmation, setShowConfirmation] = useState(false);
-    const [transcript, setTranscript] = useState("");
-    const [proposedTask, setProposedTask] = useState<any>(null);
-    const [assistantResponse, setAssistantResponse] = useState<string | null>(null);
+    const { getSetting } = useSystemSettings();
     const { user } = useAuth();
     const navigate = useNavigate();
+
+    // UI States
+    const [inputText, setInputText] = useState("");
+    const [isListening, setIsListening] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [showTextInput, setShowTextInput] = useState(false);
+
+    // Confirmation Modal
+    const [showModal, setShowModal] = useState(false);
+    const [confirmData, setConfirmData] = useState<EventoConfirmacao>({
+        titulo: "",
+        categoria: "Outro",
+        tipo: "Tarefa",
+        data: format(new Date(), "yyyy-MM-dd"),
+        hora: "09:00",
+        recorrencia: "Nenhuma"
+    });
+
+    // Refs
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
-    const visualRecognitionRef = useRef<any>(null);
 
-    const speak = async (text: string) => {
-        try {
-            const apiKey = getSetting("openai_api_key")?.value;
-            if (!apiKey) return;
-
-            const response = await fetch('https://api.openai.com/v1/audio/speech', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "tts-1",
-                    voice: "shimmer",
-                    input: text,
-                })
-            });
-
-            if (!response.ok) throw new Error("TTS failed");
-
-            const audioBlob = await response.blob();
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
-            await audio.play();
-        } catch (error) {
-            console.error("TTS Error:", error);
-        }
-    };
-
-    const transcribeAudio = async (blob: Blob) => {
-        setIsProcessing(true);
-        try {
-            const apiKey = getSetting("openai_api_key")?.value;
-            if (!apiKey) {
-                toast.error("OpenAI API Key não configurada.");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append("file", blob, "audio.webm");
-            formData.append("model", "whisper-1");
-            formData.append("language", "pt");
-
-            const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: formData
-            });
-
-            if (!response.ok) throw new Error("Whisper fail");
-
-            const data = await response.json();
-            const text = data.text;
-            setTranscript(text);
-            await prepareTask(text);
-        } catch (error: any) {
-            console.error("Transcription error:", error);
-            toast.error("Falha ao transcrever áudio.");
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
+    // --- AUDIO HANDLING ---
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const recorder = new MediaRecorder(stream);
             audioChunksRef.current = [];
 
-            // Parallel SpeechRecognition for Real-time Visualization
-            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                const visualRec = new SpeechRecognition();
-                visualRec.continuous = true;
-                visualRec.interimResults = true;
-                visualRec.lang = "pt-BR";
-
-                visualRec.onresult = (event: any) => {
-                    let interimTranscript = '';
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            setTranscript(event.results[i][0].transcript);
-                        } else {
-                            interimTranscript += event.results[i][0].transcript;
-                        }
-                    }
-                    if (interimTranscript) {
-                        setTranscript(interimTranscript);
-                    }
-                };
-                visualRec.start();
-                visualRecognitionRef.current = visualRec;
-            }
-
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
-                    audioChunksRef.current.push(e.data);
-                }
-            };
-
-            recorder.onstop = () => {
+            recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+            recorder.onstop = async () => {
                 const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                if (blob.size > 0) {
-                    transcribeAudio(blob);
-                }
-                stream.getTracks().forEach(track => track.stop());
+                await transcribeAudio(blob);
+                stream.getTracks().forEach(t => t.stop());
             };
 
             recorder.start();
             mediaRecorderRef.current = recorder;
             setIsListening(true);
-            setTranscript("");
-            setShowConfirmation(false);
-            setProposedTask(null);
-            setAssistantResponse(null);
-            toast.info("Ouvindo... Pode falar!");
+            toast.info("Ouvindo...");
         } catch (error) {
-            console.error("Mic access error:", error);
+            console.error(error);
             toast.error("Erro ao acessar microfone.");
         }
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-            mediaRecorderRef.current.stop();
-        }
-        if (visualRecognitionRef.current) {
-            visualRecognitionRef.current.stop();
+        if (mediaRecorderRef.current?.state !== "inactive") {
+            mediaRecorderRef.current?.stop();
         }
         setIsListening(false);
     };
 
-    const toggleListening = () => {
-        if (isListening) {
-            stopRecording();
-        } else {
-            startRecording();
-        }
-    };
-
-    useEffect(() => {
-        const context = sessionStorage.getItem("ai_assistant_context");
-        if (context && !isLoadingSettings) {
-            setTranscript(context);
-            prepareTask(context);
-            sessionStorage.removeItem("ai_assistant_context");
-        }
-
-        return () => {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-                mediaRecorderRef.current.stop();
-            }
-        };
-    }, [isLoadingSettings]);
-
-    const prepareTask = async (text: string) => {
+    const transcribeAudio = async (blob: Blob) => {
         setIsProcessing(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
-            if (!apiKey) {
-                toast.error("OpenAI API Key não configurada. Fale com um administrador.");
-                setIsProcessing(false);
-                return;
-            }
+            if (!apiKey) throw new Error("API Key não configurada");
 
-            const now = new Date();
-            const currentDateTime = format(now, "eeee, dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR });
+            const formData = new FormData();
+            formData.append("file", blob, "audio.webm");
+            formData.append("model", "whisper-1");
+            formData.append("language", "pt");
 
-            const prompt = `Você é um assistente pessoal inteligente. Analise a frase do usuário e identifique o "intent" (intenção).
+            const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${apiKey}` },
+                body: formData
+            });
 
-Data/Hora atual: ${currentDateTime}
-Frase do usuário: "${text}"
+            if (!res.ok) throw new Error("Erro na transcrição");
+            const data = await res.json();
+            const text = data.text;
+            setInputText(text);
+        } catch (error) {
+            toast.error("Houve um erro ao entender o áudio.");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
-Determine se o usuário quer CRIAR uma tarefa ou CONSULTAR dados existentes.
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-Se o intent for "create":
-Extraia as informações para a tarefa.
-{
-  "intent": "create",
-  "data": {
-    "title": "string",
-    "description": "string",
-    "date": "string (YYYY-MM-DDTHH:mm:ss)",
-    "category": "task|meeting|content|deadline|reminder",
-    "priority": "low|medium|high",
-    "is_recurring": boolean,
-    "recurrence_rule": "daily|weekly|monthly|null",
-    "recurrence_end": "string|null"
-  }
-}
+        setIsProcessing(true);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) throw new Error("API Key não configurada");
 
-Se o intent for "query":
-Identifique o que ele quer saber.
-{
-  "intent": "query",
-  "data": {
-    "type": "calendar_activities",
-    "target_date_start": "string (YYYY-MM-DDTHH:mm:ss)",
-    "target_date_end": "string (YYYY-MM-DDTHH:mm:ss)",
-    "query_description": "string"
-  }
-}
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64Image = reader.result as string;
 
-Retorne APENAS o JSON.`;
+                const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o",
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    { type: "text", text: "Extraia o texto desta imagem para organizar tarefas." },
+                                    { type: "image_url", image_url: { url: base64Image } }
+                                ]
+                            }
+                        ]
+                    })
+                });
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                if (!res.ok) throw new Error("Erro na visão");
+                const data = await res.json();
+                setInputText(data.choices[0].message.content);
+            };
+        } catch (error) {
+            toast.error("Erro ao processar imagem.");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleOrganize = async () => {
+        if (!inputText.trim()) return;
+
+        setIsProcessing(true);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) throw new Error("API Key não configurada");
+
+            const prompt = `Organizador de rotinas. Devolva JSON: { "titulo": "", "categoria": "Vida|Família|Trabalho|Conteúdo|Saúde|Casa|Contas|Estudos|Outro", "tipo": "Tarefa|Compromisso", "data": "YYYY-MM-DD", "hora": "HH:MM", "recorrencia": "Nenhuma|Diária|Semanal|Mensal|Anual" }. Frase: "${inputText}"`;
+
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -240,291 +185,237 @@ Retorne APENAS o JSON.`;
                 },
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
-                    messages: [
-                        { role: "system", content: "Você é um assistente que extrai dados estruturados de comandos de voz. Saída sempre em JSON." },
-                        { role: "user", content: prompt }
-                    ],
+                    messages: [{ role: "user", content: prompt }],
                     response_format: { type: "json_object" }
                 })
             });
 
-            if (!response.ok) throw new Error("Falha na comunicação com a IA.");
+            const data = await res.json();
+            const json = JSON.parse(data.choices[0].message.content);
 
-            const aiData = await response.json();
-            const results = JSON.parse(aiData.choices[0].message.content);
-
-            if (results.intent === "query") {
-                await handleQuery(results.data);
-            } else {
-                setProposedTask({
-                    ...results.data,
-                    user_id: user?.id,
-                    status: "pending"
-                });
-                setShowConfirmation(true);
-                await speak(`Entendi. Você quer ${results.data.title}. Posso salvar?`);
-            }
-        } catch (error: any) {
-            console.error("Error preparing task with AI:", error);
-            toast.error("Falha ao interpretar comando com IA. " + (error.message || ""));
+            setConfirmData({
+                titulo: json.titulo || inputText,
+                categoria: json.categoria || "Outro",
+                tipo: json.tipo || "Tarefa",
+                data: json.data || format(new Date(), "yyyy-MM-dd"),
+                hora: json.hora || null,
+                recorrencia: json.recorrencia || "Nenhuma"
+            });
+            setShowModal(true);
+        } catch (error) {
+            toast.error("Erro na IA.");
         } finally {
             setIsProcessing(false);
         }
     };
 
-    const handleQuery = async (queryData: any) => {
+    const handleSave = async () => {
+        if (!user) return;
         setIsProcessing(true);
         try {
-            const { data: activities, error } = await supabase
-                .from("calendar_activities")
-                .select("*")
-                .eq("user_id", user?.id)
-                .gte("date", queryData.target_date_start)
-                .lte("date", queryData.target_date_end)
-                .order("date", { ascending: true });
-
-            if (error) throw error;
-
-            const apiKey = getSetting("openai_api_key")?.value;
-            const prompt = `O usuário perguntou: "${transcript}"
-            Encontrei as seguintes atividades no banco de dados: ${JSON.stringify(activities)}
-            
-            Gere uma resposta curta, amigável e natural para ser dita por voz, resumindo essas atividades.
-            Se não houver nada, diga de forma gentil.`;
-
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [
-                        { role: "system", content: "Você é um assistente pessoal prestativo." },
-                        { role: "user", content: prompt }
-                    ]
-                })
+            await (supabase.from("EventosDoCerebro") as any).insert({
+                titulo: confirmData.titulo,
+                categoria: confirmData.categoria,
+                tipo: confirmData.tipo,
+                data: confirmData.data,
+                hora: confirmData.hora,
+                recorrencia: confirmData.recorrencia,
+                user_id: user.id
             });
 
-            const data = await response.json();
-            const finalSpeech = data.choices[0].message.content;
+            await supabase.from("calendar_activities").insert({
+                title: confirmData.titulo,
+                date: confirmData.hora ? `${confirmData.data}T${confirmData.hora}:00` : `${confirmData.data}T09:00:00`,
+                category: confirmData.tipo === "Compromisso" ? "meeting" : "task",
+                user_id: user.id,
+                status: "pending"
+            });
 
-            setAssistantResponse(finalSpeech);
-            await speak(finalSpeech);
-        } catch (error: any) {
-            console.error("Query handling error:", error);
-            toast.error("Erro ao buscar informações: " + error.message);
+            toast.success("Salvo com sucesso!");
+            setShowModal(false);
+            setInputText("");
+            setShowTextInput(false);
+        } catch (error) {
+            toast.error("Erro ao salvar.");
         } finally {
             setIsProcessing(false);
         }
-    };
-
-    const confirmTask = async () => {
-        if (!proposedTask) return;
-        setIsProcessing(true);
-        try {
-            const tasksToInsert = [];
-
-            if (proposedTask.is_recurring && proposedTask.recurrence_rule) {
-                let currentDate = parseISO(proposedTask.date);
-                // Define um limite de segurança para recorrência (ex: 3 meses se não houver end date)
-                const limitDate = proposedTask.recurrence_end
-                    ? parseISO(proposedTask.recurrence_end)
-                    : addMonths(currentDate, 3);
-
-                while (isBefore(currentDate, limitDate) || format(currentDate, 'yyyy-MM-dd') === format(limitDate, 'yyyy-MM-dd')) {
-                    const { recurrence_end, ...taskData } = proposedTask;
-                    tasksToInsert.push({
-                        ...taskData,
-                        date: currentDate.toISOString()
-                    });
-
-                    if (proposedTask.recurrence_rule === 'daily') {
-                        currentDate = addDays(currentDate, 1);
-                    } else if (proposedTask.recurrence_rule === 'weekly') {
-                        currentDate = addWeeks(currentDate, 1);
-                    } else if (proposedTask.recurrence_rule === 'monthly') {
-                        currentDate = addMonths(currentDate, 1);
-                    } else {
-                        break;
-                    }
-                }
-            } else {
-                const { recurrence_end, ...taskData } = proposedTask;
-                tasksToInsert.push(taskData);
-            }
-
-            const { error } = await supabase.from("calendar_activities").insert(tasksToInsert);
-            if (error) throw error;
-
-            await speak("Com certeza! Sua(s) tarefa(s) já foi/foram salva(s) no seu calendário.");
-            toast.success(`${tasksToInsert.length} tarefa(s) criada(s) com sucesso!`);
-            setTimeout(() => navigate("/dashboard"), 1500);
-        } catch (error: any) {
-            console.error("Error creating task:", error);
-            toast.error("Erro ao criar tarefa: " + error.message);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const cancelTask = () => {
-        setProposedTask(null);
-        setAssistantResponse(null);
-        setShowConfirmation(false);
-        setTranscript("");
-        toast.info("Comando cancelado.");
     };
 
     return (
         <MinimalLayout>
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden bg-background">
-                {/* Brain Atmosphere Backdrop */}
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-accent/10 rounded-full blur-[100px]" />
-                    <div className="grid-pattern absolute inset-0 opacity-20" />
-                </div>
+            <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center justify-center pt-10 px-4 font-sans selection:bg-primary/30 relative overflow-hidden">
 
-                <button
-                    onClick={() => navigate("/dashboard")}
-                    className="absolute top-8 right-8 p-2 rounded-full bg-secondary/50 hover:bg-secondary transition-colors z-20"
-                >
-                    <X className="w-6 h-6" />
-                </button>
+                {/* Visual Background Glow (Subtle) */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.08)_0%,transparent_70%)] pointer-events-none" />
 
-                <div className="relative z-10 flex flex-col items-center max-w-lg w-full text-center space-y-12">
-                    {/* Brain Icon/Visual */}
-                    <div className="relative">
-                        <div className={cn(
-                            "w-32 h-32 rounded-full flex items-center justify-center transition-all duration-500",
-                            isListening ? "bg-primary glow-primary scale-110" : "bg-card border border-primary/30",
-                            isProcessing && "animate-spin-slow"
-                        )}>
-                            {isProcessing || isLoadingSettings ? (
-                                <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                            ) : (
-                                <Brain className={cn("w-16 h-16 transition-colors", isListening ? "text-white" : "text-primary")} />
-                            )}
-                        </div>
-                        {isListening && (
-                            <div className="absolute -inset-4 border-2 border-primary/50 rounded-full animate-ping opacity-50" />
+                <div className="w-full max-w-2xl flex flex-col items-center z-10 animate-in fade-in duration-1000">
+
+                    {/* Compact Microphone */}
+                    <div className="relative group/mic mb-8">
+                        {/* Rotating Glow Ring */}
+                        {!isListening && !isProcessing && (
+                            <div className="absolute inset-[-6px] bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 rounded-full blur-lg animate-spin-slow opacity-0 group-hover/mic:opacity-100 transition-opacity duration-700" />
                         )}
+
+                        {isListening && (
+                            <>
+                                <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-2xl animate-pulse" />
+                                <div className="absolute inset-[-15px] bg-pink-500/10 rounded-full animate-ping" />
+                            </>
+                        )}
+                        <button
+                            onClick={isListening ? stopRecording : startRecording}
+                            disabled={isProcessing}
+                            className={cn(
+                                "relative w-32 h-32 rounded-full p-[2.5px] transition-all duration-700 active:scale-90 shadow-[0_0_40px_rgba(168,85,247,0.15)] hover:shadow-[0_0_60px_rgba(168,85,247,0.3)]",
+                                isListening
+                                    ? "bg-red-500 shadow-[0_0_60px_rgba(239,68,68,0.3)]"
+                                    : "bg-gradient-to-br from-[#A855F7] via-[#D946EF] to-[#EC4899] hover:animate-pulse"
+                            )}
+                        >
+                            <div className="w-full h-full rounded-full flex items-center justify-center bg-black/20 backdrop-blur-md transition-colors group-hover/mic:bg-black/10">
+                                {isProcessing ? (
+                                    <Loader2 className="w-12 h-12 animate-spin text-white opacity-80" />
+                                ) : (
+                                    <Mic className={cn(
+                                        "w-20 h-20 text-white transition-all duration-700 drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]",
+                                        isListening ? "animate-bounce" : "group-hover/mic:scale-105 group-hover/mic:rotate-2 animate-float"
+                                    )} />
+                                )}
+                            </div>
+                        </button>
                     </div>
 
-                    <div className={cn(
-                        "w-full min-h-[140px] p-8 rounded-3xl transition-all duration-500 relative overflow-hidden",
-                        showConfirmation
-                            ? "bg-primary/10 border-primary/40 border-[3px] shadow-[0_0_40px_rgba(var(--primary),0.1)]"
-                            : "bg-card/40 backdrop-blur-xl border border-white/10 shadow-2xl",
-                        "flex flex-col items-center justify-center text-center"
-                    )}>
-                        {showConfirmation && (
-                            <div className="absolute top-4 left-4">
-                                <Sparkles className="w-5 h-5 text-primary animate-pulse" />
-                            </div>
-                        )}
-
-                        <span className={cn(
-                            "text-xs font-bold uppercase tracking-[0.2em] mb-4 transition-colors",
-                            showConfirmation ? "text-primary" : "text-muted-foreground"
-                        )}>
-                            {isListening ? "Ouvindo agora..." : (isProcessing || isLoadingSettings) ? "Processando comando..." : showConfirmation ? "Comando Interpretado" : "Aguardando Voz..."}
-                        </span>
-
-                        <p className={cn(
-                            "text-xl md:text-2xl font-medium leading-relaxed italic transition-all duration-300",
-                            (showConfirmation || assistantResponse) ? "text-foreground" : "text-foreground/60"
-                        )}>
-                            {assistantResponse ? assistantResponse : showConfirmation && proposedTask ? proposedTask.title : transcript ? `"${transcript}"` : "Diga algo como: 'Marcar dentista para amanhã às 15h'"}
+                    {/* Compact Headline */}
+                    <div className="text-center space-y-3 mb-12 max-w-lg">
+                        <h1 className="text-4xl font-black italic tracking-tighter uppercase text-white animate-in slide-in-from-bottom-4 duration-700 leading-tight">
+                            Diga tudo que precisa lembrar, <br className="hidden md:block" />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">que eu organizo para você.</span>
+                        </h1>
+                        <p className="text-white/20 font-medium text-lg tracking-tight max-w-xs mx-auto">
+                            Pressione acima ou capture abaixo.
                         </p>
+                    </div>
 
-                        {showConfirmation && proposedTask && (
-                            <div className="mt-4 flex flex-wrap justify-center gap-2 animate-in slide-in-from-bottom-2">
-                                <div className="px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase tracking-wider">
-                                    {proposedTask.category}
-                                </div>
-                                <div className={cn(
-                                    "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
-                                    proposedTask.priority === "high" ? "bg-destructive/20 text-destructive" :
-                                        proposedTask.priority === "medium" ? "bg-orange-500/20 text-orange-500" :
-                                            "bg-green-500/20 text-green-500"
-                                )}>
-                                    Prio: {proposedTask.priority}
-                                </div>
-                                {proposedTask.is_recurring && (
-                                    <div className="px-3 py-1 rounded-full bg-accent/20 text-accent text-xs font-bold uppercase tracking-wider flex items-center gap-1">
-                                        <Sparkles className="w-3 h-3" />
-                                        Recorrente: {proposedTask.recurrence_rule === 'daily' ? 'Diário' :
-                                            proposedTask.recurrence_rule === 'weekly' ? 'Semanal' :
-                                                proposedTask.recurrence_rule === 'monthly' ? 'Mensal' : 'Sim'}
+                    {/* Prominent Search-style Pill Input Bar */}
+                    <div className="w-full max-w-xl relative group h-20 mb-16 transition-all duration-500">
+                        {/* More distinct outer glow when focused */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-full blur-3xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-700" />
+
+                        <div className="relative h-full flex items-center bg-[#0F0F0F] border-2 border-white/[0.08] hover:border-white/[0.15] group-focus-within:border-purple-500/50 rounded-full px-8 shadow-[0_32px_64px_rgba(0,0,0,0.6)] group-focus-within:bg-[#121212] transition-all duration-300">
+                            <Search className="w-7 h-7 text-white/10 group-focus-within:text-purple-500 transition-colors" />
+                            <input
+                                type="text"
+                                value={inputText}
+                                onChange={(e) => setInputText(e.target.value)}
+                                placeholder="Ou digite sua ideia de produto, post..."
+                                className="flex-1 bg-transparent border-none focus:ring-0 text-xl px-6 placeholder:text-white/5 text-white/90 font-semibold"
+                                onKeyDown={(e) => e.key === 'Enter' && handleOrganize()}
+                            />
+
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white/20 hover:text-white transition-all shadow-inner"
+                                    title="Capturar foto"
+                                >
+                                    <ImageIcon className="w-6 h-6" />
+                                </button>
+
+                                {inputText.length > 0 ? (
+                                    <button
+                                        onClick={handleOrganize}
+                                        disabled={isProcessing}
+                                        className="w-12 h-12 rounded-[18px] bg-gradient-to-br from-[#A855F7] to-[#EC4899] flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xl shadow-purple-500/40"
+                                    >
+                                        {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6 text-white" />}
+                                    </button>
+                                ) : (
+                                    <div className="w-12 h-12 rounded-[18px] bg-white/5 flex items-center justify-center border border-white/[0.03]">
+                                        <Keyboard className="w-6 h-6 text-white/5 opacity-40" />
                                     </div>
                                 )}
                             </div>
-                        )}
-
-                        {showConfirmation && proposedTask && (
-                            <div className="mt-6 flex items-center gap-3 px-4 py-2 rounded-full bg-primary/20 text-primary text-sm font-semibold animate-in slide-in-from-bottom-2">
-                                <Calendar className="w-4 h-4" />
-                                {format(new Date(proposedTask.date), "EEEE, dd 'de' MMMM", { locale: ptBR })}
-                            </div>
-                        )}
+                        </div>
+                        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                     </div>
 
-                    <div className="flex flex-col items-center gap-6 w-full">
-                        {showConfirmation ? (
-                            <div className="flex gap-4 w-full animate-in fade-in zoom-in duration-300">
-                                <Button
-                                    variant="outline"
-                                    onClick={cancelTask}
-                                    className="flex-1 h-14 rounded-xl border-destructive/50 text-destructive hover:bg-destructive/10"
-                                    disabled={isProcessing}
-                                >
-                                    Descartar
-                                </Button>
-                                <Button
-                                    onClick={confirmTask}
-                                    className="flex-1 h-14 rounded-xl gradient-primary text-white font-bold text-lg shadow-lg shadow-primary/30"
-                                    disabled={isProcessing}
-                                >
-                                    {isProcessing ? <Loader2 className="animate-spin" /> : "Sim, enviar"}
-                                </Button>
+                    {/* Compact Category Badges */}
+                    <div className="w-full flex flex-wrap justify-center gap-3 opacity-40 hover:opacity-80 transition-opacity duration-700">
+                        {LIFE_BLOCKS.map(b => (
+                            <div key={b.name} className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/[0.02] border border-white/[0.03] transition-all hover:bg-white/[0.06] hover:-translate-y-0.5 cursor-default group">
+                                <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentcolor] group-hover:scale-110 transition-transform", b.color.replace('bg-', 'text-'))} />
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 group-hover:text-white/50 transition-colors">{b.name}</span>
                             </div>
-                        ) : (
-                            <>
-                                <Button
-                                    size="lg"
-                                    onClick={toggleListening}
-                                    className={cn(
-                                        "w-20 h-20 rounded-full p-0 shadow-2xl transition-all active:scale-95",
-                                        isListening ? "bg-destructive hover:bg-destructive/90" : "gradient-primary"
-                                    )}
-                                    disabled={isProcessing || isLoadingSettings}
-                                >
-                                    <Mic className="w-10 h-10 text-white" />
-                                </Button>
-
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-widest font-semibold">
-                                    <Sparkles className="w-3 h-3 text-accent" />
-                                    Inteligência Artificial Integrada
-                                </div>
-                            </>
-                        )}
+                        ))}
                     </div>
                 </div>
-            </div>
 
-            <style dangerouslySetInnerHTML={{
-                __html: `
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
-        }
-      `}} />
-        </MinimalLayout >
+                {/* MODAL CONFIRMACAO (Consistent glass styling) */}
+                <Dialog open={showModal} onOpenChange={setShowModal}>
+                    <DialogContent className="sm:max-w-md bg-[#0D0D0D]/95 backdrop-blur-[40px] border border-white/10 p-10 rounded-[48px] shadow-2xl overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 pointer-events-none" />
+                        <DialogHeader className="relative z-10">
+                            <DialogTitle className="flex items-center gap-4 text-3xl font-black italic uppercase tracking-tighter">
+                                <div className="w-11 h-11 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                                    <Sparkles className="w-5 h-5 text-purple-500" />
+                                </div>
+                                Confirmar Evento
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="space-y-8 pt-6 relative z-10">
+                            <div className="space-y-3">
+                                <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Título do Insight</Label>
+                                <Input
+                                    value={confirmData.titulo}
+                                    onChange={e => setConfirmData(p => ({ ...p, titulo: e.target.value }))}
+                                    className="bg-white/5 border-white/5 h-15 text-lg font-bold rounded-2xl focus:border-purple-500/50 transition-all px-8 shadow-inner"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Bloco de Vida</Label>
+                                    <Select value={confirmData.categoria} onValueChange={v => setConfirmData(p => ({ ...p, categoria: v }))}>
+                                        <SelectTrigger className="bg-white/5 border-white/5 h-12 rounded-2xl focus:ring-0 px-6 font-bold">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-2xl">
+                                            {LIFE_BLOCKS.map(l => (
+                                                <SelectItem key={l.name} value={l.name} className="focus:bg-white/10 py-3">{l.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-3">
+                                    <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Tipo</Label>
+                                    <Select value={confirmData.tipo} onValueChange={(v: any) => setConfirmData(p => ({ ...p, tipo: v }))}>
+                                        <SelectTrigger className="bg-white/5 border-white/5 h-12 rounded-2xl focus:ring-0 px-6 font-bold">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-2xl">
+                                            <SelectItem value="Tarefa" className="focus:bg-white/10 py-3">Tarefa</SelectItem>
+                                            <SelectItem value="Compromisso" className="focus:bg-white/10 py-3">Compromisso</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="pt-10 relative z-10">
+                            <Button
+                                onClick={handleSave}
+                                disabled={isProcessing}
+                                className="w-full h-18 rounded-[24px] bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-xl shadow-2xl shadow-purple-500/30 transition-all hover:scale-[1.03] active:scale-95"
+                            >
+                                {isProcessing ? <Loader2 className="w-8 h-8 animate-spin" /> : "Confirmar e Agendar"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </MinimalLayout>
     );
 }

@@ -128,6 +128,14 @@ const POSITIONS = {
     right: "items-end justify-end pr-10"
 };
 
+// --- Helpers ---
+const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
 // --- Main Component ---
 export function AICarousels() {
     const { brand } = useBrand();
@@ -353,33 +361,22 @@ export function AICarousels() {
         if (!sourceSlide) return;
 
         setCarousel(prev => {
-            const newSlides = (prev.slides || []).map((s, idx) => {
+            if (!prev.slides) return prev;
+
+            const newSlides = prev.slides.map((s, idx) => {
                 if (idx === currentSlide) return s;
+
+                // Copy all style properties but keep text content and unique images
                 return {
                     ...s,
-                    font: sourceSlide.font,
-                    fontSize: sourceSlide.fontSize,
-                    alignment: sourceSlide.alignment,
-                    isBold: sourceSlide.isBold,
-                    isItalic: sourceSlide.isItalic,
-                    textColor: sourceSlide.textColor,
-                    secondaryTextColor: sourceSlide.secondaryTextColor,
-                    lineHeight: sourceSlide.lineHeight,
-                    textPosition: sourceSlide.textPosition,
-                    secondaryPosition: sourceSlide.secondaryPosition,
-                    boxBgColor: sourceSlide.boxBgColor,
-                    boxOpacity: sourceSlide.boxOpacity,
-                    boxPadding: sourceSlide.boxPadding,
-                    bgColor: sourceSlide.bgColor,
-                    overlayColor: sourceSlide.overlayColor,
-                    overlayOpacity: sourceSlide.overlayOpacity,
-                    overlayShadow: sourceSlide.overlayShadow,
-                    secondaryFont: sourceSlide.secondaryFont,
-                    secondaryFontSize: sourceSlide.secondaryFontSize,
-                    secondaryIsBold: sourceSlide.secondaryIsBold,
-                    secondaryIsItalic: sourceSlide.secondaryIsItalic
+                    ...sourceSlide,
+                    // Restore unique content
+                    text: s.text,
+                    secondaryText: s.secondaryText,
+                    bgImage: s.bgImage || sourceSlide.bgImage, // Keep slide image if exists, else fallback to source
                 };
             });
+
             return { ...prev, slides: newSlides };
         });
         toast.success("Estilos aplicados a todos os slides!");
@@ -592,7 +589,7 @@ export function AICarousels() {
                                     {/* SCALE PREVIEW FOR UI */}
                                     <div className="h-[80%] w-auto aspect-[4/5] lg:w-full lg:max-w-[360px] lg:h-auto rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl border border-white/5 relative bg-slate-900 ring-1 ring-white/10 mx-auto">
                                         <div
-                                            className={cn("w-full h-full flex flex-col p-6 sm:p-8 transition-all duration-500")}
+                                            className={cn("w-full h-full flex flex-col px-2 py-8 transition-all duration-500 overflow-hidden")}
                                             style={{
                                                 fontFamily: carousel.slides[currentSlide].font,
                                                 backgroundColor: carousel.slides[currentSlide].bgColor,
@@ -617,14 +614,19 @@ export function AICarousels() {
                                                                 "justify-center items-end text-right"
                                             )}>
                                                 <div
+                                                    className="w-full mx-auto transition-all duration-300 box-border px-2"
                                                     style={{
-                                                        backgroundColor: carousel.slides[currentSlide].boxBgColor,
+                                                        backgroundColor: hexToRgba(carousel.slides[currentSlide].boxBgColor || "#000000", carousel.slides[currentSlide].boxOpacity ?? 0.8),
                                                         padding: `${(carousel.slides[currentSlide].boxPadding || 40) / 3}px`,
-                                                        borderRadius: '8px'
+                                                        borderRadius: '8px',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: carousel.slides[currentSlide].textPosition === 'left' ? 'flex-start' :
+                                                            carousel.slides[currentSlide].textPosition === 'right' ? 'flex-end' : 'center'
                                                     }}
                                                 >
                                                     <h1 className={cn(
-                                                        "font-black tracking-tighter",
+                                                        "font-black tracking-tighter break-normal w-full box-border hyphens-none",
                                                         carousel.slides[currentSlide].fontSize === 'sm' ? 'text-2xl' :
                                                             carousel.slides[currentSlide].fontSize === 'md' ? 'text-3xl' : 'text-4xl',
                                                         carousel.slides[currentSlide].isItalic && "italic"
@@ -640,7 +642,7 @@ export function AICarousels() {
                                                     </h1>
                                                     {!carousel.slides[currentSlide].useOnlyMain && (
                                                         <p className={cn(
-                                                            "mt-3 opacity-80 leading-relaxed transition-all",
+                                                            "mt-3 opacity-80 leading-relaxed transition-all break-normal w-full box-border hyphens-none",
                                                             // Removed secondaryFont class usage
                                                             carousel.slides[currentSlide].secondaryFontSize === 'xs' ? 'text-[10px]' :
                                                                 carousel.slides[currentSlide].secondaryFontSize === 'sm' ? 'text-xs' :
@@ -920,6 +922,62 @@ export function AICarousels() {
                                         )}
                                     </div>
 
+                                    {/* Block 1.5: BLOCO DE DESTAQUE */}
+                                    <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Settings2 className="w-4 h-4" /></div>
+                                            <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Bloco de Destaque</h3>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
+                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ativar Fundo</Label>
+                                                <Checkbox
+                                                    checked={(carousel.slides[currentSlide].boxOpacity ?? 0.8) > 0}
+                                                    onCheckedChange={(checked) => updateSlide(currentSlide, { boxOpacity: checked ? 0.8 : 0 })}
+                                                />
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Bloco</Label>
+                                                    <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/5">
+                                                        <input
+                                                            type="color"
+                                                            value={carousel.slides[currentSlide].boxBgColor || "#000000"}
+                                                            onChange={(e) => updateSlide(currentSlide, { boxBgColor: e.target.value })}
+                                                            className="w-8 h-8 rounded-lg bg-transparent cursor-pointer"
+                                                        />
+                                                        <span className="text-[10px] font-mono text-white/50">{carousel.slides[currentSlide].boxBgColor || "#000000"}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Transparência</Label>
+                                                    <div className="pt-2 px-1">
+                                                        <Slider
+                                                            value={[(carousel.slides[currentSlide].boxOpacity ?? 0.8) * 100]}
+                                                            max={100}
+                                                            step={1}
+                                                            onValueChange={(v) => updateSlide(currentSlide, { boxOpacity: v[0] / 100 })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Preenchimento (Padding)</Label>
+                                                    <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].boxPadding || 40}px</span>
+                                                </div>
+                                                <Slider
+                                                    value={[carousel.slides[currentSlide].boxPadding || 40]}
+                                                    min={0} max={120} step={4}
+                                                    onValueChange={(v) => updateSlide(currentSlide, { boxPadding: v[0] })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Block 2: LAYOUT & CORES */}
                                     <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
                                         <div className="flex items-center gap-2 mb-4">
@@ -1152,7 +1210,7 @@ export function AICarousels() {
                                         }}
                                     />
                                     <div className={cn(
-                                        "relative z-10 w-full h-full flex flex-col p-20",
+                                        "relative z-10 w-full h-full flex flex-col px-10 py-20 overflow-hidden",
                                         slide.textPosition === 'center' ? "justify-center items-center text-center" :
                                             slide.textPosition === 'top' ? "justify-start text-center" :
                                                 slide.textPosition === 'bottom' ? "justify-end text-center" :
@@ -1161,14 +1219,14 @@ export function AICarousels() {
                                     )}>
                                         <div
                                             style={{
-                                                backgroundColor: slide.boxBgColor,
+                                                backgroundColor: hexToRgba(slide.boxBgColor || "#000000", slide.boxOpacity ?? 0.8),
                                                 padding: `${slide.boxPadding}px`,
                                                 borderRadius: '24px'
                                             }}
                                             className="max-w-[90%]"
                                         >
                                             <h1 className={cn(
-                                                "font-black tracking-tight leading-tight",
+                                                "font-black tracking-tight leading-tight break-normal w-full hyphens-none",
                                                 slide.fontSize === 'sm' ? 'text-6xl' :
                                                     slide.fontSize === 'md' ? 'text-8xl' : 'text-[120px]',
                                                 slide.isItalic && "italic"
@@ -1179,7 +1237,7 @@ export function AICarousels() {
                                             </h1>
                                             {!slide.useOnlyMain && (
                                                 <p className={cn(
-                                                    "mt-10 opacity-80 transition-all",
+                                                    "mt-10 opacity-80 transition-all break-normal w-full hyphens-none",
                                                     slide.secondaryFont,
                                                     slide.secondaryFontSize === 'xs' ? 'text-2xl' :
                                                         slide.secondaryFontSize === 'sm' ? 'text-4xl' :

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Clock, Timer, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,13 +24,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Activity } from "./ActivityCalendar";
+import { CerebroEvent, EventCategory, EventType, RecurrenceType, EventStatus } from "./types";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface AddActivityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (activity: Omit<Activity, "id">) => void;
+  onAdd: () => void;
   defaultDate: Date;
+  editingEvent?: CerebroEvent | null;
 }
 
 export function AddActivityDialog({
@@ -38,191 +42,242 @@ export function AddActivityDialog({
   onOpenChange,
   onAdd,
   defaultDate,
+  editingEvent,
 }: AddActivityDialogProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<EventCategory>("Outro");
+  const [type, setType] = useState<EventType>("Tarefa");
   const [date, setDate] = useState<Date>(defaultDate);
-  const [category, setCategory] = useState<Activity["category"]>("task");
-  const [priority, setPriority] = useState<Activity["priority"]>("medium");
+  const [hour, setHour] = useState("09:00");
+  const [duration, setDuration] = useState("60");
+  const [recurrence, setRecurrence] = useState<RecurrenceType>("Nenhuma");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<EventStatus>("Pendente");
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Recurrence states
-  const [frequency, setFrequency] = useState<'none' | 'daily' | 'weekly'>('none');
-  const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [startTime, setStartTime] = useState("09:00");
+  useEffect(() => {
+    if (editingEvent) {
+      setTitle(editingEvent.titulo);
+      setCategory(editingEvent.categoria);
+      setType(editingEvent.tipo);
+      setDate(new Date(editingEvent.data + 'T12:00:00'));
+      setHour(editingEvent.hora?.substring(0, 5) || "09:00");
+      setDuration(String(editingEvent.duracao || 60));
+      setRecurrence(editingEvent.recorrencia);
+      setDescription(editingEvent.descricao || "");
+      setStatus(editingEvent.status);
+    } else {
+      setTitle("");
+      setCategory("Outro");
+      setType("Tarefa");
+      setDate(defaultDate);
+      setHour("09:00");
+      setDuration("60");
+      setRecurrence("Nenhuma");
+      setDescription("");
+      setStatus("Pendente");
+    }
+  }, [editingEvent, open, defaultDate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !user) return;
 
-    const [hours, minutes] = startTime.split(':').map(Number);
-    const dateWithTime = new Date(date);
-    dateWithTime.setHours(hours, minutes, 0, 0);
+    setIsSaving(true);
+    try {
+      const eventData = {
+        titulo: title.trim(),
+        categoria: category,
+        tipo: type,
+        data: format(date, "yyyy-MM-dd"),
+        hora: hour,
+        duracao: parseInt(duration),
+        recorrencia: recurrence,
+        descricao: description.trim(),
+        status: status,
+        user_id: user.id
+      };
 
-    const recurrenceData = {
-      isRecurring: frequency !== 'none',
-      frequency,
-      days: frequency === 'weekly' ? selectedDays : [0, 1, 2, 3, 4, 5, 6],
-      time: startTime,
-      notes: description.trim()
-    };
+      if (editingEvent) {
+        const { error } = await (supabase as any)
+          .from("eventos_do_cerebro")
+          .update(eventData)
+          .eq("id", editingEvent.id);
+        if (error) throw error;
+        toast.success("Evento atualizado!");
+      } else {
+        const { error } = await (supabase as any)
+          .from("eventos_do_cerebro")
+          .insert(eventData);
+        if (error) throw error;
+        toast.success("Evento criado!");
+      }
 
-    onAdd({
-      title: title.trim(),
-      description: JSON.stringify(recurrenceData),
-      date: dateWithTime,
-      category,
-      status: "pending",
-      priority,
-    });
-
-    // Reset form
-    setTitle("");
-    setDescription("");
-    setCategory("task");
-    setPriority("medium");
+      onAdd();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Error saving event:", error);
+      toast.error("Erro ao salvar evento");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Nova Atividade</DialogTitle>
+      <DialogContent className="sm:max-w-lg bg-slate-950 border-white/5 p-8 max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="mb-6">
+          <DialogTitle className="text-3xl font-black text-white tracking-tighter uppercase italic">
+            {editingEvent ? "Editar Evento" : "Novo Evento"}
+          </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Título do Evento</label>
             <Input
-              placeholder="Título da atividade"
+              placeholder="O que vamos organizar?"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              className="h-14 bg-white/5 border-white/10 rounded-2xl text-lg font-bold placeholder:text-white/20 focus:ring-primary/20 transition-all font-sans"
               autoFocus
             />
           </div>
 
-          <div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Categoria</label>
+              <Select value={category} onValueChange={(v) => setCategory(v as EventCategory)}>
+                <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10">
+                  {["Vida", "Família", "Trabalho", "Conteúdo", "Saúde", "Casa", "Contas", "Estudos", "Outro"].map(cat => (
+                    <SelectItem key={cat} value={cat} className="font-bold">{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo</label>
+              <Select value={type} onValueChange={(v) => setType(v as EventType)}>
+                <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10">
+                  <SelectItem value="Tarefa" className="font-bold text-blue-400">Tarefa</SelectItem>
+                  <SelectItem value="Compromisso" className="font-bold text-amber-400">Compromisso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Data</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full h-12 justify-start bg-white/5 border-white/10 rounded-xl font-bold">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {format(date, "dd/MM/yyyy")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-slate-900 border-white/10">
+                  <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Horário</label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="time"
+                  value={hour}
+                  onChange={(e) => setHour(e.target.value)}
+                  className="h-12 bg-white/5 border-white/10 rounded-xl pl-10 font-bold"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Duração (minutos)</label>
+              <div className="relative">
+                <Timer className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  className="h-12 bg-white/5 border-white/10 rounded-xl pl-10 font-bold"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Recorrência</label>
+              <Select value={recurrence} onValueChange={(v) => setRecurrence(v as RecurrenceType)}>
+                <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
+                  <div className="flex items-center gap-2">
+                    <Repeat className="w-4 h-4" />
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10">
+                  {["Nenhuma", "Diária", "Semanal", "Mensal", "Anual"].map(rec => (
+                    <SelectItem key={rec} value={rec} className="font-bold">{rec}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</label>
+            <div className="flex gap-2">
+              {(["Pendente", "Concluído"] as const).map(s => (
+                <button
+                  key={s} type="button"
+                  onClick={() => setStatus(s)}
+                  className={cn(
+                    "flex-1 h-12 rounded-xl font-black text-[10px] uppercase tracking-widest border transition-all",
+                    status === s
+                      ? s === 'Concluído' ? "bg-green-500/20 text-green-400 border-green-500/20 shadow-lg shadow-green-500/5" : "bg-primary/20 text-primary border-primary/20"
+                      : "bg-white/5 text-muted-foreground border-white/5 hover:bg-white/10"
+                  )}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Descrição</label>
             <Textarea
-              placeholder="Descrição (opcional)"
+              placeholder="Notas adicionais sobre o evento..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={2}
+              className="min-h-[100px] bg-white/5 border-white/10 rounded-2xl p-4 font-medium"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "justify-start text-left font-normal h-10 border-white/10 bg-white/5 hover:bg-white/10",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "dd/MM/yyyy") : "Data"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(d) => d && setDate(d)}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-
-            <Select value={category} onValueChange={(v) => setCategory(v as Activity["category"])}>
-              <SelectTrigger className="h-10 border-white/10 bg-white/5 hover:bg-white/10">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="task">Tarefa</SelectItem>
-                <SelectItem value="content">Conteúdo</SelectItem>
-                <SelectItem value="meeting">Reunião</SelectItem>
-                <SelectItem value="deadline">Prazo</SelectItem>
-                <SelectItem value="reminder">Lembrete</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Select value={priority} onValueChange={(v) => setPriority(v as Activity["priority"])}>
-              <SelectTrigger className="h-10 border-white/10 bg-white/5 hover:bg-white/10">
-                <SelectValue placeholder="Prioridade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Baixa prioridade</SelectItem>
-                <SelectItem value="medium">Média prioridade</SelectItem>
-                <SelectItem value="high">Alta prioridade</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="relative">
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="h-10 border-white/10 bg-white/5 hover:bg-white/10"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3 p-3 rounded-xl bg-white/5 border border-white/5">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Repetir:</span>
-              <div className="flex gap-1 bg-black/20 p-0.5 rounded-lg">
-                {(['none', 'daily', 'weekly'] as const).map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    onClick={() => setFrequency(f)}
-                    className={cn(
-                      "px-3 py-1 text-[9px] font-bold uppercase rounded-md transition-all",
-                      frequency === f ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-white/5"
-                    )}
-                  >
-                    {f === 'none' ? 'Não' : f === 'daily' ? 'Diário' : 'Semanal'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {frequency === 'weekly' && (
-              <div className="flex justify-between gap-1">
-                {[
-                  { l: 'D', v: 0 }, { l: 'S', v: 1 }, { l: 'T', v: 2 },
-                  { l: 'Q', v: 3 }, { l: 'Q', v: 4 }, { l: 'S', v: 5 }, { l: 'S', v: 6 }
-                ].map((day) => (
-                  <button
-                    key={day.v}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDays(prev =>
-                        prev.includes(day.v) ? prev.filter(d => d !== day.v) : [...prev, day.v]
-                      );
-                    }}
-                    className={cn(
-                      "w-8 h-8 rounded-lg text-xs font-bold transition-all border",
-                      selectedDays.includes(day.v)
-                        ? "bg-primary/20 text-primary border-primary/30"
-                        : "bg-white/5 text-muted-foreground border-transparent hover:bg-white/10"
-                    )}
-                  >
-                    {day.l}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="h-12 px-6 rounded-xl font-bold transition-all"
+            >
               Cancelar
             </Button>
-            <Button type="submit" disabled={!title.trim()} className="gradient-primary text-primary-foreground">
-              Adicionar
+            <Button
+              type="submit"
+              disabled={!title.trim() || isSaving}
+              className="gradient-primary h-12 px-8 rounded-xl font-extrabold uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-xs"
+            >
+              {isSaving ? "Salvando..." : (editingEvent ? "Salvar Alterações" : "Criar Evento")}
             </Button>
           </div>
         </form>

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send, MessageSquareText } from "lucide-react";
+import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send, MessageSquareText, Trash2 } from "lucide-react";
 import { format, addDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -46,19 +46,26 @@ export default function Assistant() {
     const [inputText, setInputText] = useState("");
     const [isListening, setIsListening] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isProcessingImage, setIsProcessingImage] = useState(false);
     const [showTextInput, setShowTextInput] = useState(false);
     const [showCapturedCard, setShowCapturedCard] = useState(false);
 
     // Confirmation Modal
     const [showModal, setShowModal] = useState(false);
-    const [confirmData, setConfirmData] = useState<EventoConfirmacao>({
-        titulo: "",
-        categoria: "Outro",
-        tipo: "Tarefa",
-        data: format(new Date(), "yyyy-MM-dd"),
-        hora: "09:00",
-        recorrencia: "Nenhuma"
-    });
+    const [confirmEvents, setConfirmEvents] = useState<EventoConfirmacao[]>([]);
+
+    const deleteEvent = (index: number) => {
+        setConfirmEvents(prev => prev.filter((_, i) => i !== index));
+        if (confirmEvents.length <= 1) setShowModal(false);
+    };
+
+    const updateEvent = (index: number, data: Partial<EventoConfirmacao>) => {
+        setConfirmEvents(prev => {
+            const next = [...prev];
+            next[index] = { ...next[index], ...data };
+            return next;
+        });
+    };
 
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -129,7 +136,7 @@ export default function Assistant() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setIsProcessing(true);
+        setIsProcessingImage(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
             if (!apiKey) throw new Error("API Key não configurada");
@@ -163,11 +170,14 @@ export default function Assistant() {
                 const data = await res.json();
                 setInputText(data.choices[0].message.content);
                 setShowCapturedCard(true);
+                setIsProcessingImage(false); // Cleanup here as well to be sure
             };
         } catch (error) {
             toast.error("Erro ao processar imagem.");
+            setIsProcessingImage(false);
         } finally {
-            setIsProcessing(false);
+            // Processing state is mostly handled by the reader onload but we keep safety cleanup
+            setTimeout(() => setIsProcessingImage(false), 5000); // Failsafe
         }
     };
 
@@ -186,20 +196,26 @@ export default function Assistant() {
             const prompt = `Você é um Assistente de Organização Pessoal.
 Hoje é: ${todayStr}, agora são: ${currentTimeStr}.
 Sua missão é extrair eventos de frases.
-Retorne um JSON com:
+O usuário pode falar UMA ou VÁRIAS tarefas ao mesmo tempo.
+Retorne um JSON com uma lista de eventos:
 {
-  "titulo": "Resumo curto e claro",
-  "categoria": "Vida|Família|Trabalho|Conteúdo|Saúde|Casa|Contas|Estudos|Outro",
-  "tipo": "Tarefa|Compromisso",
-  "data": "YYYY-MM-DD",
-  "hora": "HH:MM",
-  "recorrencia": "Nenhuma|Diária|Semanal|Mensal|Anual"
+  "eventos": [
+    {
+      "titulo": "Resumo curto e claro",
+      "categoria": "Vida|Família|Trabalho|Conteúdo|Saúde|Casa|Contas|Estudos|Outro",
+      "tipo": "Tarefa|Compromisso",
+      "data": "YYYY-MM-DD",
+      "hora": "HH:MM",
+      "recorrencia": "Nenhuma|Diária|Semanal|Mensal|Anual"
+    }
+  ]
 }
 
 Observações importantes:
 - Se o usuário falar "amanhã", calcule a data correta baseada em ${todayStr}.
 - Se o usuário falar "toda segunda", "diário", etc., marque a "recorrencia" adequadamente.
 - Se o usuário não mencionar hora, use null se for tarefa ou 09:00 se for compromisso.
+- Identifique múltiplos eventos se eles existirem na mesma frase.
 - Seja inteligente com o contexto.
 
 Frase do usuário: "${inputText}"`;
@@ -219,15 +235,21 @@ Frase do usuário: "${inputText}"`;
 
             const data = await res.json();
             const json = JSON.parse(data.choices[0].message.content);
+            const eventos = json.eventos || [];
 
-            setConfirmData({
-                titulo: json.titulo || inputText.substring(0, 50),
-                categoria: json.categoria || "Outro",
-                tipo: json.tipo || "Tarefa",
-                data: json.data || format(new Date(), "yyyy-MM-dd"),
-                hora: json.hora || (json.tipo === "Compromisso" ? "09:00" : null),
-                recorrencia: json.recorrencia || "Nenhuma"
-            });
+            if (eventos.length === 0) {
+                toast.info("Nenhuma tarefa identificada.");
+                return;
+            }
+
+            setConfirmEvents(eventos.map((e: any) => ({
+                titulo: e.titulo || "Sem título",
+                categoria: e.categoria || "Outro",
+                tipo: e.tipo || "Tarefa",
+                data: e.data || format(new Date(), "yyyy-MM-dd"),
+                hora: e.hora || (e.tipo === "Compromisso" ? "09:00" : null),
+                recorrencia: e.recorrencia || "Nenhuma"
+            })));
             setShowModal(true);
         } catch (error) {
             console.error(error);
@@ -238,57 +260,27 @@ Frase do usuário: "${inputText}"`;
     };
 
     const handleSave = async () => {
-        if (!user) return;
+        if (!user || confirmEvents.length === 0) return;
         setIsProcessing(true);
         try {
-            // Salvar no log detalhado
-            await (supabase.from("EventosDoCerebro") as any).insert({
-                titulo: confirmData.titulo,
-                categoria: confirmData.categoria,
-                tipo: confirmData.tipo,
-                data: confirmData.data,
-                hora: confirmData.hora,
-                recorrencia: confirmData.recorrencia,
-                user_id: user.id
-            });
+            for (const event of confirmEvents) {
+                // Salvar na tabela unificada eventos_do_cerebro
+                await supabase.from("eventos_do_cerebro").insert({
+                    titulo: event.titulo,
+                    categoria: event.categoria,
+                    tipo: event.tipo,
+                    data: event.data,
+                    hora: event.hora,
+                    recorrencia: event.recorrencia,
+                    status: "Pendente",
+                    duracao: 60, // Default duration for AI extracted events
+                    user_id: user.id
+                });
+            }
 
-            // Sincronizar com calendário de atividades
-            // 1. Criar data correta lidando com fuso horário local de forma nativa
-            const [hours, minutes] = (confirmData.hora || "09:00").split(':').map(Number);
-            const targetDate = new Date(confirmData.data + 'T00:00:00');
-            targetDate.setHours(hours, minutes, 0, 0);
-
-            // 2. Mapear recorrência para formato esperado pelo InboxActivityCalendar
-            const freqMap: Record<string, string> = {
-                "Diária": "daily",
-                "Semanal": "weekly",
-                "Mensal": "monthly",
-                "Anual": "yearly",
-                "Nenhuma": "none"
-            };
-            const freq = freqMap[confirmData.recorrencia] || "none";
-
-            // 3. Formatar metadados como JSON para exibição correta no calendário
-            const recurrenceData = {
-                isRecurring: freq !== "none",
-                frequency: freq,
-                time: confirmData.hora || "09:00",
-                days: freq === 'weekly' ? [targetDate.getDay()] : [0, 1, 2, 3, 4, 5, 6],
-                category: confirmData.categoria,
-                type: confirmData.tipo
-            };
-
-            await supabase.from("calendar_activities").insert({
-                title: confirmData.titulo,
-                date: targetDate.toISOString(),
-                category: confirmData.tipo === "Compromisso" ? "meeting" : "task",
-                user_id: user.id,
-                status: "pending",
-                description: JSON.stringify(recurrenceData)
-            });
-
-            toast.success("Evento agendado com sucesso!");
+            toast.success(`${confirmEvents.length} eventos agendados com sucesso!`);
             setShowModal(false);
+            setConfirmEvents([]);
             setInputText("");
             setShowCapturedCard(false);
         } catch (error) {
@@ -454,94 +446,141 @@ Frase do usuário: "${inputText}"`;
                     </div>
                 </div>
 
+                {/* Image Processing Loader Overlay */}
+                {isProcessingImage && (
+                    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+                        <div className="relative">
+                            <div className="w-24 h-24 rounded-full border-2 border-purple-500/20 flex items-center justify-center">
+                                <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+                            </div>
+                            <div className="absolute inset-0 rounded-full border-t-2 border-purple-500 animate-spin" />
+                        </div>
+                        <div className="mt-8 text-center space-y-2">
+                            <h3 className="text-xl font-bold tracking-tight text-white uppercase italic">Analisando imagem...</h3>
+                            <p className="text-white/40 text-sm font-medium">A Yah está extraindo os detalhes para você.</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* MODAL CONFIRMACAO (Consistent glass styling) */}
                 <Dialog open={showModal} onOpenChange={setShowModal}>
-                    <DialogContent className="sm:max-w-md w-[95vw] max-h-[90vh] bg-[#0D0D0D]/95 backdrop-blur-[40px] border border-white/10 p-6 md:p-10 rounded-[32px] md:rounded-[48px] shadow-2xl overflow-y-auto custom-scrollbar">
+                    <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] bg-[#0D0D0D]/95 backdrop-blur-[40px] border border-white/10 p-0 rounded-[32px] md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col">
                         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 pointer-events-none" />
-                        <DialogHeader className="relative z-10">
-                            <DialogTitle className="flex items-center gap-4 text-3xl font-black italic uppercase tracking-tighter">
-                                <div className="w-11 h-11 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                                    <Sparkles className="w-5 h-5 text-purple-500" />
-                                </div>
-                                Confirmar Evento
-                            </DialogTitle>
-                        </DialogHeader>
 
-                        <div className="space-y-8 pt-6 relative z-10">
-                            <div className="space-y-3">
-                                <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Título do Insight</Label>
-                                <Input
-                                    value={confirmData.titulo}
-                                    onChange={e => setConfirmData(p => ({ ...p, titulo: e.target.value }))}
-                                    className="bg-white/5 border-white/5 h-15 text-lg font-bold rounded-2xl focus:border-purple-500/50 transition-all px-8 shadow-inner"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-3">
-                                    <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Bloco de Vida</Label>
-                                    <Select value={confirmData.categoria} onValueChange={v => setConfirmData(p => ({ ...p, categoria: v }))}>
-                                        <SelectTrigger className="bg-white/5 border-white/5 h-12 rounded-2xl focus:ring-0 px-6 font-bold">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-2xl">
-                                            {LIFE_BLOCKS.map(l => (
-                                                <SelectItem key={l.name} value={l.name} className="focus:bg-white/10 py-3">{l.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-3">
-                                    <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Tipo</Label>
-                                    <Select value={confirmData.tipo} onValueChange={(v: any) => setConfirmData(p => ({ ...p, tipo: v }))}>
-                                        <SelectTrigger className="bg-white/5 border-white/5 h-12 rounded-2xl focus:ring-0 px-6 font-bold">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-2xl">
-                                            <SelectItem value="Tarefa" className="focus:bg-white/10 py-3">Tarefa</SelectItem>
-                                            <SelectItem value="Compromisso" className="focus:bg-white/10 py-3">Compromisso</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-8">
-                                <div className="space-y-3">
-                                    <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Data de Início</Label>
-                                    <Input type="date" value={confirmData.data} onChange={e => setConfirmData(p => ({ ...p, data: e.target.value }))} className="bg-white/5 border-white/5 h-12 rounded-2xl px-6 font-bold" />
-                                </div>
-                                <div className="space-y-3">
-                                    <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Horário</Label>
-                                    <Input type="time" value={confirmData.hora || ""} onChange={e => setConfirmData(p => ({ ...p, hora: e.target.value || null }))} className="bg-white/5 border-white/5 h-12 rounded-2xl px-6 font-bold" />
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <Label className="text-[11px] uppercase font-black tracking-[0.4em] text-white/20 ml-1">Recorrência</Label>
-                                <Select value={confirmData.recorrencia} onValueChange={v => setConfirmData(p => ({ ...p, recorrencia: v }))}>
-                                    <SelectTrigger className="bg-white/5 border-white/5 h-12 rounded-2xl focus:ring-0 px-6 font-bold">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-2xl">
-                                        <SelectItem value="Nenhuma" className="focus:bg-white/10 py-3">Nenhuma</SelectItem>
-                                        <SelectItem value="Diária" className="focus:bg-white/10 py-3">Diária</SelectItem>
-                                        <SelectItem value="Semanal" className="focus:bg-white/10 py-3">Semanal</SelectItem>
-                                        <SelectItem value="Mensal" className="focus:bg-white/10 py-3">Mensal</SelectItem>
-                                        <SelectItem value="Anual" className="focus:bg-white/10 py-3">Anual</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        <div className="p-6 md:p-8 border-b border-white/5 relative z-10 flex items-center justify-between bg-black/20">
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-4 text-2xl md:text-3xl font-black italic uppercase tracking-tighter">
+                                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                                        <Sparkles className="w-5 h-5 text-purple-500" />
+                                    </div>
+                                    Revisar Itens ({confirmEvents.length})
+                                </DialogTitle>
+                            </DialogHeader>
                         </div>
 
-                        <DialogFooter className="pt-10 relative z-10">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 relative z-10 custom-scrollbar">
+                            {confirmEvents.map((event, index) => (
+                                <div key={index} className="relative group/card bg-white/[0.03] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 transition-all hover:bg-white/[0.05] hover:border-white/20">
+                                    {/* Action Header */}
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+                                                {index + 1}
+                                            </div>
+                                            <span className="text-[10px] uppercase font-black tracking-[0.3em] text-white/30">Evento #{index + 1}</span>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => deleteEvent(index)}
+                                            className="h-8 w-8 rounded-full hover:bg-red-500/20 hover:text-red-400 text-white/20 transition-all opacity-0 group-hover/card:opacity-100"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">O que precisa ser feito?</Label>
+                                            <Input
+                                                value={event.titulo}
+                                                onChange={e => updateEvent(index, { titulo: e.target.value })}
+                                                className="bg-white/5 border-white/5 h-12 text-base font-bold rounded-xl focus:border-purple-500/50 transition-all px-6 shadow-inner"
+                                                placeholder="Ex: Reunião com equipe..."
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Bloco de Vida</Label>
+                                                <Select value={event.categoria} onValueChange={v => updateEvent(index, { categoria: v })}>
+                                                    <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
+                                                        {LIFE_BLOCKS.map(l => (
+                                                            <SelectItem key={l.name} value={l.name} className="focus:bg-white/10 py-2.5">{l.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Tipo de Evento</Label>
+                                                <Select value={event.tipo} onValueChange={(v: any) => updateEvent(index, { tipo: v })}>
+                                                    <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
+                                                        <SelectItem value="Tarefa" className="focus:bg-white/10 py-2.5">Tarefa</SelectItem>
+                                                        <SelectItem value="Compromisso" className="focus:bg-white/10 py-2.5">Compromisso</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Quando?</Label>
+                                                <Input type="date" value={event.data} onChange={e => updateEvent(index, { data: e.target.value })} className="bg-white/5 border-white/5 h-10 rounded-xl px-4 font-bold text-sm" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Qual horário?</Label>
+                                                <Input type="time" value={event.hora || ""} onChange={e => updateEvent(index, { hora: e.target.value || null })} className="bg-white/5 border-white/5 h-10 rounded-xl px-4 font-bold text-sm" />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Repetir?</Label>
+                                            <Select value={event.recorrencia} onValueChange={v => updateEvent(index, { recorrencia: v })}>
+                                                <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
+                                                    {["Nenhuma", "Diária", "Semanal", "Mensal", "Anual"].map(rep => (
+                                                        <SelectItem key={rep} value={rep} className="focus:bg-white/10 py-2.5">{rep}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="p-6 md:p-8 bg-black/40 border-t border-white/5 relative z-10">
                             <Button
                                 onClick={handleSave}
                                 disabled={isProcessing}
-                                className="w-full h-18 rounded-[24px] bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-xl shadow-2xl shadow-purple-500/30 transition-all hover:scale-[1.03] active:scale-95"
+                                className="w-full h-14 md:h-16 rounded-[20px] bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-lg md:text-xl shadow-2xl shadow-purple-500/30 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-3"
                             >
-                                {isProcessing ? <Loader2 className="w-8 h-8 animate-spin" /> : "Confirmar e Agendar"}
+                                {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                                    <>
+                                        <Send className="w-5 h-5" />
+                                        <span>Confirmar e Agendar Todos</span>
+                                    </>
+                                )}
                             </Button>
-                        </DialogFooter>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>

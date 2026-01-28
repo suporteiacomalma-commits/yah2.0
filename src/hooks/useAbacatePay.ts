@@ -21,6 +21,7 @@ export interface AbacatePayBillingRequest {
         name?: string;
         email: string;
         taxId?: string;
+        cellphone?: string;
     };
 }
 
@@ -30,7 +31,14 @@ export function useAbacatePay() {
     const queryClient = useQueryClient();
 
     const createBilling = useMutation({
-        mutationFn: async (params: { planId: string; name: string; amount: number; frequency: "ONE_TIME" | "RECURRING" }) => {
+        mutationFn: async (params: {
+            planId: string;
+            name: string;
+            amount: number;
+            frequency: "ONE_TIME" | "RECURRING";
+            cpf?: string;
+            phone?: string;
+        }) => {
             const apiKey = getSetting("abacate_pay_api_key")?.value;
             if (!apiKey) {
                 throw new Error("AbacatePay API Key not configured.");
@@ -67,6 +75,12 @@ export function useAbacatePay() {
                 ],
                 returnUrl: window.location.origin + "/dashboard",
                 completionUrl: window.location.origin + "/dashboard?success=true",
+                customer: {
+                    name: (user as any).user_metadata?.full_name || user.email?.split('@')[0] || "Cliente",
+                    email: user.email,
+                    taxId: params.cpf,
+                    cellphone: params.phone,
+                },
             };
 
             const response = await fetch("https://api.abacatepay.com/v1/billing/create", {
@@ -118,10 +132,10 @@ export function useAbacatePay() {
             return { id: billingId, url: checkoutUrl };
         },
         onSuccess: (data) => {
-            // Redirect to checkout URL or open in new tab
+            // Redirect to checkout URL
             if (data.url) {
-                window.open(data.url, "_blank");
-                toast.success("Link de pagamento gerado!");
+                toast.success("Redirecionando para o pagamento...");
+                window.location.href = data.url;
             }
         },
         onError: (error: any) => {

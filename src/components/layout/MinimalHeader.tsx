@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useAbacatePay } from "@/hooks/useAbacatePay";
 
@@ -21,10 +21,17 @@ interface MinimalHeaderProps {
 
 export function MinimalHeader({ brandName }: MinimalHeaderProps) {
   const { signOut } = useAuth();
-  const { profile } = useProfile();
+  const { profile, updateProfile } = useProfile();
   const { createBilling } = useAbacatePay();
   const navigate = useNavigate();
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
+  const [cpf, setCpf] = useState(profile?.tax_id || "");
+  const [phone, setPhone] = useState(profile?.cellphone || "");
+
+  useEffect(() => {
+    if (profile?.tax_id) setCpf(profile.tax_id);
+    if (profile?.cellphone) setPhone(profile.cellphone);
+  }, [profile]);
 
   const premiumPlans = [
     {
@@ -47,11 +54,25 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
   ];
 
   const handlePurchase = async (plan: typeof premiumPlans[0]) => {
+    if (!cpf || !phone) {
+      import("sonner").then(({ toast }) => {
+        toast.error("Por favor, preencha o CPF e o Telefone para continuar.");
+      });
+      return;
+    }
+
+    // Save to profile if changed
+    if (cpf !== profile?.tax_id || phone !== profile?.cellphone) {
+      await updateProfile.mutateAsync({ tax_id: cpf, cellphone: phone });
+    }
+
     await createBilling.mutateAsync({
       planId: plan.id,
       name: plan.name,
       amount: plan.amount,
-      frequency: plan.frequency
+      frequency: plan.frequency,
+      cpf: cpf,
+      phone: phone
     });
     setIsPurchaseOpen(false);
   };
@@ -81,8 +102,8 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
           <div
             onClick={() => setIsPurchaseOpen(true)}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-full border transition-all hover:scale-105 active:scale-95 group cursor-pointer ${profile?.subscription_plan === 'premium'
-                ? 'bg-purple-500/10 border-purple-500/20 text-purple-400'
-                : 'bg-amber-500/10 border-amber-500/20 text-amber-500 hover:bg-amber-500/20'
+              ? 'bg-purple-500/10 border-purple-500/20 text-purple-400'
+              : 'bg-amber-500/10 border-amber-500/20 text-amber-500 hover:bg-amber-500/20'
               }`}
           >
             {profile?.subscription_plan === 'premium' ? (
@@ -152,16 +173,50 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-6">
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase opacity-70">CPF / CNPJ</label>
+                <input
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  onChange={(e) => setCpf(e.target.value)}
+                  className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase opacity-70">Telefone</label>
+                <input
+                  type="text"
+                  placeholder="(00) 00000-0000"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 py-2 max-h-[40vh] overflow-y-auto pr-1">
             {premiumPlans.map((plan) => (
               <div
                 key={plan.id}
-                onClick={() => handlePurchase(plan)}
+                onClick={() => !createBilling.isPending && handlePurchase(plan)}
                 className={`p-6 rounded-2xl border cursor-pointer transition-all relative group overflow-hidden ${plan.popular
-                    ? 'border-purple-500 bg-purple-500/5 hover:bg-purple-500/10'
-                    : 'border-white/10 bg-card hover:border-purple-500/50 hover:bg-white/5'
-                  }`}
+                  ? 'border-purple-500 bg-purple-500/5 hover:bg-purple-500/10'
+                  : 'border-white/10 bg-card hover:border-purple-500/50 hover:bg-white/5'
+                  } ${createBilling.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
+                {createBilling.isPending && (
+                  <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent animate-spin rounded-full" />
+                      <span className="text-[10px] font-bold text-purple-400 uppercase">Processando...</span>
+                    </div>
+                  </div>
+                )}
+
                 {plan.popular && (
                   <div className="absolute top-0 right-0 bg-purple-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-tighter">
                     Recomendado

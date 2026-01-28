@@ -15,6 +15,8 @@ export interface Profile {
   subscription_plan: 'trial' | 'premium' | null;
   subscription_status: 'active' | 'inactive' | 'expired' | null;
   trial_ends_at: string | null;
+  cellphone: string | null;
+  tax_id: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -13,7 +13,7 @@ export interface AbacatePayProduct {
 
 export interface AbacatePayBillingRequest {
     frequency: "ONE_TIME" | "RECURRING";
-    methods: ("PIX" | "CARD")[];
+    methods: ("PIX")[];
     products: AbacatePayProduct[];
     returnUrl: string;
     completionUrl: string;
@@ -56,7 +56,7 @@ export function useAbacatePay() {
             // 2. Call AbacatePay API
             const requestBody: AbacatePayBillingRequest = {
                 frequency: params.frequency,
-                methods: ["PIX", "CARD"],
+                methods: ["PIX"],
                 products: [
                     {
                         externalId: params.planId,
@@ -82,28 +82,43 @@ export function useAbacatePay() {
                 body: JSON.stringify(requestBody),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                console.error("AbacatePay Error Details:", errorData);
-                throw new Error(errorData.message || JSON.stringify(errorData) || "Failed to create AbacatePay billing");
+            const responseData = await response.json();
+            console.log("AbacatePay Response:", responseData);
+
+            // Handle both HTTP error status and logical errors (success: false)
+            if (!response.ok || responseData.success === false) {
+                const errorMsg = responseData.error || responseData.message || (typeof responseData === 'string' ? responseData : JSON.stringify(responseData));
+                console.error("AbacatePay Error Details:", responseData);
+                throw new Error(errorMsg || "Failed to create AbacatePay billing");
             }
 
-            const data = await response.json();
-
             // 3. Update transaction with external details
-            // Assuming response has 'data' object with 'url' and 'id'
-            const billing = data.data;
+            // Try to find the billing object: it's usually in 'data'
+            const billingObj = responseData.data || responseData;
+
+            // Be extremely flexible with finding ID and URL
+            const billingId = billingObj.id || billingObj._id || billingObj.publicId || responseData.id;
+            const checkoutUrl = billingObj.url || billingObj.checkoutUrl || billingObj.paymentUrl || responseData.url;
+
+            if (!billingId || !checkoutUrl) {
+                console.error("Failed to parse AbacatePay success response:", responseData);
+                const keys = Object.keys(billingObj).join(", ");
+                throw new Error(`Resposta incompleta da API (ID: ${!!billingId}, URL: ${!!checkoutUrl}). Campos encontrados: ${keys}`);
+            }
+
+            if (!transaction || !transaction.id) {
+                throw new Error("Erro interno: Transação local não encontrada.");
+            }
 
             await (supabase as any)
                 .from("payment_transactions")
                 .update({
-                    external_id: billing.id,
-                    pix_url: billing.url,
-                    // If we had pix_code (copy/paste) we'd add it here
+                    external_id: billingId,
+                    pix_url: checkoutUrl,
                 })
                 .eq("id", transaction.id);
 
-            return billing;
+            return { id: billingId, url: checkoutUrl };
         },
         onSuccess: (data) => {
             // Redirect to checkout URL or open in new tab

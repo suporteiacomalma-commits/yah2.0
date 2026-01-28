@@ -67,9 +67,6 @@ export function useAbacatePay() {
                 ],
                 returnUrl: window.location.origin + "/dashboard",
                 completionUrl: window.location.origin + "/dashboard?success=true",
-                // Removing customer object because if email is provided, 
-                // AbacatePay requires name, cellphone, and taxId too.
-                // It's better to let the checkout page collect these.
             };
 
             const response = await fetch("https://api.abacatepay.com/v1/billing/create", {

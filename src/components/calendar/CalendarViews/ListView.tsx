@@ -120,7 +120,10 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
                                                 {event.categoria}
                                             </span>
                                         </div>
-                                        <h4 className={cn("text-sm font-extrabold text-white truncate group-hover:text-primary transition-colors", isCompleted && "line-through")}>
+                                        <h4 className={cn(
+                                            "text-sm font-extrabold text-white truncate group-hover:text-primary transition-colors",
+                                            isCompleted && "line-through opacity-70"
+                                        )}>
                                             {event.titulo}
                                         </h4>
                                     </div>

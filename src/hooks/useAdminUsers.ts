@@ -16,6 +16,8 @@ export interface AdminUser {
   subscription_status?: 'active' | 'expired' | 'cancelled';
   trial_ends_at?: string;
   is_admin?: boolean;
+  bio?: string | null;
+  website?: string | null;
 }
 
 export function useAdminUsers() {
@@ -102,11 +104,27 @@ export function useAdminUsers() {
     }
   });
 
+  const updateUserAuth = useMutation({
+    mutationFn: async ({ userId, email, password }: { userId: string, email?: string, password?: string }) => {
+      const { error } = await (supabase as any).rpc('admin_update_user_auth', {
+        target_user_id: userId,
+        new_email: email,
+        new_password: password
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+  });
+
   return {
     users: users || [],
     isLoading,
     assignRole,
     removeRole,
-    updateSubscription
+    updateSubscription,
+    updateUserAuth
   };
 }

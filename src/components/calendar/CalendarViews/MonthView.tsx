@@ -77,11 +77,15 @@ export function MonthView({ currentMonth, events, onSelectDay, selectedDate }: M
                                                 "px-1.5 md:px-2 py-0.5 md:py-1 rounded-[4px] md:rounded-md text-[8px] md:text-[9px] font-bold truncate transition-all flex items-center gap-1 md:gap-1.5",
                                                 colors.bg,
                                                 colors.text,
-                                                "border border-white/5 shadow-sm"
+                                                "border border-white/5 shadow-sm",
+                                                event.status === "Concluído" && "opacity-40 grayscale-[0.5]"
                                             )}
                                         >
                                             <div className={cn("w-1 h-1 rounded-full shrink-0", colors.dot)} />
-                                            <span className="truncate">{event.titulo}</span>
+                                            <span className={cn(
+                                                "truncate",
+                                                event.status === "Concluído" && "line-through decoration-current decoration-1"
+                                            )}>{event.titulo}</span>
                                         </div>
                                     );
                                 })}

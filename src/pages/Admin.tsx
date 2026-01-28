@@ -25,19 +25,211 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import type { AppRole } from "@/hooks/useUserRole";
+import type { AdminUser } from "@/hooks/useAdminUsers";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+
+const COLORS = ["#8B5CF6", "#10B981", "#F59E0B", "#EF4444"];
+
+function AdminDashboard({ users }: { users: AdminUser[] }) {
+  // 1. Growth Data (last 30 days)
+  const last30Days = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
+    return d.toISOString().split("T")[0];
+  });
+
+  const growthData = last30Days.map(date => {
+    const count = users.filter(u => u.created_at.startsWith(date)).length;
+    // Cumulative count would be better, but daily reveals spikes
+    return {
+      date: new Date(date).toLocaleDateString("pt-BR", { day: 'numeric', month: 'short' }),
+      users: count
+    };
+  });
+
+  // 2. Subscription Data
+  const subscriptionStats = [
+    { name: "Trial", value: users.filter(u => u.subscription_plan === "trial").length },
+    { name: "Premium", value: users.filter(u => u.subscription_plan === "premium").length },
+  ];
+
+  // 3. KPI Calculations
+  const totalUsers = users.length;
+  const premiumUsers = users.filter(u => u.subscription_plan === "premium").length;
+  const conversionRate = totalUsers > 0 ? ((premiumUsers / totalUsers) * 100).toFixed(1) : "0";
+  const activeTrials = users.filter(u => {
+    const trialEnds = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
+    return u.subscription_plan === 'trial' && trialEnds && trialEnds > new Date();
+  }).length;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Conversão Premium</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-400">{conversionRate}%</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Trials Ativos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-400">{activeTrials}</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Novos Hoje</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-400">
+              {users.filter(u => u.created_at.startsWith(new Date().toISOString().split('T')[0])).length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Onboarding</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-400">
+              {((users.filter(u => u.onboarding_completed).length / (totalUsers || 1)) * 100).toFixed(0)}%
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Growth Chart */}
+        <Card className="md:col-span-2 bg-card border-border p-6">
+          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            Crescimento de Usuários (30 dias)
+          </h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={growthData}>
+                <defs>
+                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="#9CA3AF"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <RechartsTooltip
+                  contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                  itemStyle={{ color: '#F3F4F6' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="users"
+                  stroke="#8B5CF6"
+                  fillOpacity={1}
+                  fill="url(#colorUsers)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Subscription Pie Chart */}
+        <Card className="bg-card border-border p-6">
+          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            Distribuição de Planos
+          </h3>
+          <div className="h-[300px] w-full flex flex-col items-center justify-center">
+            <ResponsiveContainer width="100%" height="80%">
+              <PieChart>
+                <Pie
+                  data={subscriptionStats}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {subscriptionStats.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <RechartsTooltip
+                  contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex gap-4 mt-4">
+              {subscriptionStats.map((stat, i) => (
+                <div key={stat.name} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
+                  <span className="text-sm text-muted-foreground">{stat.name}: {stat.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
 
 export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
-  const { users, isLoading: usersLoading, assignRole, removeRole, updateSubscription } = useAdminUsers();
+  const { users, isLoading: usersLoading, assignRole, removeRole, updateSubscription, updateUserAuth } = useAdminUsers();
   const { settings, isLoading: settingsLoading, updateSetting, getSetting } = useSystemSettings();
 
   const [openaiKey, setOpenaiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+
+  // Edit User State
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [trialDaysMap, setTrialDaysMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -74,8 +266,6 @@ export default function Admin() {
     }
   };
 
-
-
   const handleUpdateSubscription = async (userId: string, plan: 'premium' | 'trial') => {
     try {
       await updateSubscription.mutateAsync({
@@ -83,7 +273,6 @@ export default function Admin() {
         updates: {
           subscription_plan: plan,
           subscription_status: 'active',
-          // If premium, trial date becomes irrelevant but we keep it
         }
       });
       toast.success(`Plano atualizado para ${plan}`);
@@ -92,11 +281,10 @@ export default function Admin() {
     }
   };
 
-  const handleExtendTrial = async (userId: string) => {
+  const handleExtendTrial = async (userId: string, days: number = 7) => {
     try {
-      // Add 7 days to current time (or current trial end if in future? simpler to just add 7 days from now)
       const newEndDate = new Date();
-      newEndDate.setDate(newEndDate.getDate() + 7);
+      newEndDate.setDate(newEndDate.getDate() + days);
 
       await updateSubscription.mutateAsync({
         userId,
@@ -106,9 +294,39 @@ export default function Admin() {
           trial_ends_at: newEndDate.toISOString()
         }
       });
-      toast.success("Trial estendido por 7 dias");
+      toast.success(`Trial definido para mais ${days} dias`);
     } catch (error) {
-      toast.error("Erro ao estender trial");
+      toast.error("Erro ao atualizar trial");
+    }
+  };
+
+  const handleSaveUserEdit = async () => {
+    if (!editingUser) return;
+    try {
+      // 1. Update sensitive auth info if changed
+      const originalUser = users.find(u => u.user_id === editingUser.user_id);
+      const emailChanged = editingUser.email !== originalUser?.email;
+
+      if (emailChanged || newPassword) {
+        await updateUserAuth.mutateAsync({
+          userId: editingUser.user_id,
+          email: emailChanged ? editingUser.email || undefined : undefined,
+          password: newPassword || undefined
+        });
+      }
+
+      // 2. Update profile info
+      const { id, user_id, created_at, role, ...updates } = editingUser;
+      await updateSubscription.mutateAsync({
+        userId: user_id,
+        updates
+      });
+
+      toast.success("Informações do usuário atualizadas");
+      setEditingUser(null);
+      setNewPassword("");
+    } catch (error) {
+      toast.error("Erro ao salvar alterações");
     }
   };
 
@@ -173,59 +391,27 @@ export default function Admin() {
           </div>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
+        <Tabs defaultValue="dashboard" className="space-y-6">
           <TabsList className="bg-card border border-border">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Painel
+            </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Usuários
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Configurações
+              <Key className="h-4 w-4" />
+              Integrações
             </TabsTrigger>
           </TabsList>
 
+          <TabsContent value="dashboard" className="space-y-6">
+            <AdminDashboard users={users} />
+          </TabsContent>
+
           <TabsContent value="users" className="space-y-6">
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-card border-border">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total de Usuários</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    <span className="text-2xl font-bold text-foreground">{users.length}</span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="bg-card border-border">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Administradores</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-red-400" />
-                    <span className="text-2xl font-bold text-foreground">
-                      {users.filter((u) => u.role === "admin").length}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="bg-card border-border">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Onboarding Completo</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-foreground">
-                      {users.filter((u) => u.onboarding_completed).length}
-                    </span>
-                    <span className="text-sm text-muted-foreground">/ {users.length}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
 
             {/* Users Table */}
             <Card className="bg-card border-border">
@@ -290,6 +476,34 @@ export default function Admin() {
                           <TableCell>{getRoleBadge(userItem.role)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  className="w-16 h-7 text-xs px-2"
+                                  placeholder="Dias"
+                                  value={trialDaysMap[userItem.user_id] || ""}
+                                  onChange={(e) => setTrialDaysMap({ ...trialDaysMap, [userItem.user_id]: e.target.value })}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-[10px]"
+                                  onClick={() => {
+                                    const days = parseInt(trialDaysMap[userItem.user_id] || "7");
+                                    handleExtendTrial(userItem.user_id, days);
+                                  }}
+                                >
+                                  Definir Trial
+                                </Button>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setEditingUser(userItem)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
                               {userItem.subscription_plan !== 'premium' && (
                                 <Button
                                   size="sm"
@@ -299,14 +513,6 @@ export default function Admin() {
                                   Ativar Premium
                                 </Button>
                               )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={() => handleExtendTrial(userItem.user_id)}
-                              >
-                                +7 Dias
-                              </Button>
                               <Select
                                 value={userItem.role || "none"}
                                 onValueChange={(value) => handleRoleChange(userItem.user_id, value)}
@@ -393,6 +599,91 @@ export default function Admin() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent className="sm:max-w-[500px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Editar Usuário</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Altere as informações de perfil do usuário.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingUser && (
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Nome Completo</Label>
+                  <Input
+                    value={editingUser.full_name || ""}
+                    onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+                    className="bg-background border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">E-mail</Label>
+                  <Input
+                    type="email"
+                    value={editingUser.email || ""}
+                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    className="bg-background border-border"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Nome de Usuário (@)</Label>
+                  <Input
+                    value={editingUser.user_name || ""}
+                    onChange={(e) => setEditingUser({ ...editingUser, user_name: e.target.value })}
+                    className="bg-background border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Nova Senha (opcional)</Label>
+                  <Input
+                    type="password"
+                    placeholder="Mudar senha..."
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="bg-background border-border"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-foreground">Bio</Label>
+                <textarea
+                  className="w-full min-h-[80px] bg-background border border-border rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
+                  value={editingUser.bio || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, bio: e.target.value })}
+                  placeholder="Bio do usuário..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Website</Label>
+                <Input
+                  value={editingUser.website || ""}
+                  onChange={(e) => setEditingUser({ ...editingUser, website: e.target.value })}
+                  className="bg-background border-border"
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingUser(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveUserEdit} className="gradient-primary">
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -54,8 +54,8 @@ export default function PhasePage() {
     <MinimalLayout brandName={brand?.name}>
       <div className="flex-1 p-6 md:p-8">
         <div className={cn(
-          "mx-auto",
-          (phaseNumber === 4 || phaseNumber === 7 || phaseNumber === 8) ? "max-w-[1700px]" : "max-w-3xl"
+          "mx-auto w-full",
+          (phaseNumber === 4 || phaseNumber === 7 || phaseNumber === 8) ? "max-w-4xl" : "max-w-3xl"
         )}>
           {/* Back Button */}
           <Button

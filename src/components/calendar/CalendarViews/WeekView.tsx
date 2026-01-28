@@ -94,7 +94,10 @@ export function WeekView({ currentDate, events }: WeekViewProps) {
                                                     <div className={cn("w-1 h-1 rounded-full", colors.dot)} />
                                                     <span className="text-[7px] font-black uppercase tracking-widest opacity-70 truncate">{event.categoria}</span>
                                                 </div>
-                                                <h4 className="font-extrabold text-[10px] leading-tight truncate group-hover:text-white transition-colors">{event.titulo}</h4>
+                                                <h4 className={cn(
+                                                    "font-extrabold text-[10px] leading-tight truncate group-hover:text-white transition-colors",
+                                                    event.status === "Concluído" && "line-through opacity-50"
+                                                )}>{event.titulo}</h4>
                                                 <span className="text-[8px] font-bold mt-auto opacity-60">{event.hora?.substring(0, 5)}</span>
                                             </div>
                                         );

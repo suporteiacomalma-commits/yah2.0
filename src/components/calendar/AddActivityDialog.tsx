@@ -52,9 +52,20 @@ export function AddActivityDialog({
   const [hour, setHour] = useState("09:00");
   const [duration, setDuration] = useState("60");
   const [recurrence, setRecurrence] = useState<RecurrenceType>("Nenhuma");
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<EventStatus>("Pendente");
   const [isSaving, setIsSaving] = useState(false);
+
+  const WEEK_DAYS = [
+    { id: 0, label: "D", full: "Domingo" },
+    { id: 1, label: "S", full: "Segunda" },
+    { id: 2, label: "T", full: "Terça" },
+    { id: 3, label: "Q", full: "Quarta" },
+    { id: 4, label: "Q", full: "Quinta" },
+    { id: 5, label: "S", full: "Sexta" },
+    { id: 6, label: "S", full: "Sábado" },
+  ];
 
   useEffect(() => {
     if (editingEvent) {
@@ -65,6 +76,7 @@ export function AddActivityDialog({
       setHour(editingEvent.hora?.substring(0, 5) || "09:00");
       setDuration(String(editingEvent.duracao || 60));
       setRecurrence(editingEvent.recorrencia);
+      setSelectedDays(editingEvent.dias_da_semana || []);
       setDescription(editingEvent.descricao || "");
       setStatus(editingEvent.status);
     } else {
@@ -75,10 +87,17 @@ export function AddActivityDialog({
       setHour("09:00");
       setDuration("60");
       setRecurrence("Nenhuma");
+      setSelectedDays([]);
       setDescription("");
       setStatus("Pendente");
     }
   }, [editingEvent, open, defaultDate]);
+
+  const toggleDay = (dayId: number) => {
+    setSelectedDays(prev =>
+      prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId].sort()
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +113,7 @@ export function AddActivityDialog({
         hora: hour,
         duracao: parseInt(duration),
         recorrencia: recurrence,
+        dias_da_semana: recurrence !== "Nenhuma" ? selectedDays : [],
         descricao: description.trim(),
         status: status,
         user_id: user.id
@@ -232,6 +252,33 @@ export function AddActivityDialog({
               </Select>
             </div>
           </div>
+
+          {recurrence !== "Nenhuma" && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Repetir nos dias</label>
+              <div className="flex justify-between gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                {WEEK_DAYS.map((day) => {
+                  const isSelected = selectedDays.includes(day.id);
+                  return (
+                    <button
+                      key={day.id}
+                      type="button"
+                      onClick={() => toggleDay(day.id)}
+                      className={cn(
+                        "flex-1 h-10 rounded-xl text-[10px] font-black transition-all",
+                        isSelected
+                          ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.05]"
+                          : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                      )}
+                      title={day.full}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</label>

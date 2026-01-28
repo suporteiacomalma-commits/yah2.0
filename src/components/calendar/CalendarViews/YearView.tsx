@@ -15,7 +15,7 @@ export function YearView({ currentDate, events, onSelectMonth }: YearViewProps) 
     const months = Array.from({ length: 12 }).map((_, i) => addMonths(yearStart, i));
 
     const getEventsForDay = (day: Date) => {
-        return events.filter((e) => isSameDay(new Date(e.data), day));
+        return events.filter((e) => isSameDay(new Date(e.data + 'T12:00:00'), day));
     };
 
     return (

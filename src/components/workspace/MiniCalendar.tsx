@@ -5,21 +5,16 @@ import { CalendarDays, Plus, Loader2, CheckCircle2, Circle, Sparkles } from "luc
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ptBR } from "date-fns/locale";
-import { isSameDay, format } from "date-fns";
+import { isSameDay, format, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-
-const categoryColors: Record<string, string> = {
-  content: "bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]",
-  meeting: "bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]",
-  deadline: "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]",
-  reminder: "bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]",
-  task: "bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]",
-};
+import { CerebroEvent, CATEGORY_COLORS } from "../calendar/types";
+import { expandRecurringEvents } from "../calendar/utils/recurrenceUtils";
+import { toast } from "sonner";
 
 export function MiniCalendar() {
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [activities, setActivities] = useState<any[]>([]);
+  const [activities, setActivities] = useState<CerebroEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -33,14 +28,14 @@ export function MiniCalendar() {
   const fetchActivities = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("calendar_activities")
+      const { data, error } = await (supabase as any)
+        .from("eventos_do_cerebro")
         .select("*")
         .eq("user_id", user?.id)
-        .order("date", { ascending: true });
+        .order("data", { ascending: true });
 
       if (error) throw error;
-      setActivities(data || []);
+      setActivities((data as any) || []);
     } catch (error) {
       console.error("Error fetching for mini calendar:", error);
     } finally {
@@ -48,42 +43,64 @@ export function MiniCalendar() {
     }
   };
 
-  const isActivityOnDay = (activity: any, day: Date) => {
-    if (!day) return false;
-    const activityDate = new Date(activity.date);
+  const handleToggleStatus = async (id: string, eventDate: string) => {
+    const isVirtual = id.includes("-virtual-");
+    const realId = isVirtual ? id.split("-virtual-")[0] : id;
+    const masterEvent = activities.find((e) => e.id === realId);
+    if (!masterEvent) return;
 
-    // Match exact date
-    if (isSameDay(activityDate, day)) return true;
+    if (masterEvent.recorrencia !== "Nenhuma") {
+      const currentCompletions = masterEvent.concluidos || [];
+      const isCurrentlyCompleted = currentCompletions.includes(eventDate);
+      const newCompletions = isCurrentlyCompleted
+        ? currentCompletions.filter(d => d !== eventDate)
+        : [...currentCompletions, eventDate];
 
-    // Pattern matching for recurring tasks
-    try {
-      const meta = JSON.parse(activity.description || "{}");
-      if (meta.isRecurring) {
-        // Ignore if day is before the start date
-        const dayStart = new Date(day);
-        dayStart.setHours(0, 0, 0, 0);
-        const activityStart = new Date(activityDate);
-        activityStart.setHours(0, 0, 0, 0);
+      try {
+        const { error } = await (supabase as any)
+          .from("eventos_do_cerebro")
+          .update({ concluidos: newCompletions })
+          .eq("id", realId);
 
-        if (dayStart < activityStart) return false;
+        if (error) throw error;
 
-        if (meta.frequency === 'daily') return true;
-        if (meta.frequency === 'weekly') {
-          return meta.days.includes(day.getDay());
-        }
+        setActivities(activities.map((e) => (e.id === realId ? { ...e, concluidos: newCompletions } : e)));
+        toast.success(isCurrentlyCompleted ? "Ocorrência marcada como pendente" : "Ocorrência concluída");
+      } catch (error: any) {
+        toast.error("Erro ao atualizar status da ocorrência");
       }
-    } catch (e) {
-      // Not recurring
+    } else {
+      const newStatus = masterEvent.status === "Concluído" ? "Pendente" : "Concluído";
+      try {
+        const { error } = await (supabase as any)
+          .from("eventos_do_cerebro")
+          .update({ status: newStatus })
+          .eq("id", realId);
+
+        if (error) throw error;
+
+        setActivities(activities.map((e) => (e.id === realId ? { ...e, status: newStatus as any } : e)));
+        toast.success(`Status atualizado para ${newStatus}`);
+      } catch (error: any) {
+        toast.error("Erro ao atualizar status");
+      }
     }
-    return false;
   };
 
-  const selectedDayActivities = activities.filter(a =>
-    date && isActivityOnDay(a, date)
+  // Expand recurring events for the current month view (and surrounding for safety)
+  const currentMonthStart = startOfMonth(date || new Date());
+  const expandedActivities = expandRecurringEvents(
+    activities,
+    subMonths(currentMonthStart, 1),
+    addMonths(currentMonthStart, 2)
+  );
+
+  const selectedDayActivities = expandedActivities.filter(a =>
+    date && isSameDay(new Date(a.data + 'T12:00:00'), date)
   );
 
   const modifiers = {
-    hasActivity: (day: Date) => activities.some(a => isActivityOnDay(a, day))
+    hasActivity: (day: Date) => expandedActivities.some(a => isSameDay(new Date(a.data + 'T12:00:00'), day))
   };
 
   return (
@@ -98,15 +115,15 @@ export function MiniCalendar() {
               <CalendarDays className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2 text-left">
                 Calendário Vivo
                 <Sparkles className="w-3 h-3 text-primary/50" />
               </CardTitle>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Ritmo de Criação</p>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider text-left">Ritmo de Criação</p>
             </div>
           </button>
           <button
-            onClick={() => navigate("/assistant")}
+            onClick={() => navigate("/calendar")}
             className="w-8 h-8 rounded-xl bg-primary shadow-lg shadow-primary/20 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300"
           >
             <Plus className="w-5 h-5 text-primary-foreground" />
@@ -165,45 +182,52 @@ export function MiniCalendar() {
 
               <div className="space-y-2.5 max-h-[300px] lg:max-h-[340px] overflow-y-auto pr-1 custom-scrollbar flex-1">
                 {selectedDayActivities.length > 0 ? (
-                  selectedDayActivities.map((activity) => (
-                    <div
-                      key={activity.id}
-                      className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 cursor-pointer relative overflow-hidden"
-                      onClick={() => navigate("/calendar")}
-                    >
-                      {/* Interactive hover glow */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/[0.02] to-primary/0 opacity-0 group-hover:opacity-100 -translate-x-full group-hover:translate-x-full transition-all duration-1000" />
+                  selectedDayActivities.map((activity) => {
+                    const colors = CATEGORY_COLORS[activity.categoria] || CATEGORY_COLORS.Outro;
+                    return (
+                      <div
+                        key={activity.id}
+                        className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 cursor-pointer relative overflow-hidden"
+                        onClick={() => navigate("/calendar")}
+                      >
+                        {/* Interactive hover glow */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/[0.02] to-primary/0 opacity-0 group-hover:opacity-100 -translate-x-full group-hover:translate-x-full transition-all duration-1000" />
 
-                      <div className={cn("w-1 h-full absolute left-0 top-0", categoryColors[activity.category]?.split(' ')[0] || "bg-primary")} />
+                        <div className={cn("w-1 h-full absolute left-0 top-0", colors.dot)} />
 
-                      <div className="flex-1 min-w-0 z-10">
-                        <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">{activity.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tighter">
-                            {activity.category === 'content' ? 'Postagem' :
-                              activity.category === 'meeting' ? 'Reunião' :
-                                activity.category === 'deadline' ? 'Prazo' : 'Tarefa'}
-                          </p>
-                          <div className="w-1 h-1 rounded-full bg-white/10" />
-                          <p className="text-[10px] text-muted-foreground/60">
-                            {format(new Date(activity.date), "HH:mm")}
-                          </p>
+                        <div className="flex-1 min-w-0 z-10">
+                          <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors text-left">{activity.titulo}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tighter">
+                              {activity.categoria}
+                            </p>
+                            <div className="w-1 h-1 rounded-full bg-white/10" />
+                            <p className="text-[10px] text-muted-foreground/60">
+                              {activity.hora?.substring(0, 5) || "--:--"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div
+                          className="z-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStatus(activity.id, activity.data);
+                          }}
+                        >
+                          {activity.status === 'Concluído' ? (
+                            <div className="p-1.5 rounded-lg bg-green-500/10 text-green-500 border border-green-500/20 hover:scale-110 active:scale-90 transition-all">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </div>
+                          ) : (
+                            <div className="p-1.5 rounded-lg bg-white/5 text-muted-foreground/50 border border-white/10 group-hover:border-primary/30 group-hover:text-primary hover:scale-110 active:scale-90 transition-all">
+                              <Circle className="w-3.5 h-3.5" />
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      <div className="z-10">
-                        {activity.status === 'completed' ? (
-                          <div className="p-1.5 rounded-lg bg-green-500/10 text-green-500 border border-green-500/20">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          </div>
-                        ) : (
-                          <div className="p-1.5 rounded-lg bg-white/5 text-muted-foreground/50 border border-white/10 group-hover:border-primary/30 group-hover:text-primary transition-all">
-                            <Circle className="w-3.5 h-3.5" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="py-8 text-center flex flex-col items-center justify-center h-full gap-2 rounded-2xl border border-dashed border-white/5 bg-white/[0.01]">
                     <div className="p-3 rounded-full bg-white/[0.02] text-muted-foreground/20">
@@ -238,3 +262,4 @@ export function MiniCalendar() {
     </Card>
   );
 }
+

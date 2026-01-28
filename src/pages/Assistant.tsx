@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send, MessageSquareText, Trash2 } from "lucide-react";
+import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send, MessageSquareText, Trash2, ArrowLeft } from "lucide-react";
 import { format, addDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -265,7 +265,7 @@ Frase do usuário: "${inputText}"`;
         try {
             for (const event of confirmEvents) {
                 // Salvar na tabela unificada eventos_do_cerebro
-                await supabase.from("eventos_do_cerebro").insert({
+                await (supabase as any).from("eventos_do_cerebro").insert({
                     titulo: event.titulo,
                     categoria: event.categoria,
                     tipo: event.tipo,
@@ -294,6 +294,16 @@ Frase do usuário: "${inputText}"`;
     return (
         <MinimalLayout>
             <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center md:justify-center py-10 px-4 font-sans selection:bg-primary/30 relative overflow-y-auto">
+
+                {/* Back Button */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate("/")}
+                    className="fixed top-6 left-6 z-[100] h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md group"
+                >
+                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-1" />
+                </Button>
 
                 {/* Visual Background Glow (Subtle) */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.08)_0%,transparent_70%)] pointer-events-none" />

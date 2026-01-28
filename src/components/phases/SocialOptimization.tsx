@@ -299,10 +299,7 @@ export function SocialOptimization() {
     if (isLoading) return <div className="flex items-center justify-center p-20"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>;
 
     return (
-        <div className={cn(
-            "w-full mx-auto min-h-[600px] flex flex-col transition-all duration-500",
-            step === "tela3b" ? "max-w-3xl" : "max-w-4xl"
-        )}>
+        <div className="w-full min-h-[600px] flex flex-col transition-all duration-500">
             {step === "tela1" && (
                 <div className="flex-1 flex flex-col items-center justify-center space-y-10 animate-in fade-in zoom-in-95 duration-700 text-center py-10 px-6">
                     <div className="space-y-6 max-w-xl">

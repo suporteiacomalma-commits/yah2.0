@@ -17,6 +17,10 @@ export interface CerebroEvent {
     user_id: string;
     brand_id?: string;
     criado_em: string;
+    isVirtual?: boolean;
+    exclusoes?: string[]; // ISO date strings to skip
+    concluidos?: string[]; // ISO date strings that are completed
+    dias_da_semana?: number[]; // 0-6 for Sun-Sat
 }
 
 export const CATEGORY_COLORS: Record<EventCategory, { bg: string; text: string; dot: string }> = {

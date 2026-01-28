@@ -8,7 +8,7 @@ export interface AbacatePayProduct {
     externalId: string;
     name: string;
     quantity: number;
-    priceUnit: number;
+    price: number;
 }
 
 export interface AbacatePayBillingRequest {
@@ -62,7 +62,7 @@ export function useAbacatePay() {
                         externalId: params.planId,
                         name: params.name,
                         quantity: 1,
-                        priceUnit: Math.round(params.amount * 100), // Amount in cents
+                        price: Math.round(params.amount * 100), // Amount in cents
                     },
                 ],
                 returnUrl: window.location.origin + "/dashboard",

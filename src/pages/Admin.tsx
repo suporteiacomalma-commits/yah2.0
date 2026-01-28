@@ -225,6 +225,8 @@ export default function Admin() {
 
   const [openaiKey, setOpenaiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const [abacatePayKey, setAbacatePayKey] = useState("");
+  const [showAbacateKey, setShowAbacateKey] = useState(false);
 
   // Edit User State
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -245,10 +247,11 @@ export default function Admin() {
   }, [isAdmin, roleLoading, user, navigate]);
 
   useEffect(() => {
-    const key = getSetting("openai_api_key");
-    if (key) {
-      setOpenaiKey(key.value);
-    }
+    const okey = getSetting("openai_api_key");
+    if (okey) setOpenaiKey(okey.value);
+
+    const akey = getSetting("abacate_pay_api_key");
+    if (akey) setAbacatePayKey(akey.value);
   }, [settings]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -331,15 +334,27 @@ export default function Admin() {
   };
 
   const handleSaveSettings = async () => {
-    if (!openaiKey) {
-      toast.error("A chave da API do OpenAI não pode estar vazia");
-      return;
+    try {
+      if (openaiKey) {
+        await updateSetting.mutateAsync({
+          key: "openai_api_key",
+          value: openaiKey,
+          description: "Chave da API do OpenAI para integração com o assistente"
+        });
+      }
+
+      if (abacatePayKey) {
+        await updateSetting.mutateAsync({
+          key: "abacate_pay_api_key",
+          value: abacatePayKey,
+          description: "Chave da API do AbacatePay para processamento de pagamentos"
+        });
+      }
+
+      toast.success("Configurações salvas com sucesso");
+    } catch (error) {
+      console.error(error);
     }
-    await updateSetting.mutateAsync({
-      key: "openai_api_key",
-      value: openaiKey,
-      description: "Chave da API do OpenAI para integração com o assistente"
-    });
   };
 
   const getRoleBadge = (role?: AppRole) => {
@@ -547,14 +562,15 @@ export default function Admin() {
                     <Key className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-foreground">Integração OpenAI</CardTitle>
+                    <CardTitle className="text-foreground">Integrações de API</CardTitle>
                     <CardDescription className="text-muted-foreground">
-                      Configure as chaves e parâmetros de inteligência artificial
+                      Configure as chaves e parâmetros das plataformas externas
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* OpenAI Section */}
                 <div className="space-y-2">
                   <Label htmlFor="openai-key" className="text-foreground">OpenAI API Key</Label>
                   <div className="flex gap-2">
@@ -575,24 +591,56 @@ export default function Admin() {
                         {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                    <Button
-                      onClick={handleSaveSettings}
-                      disabled={updateSetting.isPending || settingsLoading}
-                      className="gradient-primary text-white"
-                    >
-                      {updateSetting.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Salvar
-                        </>
-                      )}
-                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground italic">
-                    Esta chave será usada para alimentar o Assistente Virtual e as funcionalidades de análise de dados.
+                    Usada para o Assistente Virtual e análise de dados.
                   </p>
+                </div>
+
+                <div className="h-px bg-border my-6" />
+
+                {/* AbacatePay Section */}
+                <div className="space-y-2">
+                  <Label htmlFor="abacate-pay-key" className="text-foreground">AbacatePay API Token</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="abacate-pay-key"
+                        type={showAbacateKey ? "text" : "password"}
+                        placeholder="abc_..."
+                        value={abacatePayKey}
+                        onChange={(e) => setAbacatePayKey(e.target.value)}
+                        className="bg-background border-border pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAbacateKey(!showAbacateKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showAbacateKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    Usado para processamento de pagamentos e assinaturas PIX.
+                  </p>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <Button
+                    onClick={handleSaveSettings}
+                    disabled={updateSetting.isPending || settingsLoading}
+                    className="gradient-primary text-white"
+                  >
+                    {updateSetting.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Salvar Todas as Configurações
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

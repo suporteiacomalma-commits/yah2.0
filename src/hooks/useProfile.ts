@@ -11,6 +11,10 @@ export interface Profile {
   business_stage: string | null;
   main_goal: string | null;
   onboarding_completed: boolean;
+  coins: number;
+  subscription_plan: 'trial' | 'premium' | null;
+  subscription_status: 'active' | 'inactive' | 'expired' | null;
+  trial_ends_at: string | null;
   created_at: string;
   updated_at: string;
 }

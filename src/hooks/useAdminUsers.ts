@@ -16,6 +16,7 @@ export interface AdminUser {
   subscription_status?: 'active' | 'expired' | 'cancelled';
   trial_ends_at?: string;
   is_admin?: boolean;
+  active_plan_id?: string | null;
   bio?: string | null;
   website?: string | null;
 }

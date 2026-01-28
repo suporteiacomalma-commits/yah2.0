@@ -4,6 +4,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { PlanManagement } from "@/components/admin/PlanManagement";
 import {
   Table,
   TableBody,
@@ -25,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2 } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import type { AppRole } from "@/hooks/useUserRole";
 import type { AdminUser } from "@/hooks/useAdminUsers";
@@ -276,6 +277,7 @@ export default function Admin() {
         updates: {
           subscription_plan: plan,
           subscription_status: 'active',
+          active_plan_id: plan === 'trial' ? null : undefined
         }
       });
       toast.success(`Plano atualizado para ${plan}`);
@@ -294,7 +296,8 @@ export default function Admin() {
         updates: {
           subscription_plan: 'trial',
           subscription_status: 'active',
-          trial_ends_at: newEndDate.toISOString()
+          trial_ends_at: newEndDate.toISOString(),
+          active_plan_id: null
         }
       });
       toast.success(`Trial definido para mais ${days} dias`);
@@ -419,6 +422,10 @@ export default function Admin() {
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Key className="h-4 w-4" />
               Integrações
+            </TabsTrigger>
+            <TabsTrigger value="plans" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Planos
             </TabsTrigger>
           </TabsList>
 
@@ -644,6 +651,10 @@ export default function Admin() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="plans" className="space-y-6">
+            <PlanManagement />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,4 +1,5 @@
 import { MinimalLayout } from "@/components/layout/MinimalLayout";
+import { useQueryClient } from "@tanstack/react-query";
 import { useBrand } from "@/hooks/useBrand";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PhasesSection } from "@/components/workspace/PhasesSection";
@@ -14,11 +15,21 @@ export default function Dashboard() {
   const { profile } = useProfile();
   const [searchParams] = useSearchParams();
 
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       toast.success("Pagamento concluído com sucesso!");
+      // Force refresh the profile to show Premium status immediately
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+      // Perform a full page reload after a short delay to ensure everything is fresh
+      // and clear the success parameter from the URL to prevent loops
+      setTimeout(() => {
+        window.location.href = window.location.origin + "/dashboard";
+      }, 1500);
     }
-  }, [searchParams]);
+  }, [searchParams, queryClient]);
 
   if (isLoading) {
     return (

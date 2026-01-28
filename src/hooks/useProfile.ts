@@ -17,6 +17,7 @@ export interface Profile {
   trial_ends_at: string | null;
   cellphone: string | null;
   tax_id: string | null;
+  active_plan_id: string | null;
   created_at: string;
   updated_at: string;
 }

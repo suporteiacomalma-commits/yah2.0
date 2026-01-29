@@ -74,7 +74,14 @@ export default function PhasePage() {
               "w-14 h-14 rounded-2xl flex items-center justify-center",
               isCompleted ? "bg-green-500/20 text-green-600" : "gradient-primary text-primary-foreground"
             )}>
-              {isCompleted ? <Check className="w-7 h-7" /> : <Icon className="w-7 h-7" />}
+              <div className="relative">
+                <Icon className="w-7 h-7" />
+                {isCompleted && (
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-md border-2 border-green-500">
+                    <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={4} />
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">

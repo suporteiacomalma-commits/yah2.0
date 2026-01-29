@@ -6,6 +6,7 @@ import {
   Share2,
   Calendar,
   CalendarDays,
+  ClipboardList,
   Bot,
   Zap,
   BookOpen,
@@ -44,7 +45,7 @@ export const phases: Phase[] = [
     title: "Planejamento Semanal",
     shortTitle: "Semanal",
     description: "Organize sua rotina de conteúdo",
-    icon: Calendar,
+    icon: ClipboardList,
     href: "/phase/3",
   },
   {

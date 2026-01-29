@@ -274,7 +274,10 @@ export function WeeklyFixedNotebook() {
         }
     };
 
-    const handleWriteScript = async (tab: DetailTab, blockIndex?: number) => {
+    const [adjustingBlock, setAdjustingBlock] = useState<{ tab: string, index: number } | null>(null);
+    const [adjustmentText, setAdjustmentText] = useState("");
+
+    const handleWriteScript = async (tab: DetailTab, blockIndex?: number, adjustment?: string) => {
         setIsWritingScript(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -285,14 +288,26 @@ export function WeeklyFixedNotebook() {
                 ? dayData
                 : dayData.extraBlocks[blockIndex - 1];
 
-            const prompt = `Gere um roteiro detalhado para um ${tab === 'feed' ? 'Post de Feed' : 'Stories'} do Instagram.
-      Título/Tema: ${block.headline}
-      Formato: ${block.format}
-      Intenção: ${block.intention}
-      DNA da Marca: ${brand?.dna_tese}
-      Instrução da IA: ${block.instruction || "Crie um conteúdo estratégico."}
-      
-      Gere um roteiro estruturado, direto e persuasivo.`;
+            let prompt = "";
+
+            if (adjustment && block.notes) {
+                prompt = `Aqui está o roteiro atual:
+                
+                ${block.notes}
+                
+                REAJUSTE este roteiro seguindo esta nova instrução: "${adjustment}".
+                
+                Mantenha a estrutura, mas aplique o ajuste solicitado.`;
+            } else {
+                prompt = `Gere um roteiro detalhado para um ${tab === 'feed' ? 'Post de Feed' : 'Stories'} do Instagram.
+                Título/Tema: ${block.headline}
+                Formato: ${block.format}
+                Intenção: ${block.intention}
+                DNA da Marca: ${brand?.dna_tese}
+                Instrução da IA: ${block.instruction || "Crie um conteúdo estratégico."}
+                
+                Gere um roteiro estruturado, direto e persuasivo.`;
+            }
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -303,7 +318,7 @@ export function WeeklyFixedNotebook() {
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        { role: "system", content: "Expert em copywriting e roteirização para redes sociais." },
+                        { role: "system", content: "Expert em copywriting e roteirização para redes sociais. Você foca em manter a voz da marca e a estratégia do conteúdo." },
                         { role: "user", content: prompt }
                     ]
                 })
@@ -312,7 +327,9 @@ export function WeeklyFixedNotebook() {
             const data = await response.json();
             const script = data.choices[0].message.content;
             handleDataChange(tab, "notes", script, blockIndex);
-            toast.success("Roteiro sugerido com sucesso!");
+            toast.success(adjustment ? "Roteiro ajustado com sucesso!" : "Roteiro sugerido com sucesso!");
+            setAdjustingBlock(null);
+            setAdjustmentText("");
         } catch (error: any) {
             toast.error("Erro ao gerar roteiro: " + error.message);
         } finally {
@@ -619,7 +636,8 @@ export function WeeklyFixedNotebook() {
     const scroll = (direction: 'left' | 'right') => {
         if (scrollContainerRef.current) {
             const container = scrollContainerRef.current;
-            const scrollAmount = container.offsetWidth * 0.85; // Bate com o min-w-[85vw]
+            const scrollAmount = container.offsetWidth > 768 ? 340 : (window.innerWidth - 48 + 16);
+
             container.scrollBy({
                 left: direction === 'left' ? -scrollAmount : scrollAmount,
                 behavior: 'smooth'
@@ -701,22 +719,22 @@ export function WeeklyFixedNotebook() {
 
                 <div className="relative group">
                     {/* Botões de navegação para mobile - Agora com Voltar e Avançar */}
-                    <div className="md:hidden absolute -bottom-10 left-0 right-0 z-30 flex justify-center gap-6 pointer-events-none">
+                    <div className="md:hidden absolute -bottom-14 left-0 right-0 z-30 flex justify-center gap-8 pointer-events-none">
                         <Button
                             variant="secondary"
                             size="icon"
-                            className="w-12 h-12 rounded-full shadow-2xl bg-background text-accent border-2 border-accent/20 pointer-events-auto shadow-black/20 active:scale-90 transition-transform"
+                            className="w-14 h-14 rounded-full shadow-2xl bg-background text-accent border-2 border-accent/20 pointer-events-auto shadow-black/20 active:scale-95 transition-all text-accent"
                             onClick={() => scroll('left')}
                         >
-                            <ChevronLeft className="w-6 h-6" />
+                            <ChevronLeft className="w-8 h-8" />
                         </Button>
                         <Button
                             variant="secondary"
                             size="icon"
-                            className="w-12 h-12 rounded-full shadow-2xl bg-accent text-white border-none animate-pulse pointer-events-auto shadow-accent/40 active:scale-90 transition-transform"
+                            className="w-14 h-14 rounded-full shadow-2xl bg-accent text-white border-none animate-pulse pointer-events-auto shadow-accent/40 active:scale-95 transition-all"
                             onClick={() => scroll('right')}
                         >
-                            <ChevronRight className="w-6 h-6" />
+                            <ChevronRight className="w-8 h-8" />
                         </Button>
                     </div>
 
@@ -731,13 +749,13 @@ export function WeeklyFixedNotebook() {
 
                     <div
                         ref={scrollContainerRef}
-                        className="flex gap-4 overflow-x-auto pb-14 pt-2 scroll-smooth snap-x snap-mandatory px-[10vw] md:px-2 custom-scrollbar"
+                        className="flex gap-4 overflow-x-auto pb-24 pt-2 scroll-smooth snap-x snap-mandatory px-6 md:px-2 custom-scrollbar"
                     >
                         {DAYS_OF_WEEK.map((day, idx) => {
                             const dayContent = weekData[idx] || { feed: {}, stories: {} };
                             const isToday = new Date().getDay() === idx;
                             return (
-                                <div key={day} className="min-w-[80vw] md:min-w-[320px] snap-center snap-always">
+                                <div key={day} className="min-w-[calc(100vw-48px)] md:min-w-[320px] snap-center">
                                     <Card className={cn(
                                         "h-full border-border bg-card/40 backdrop-blur-sm transition-all",
                                         isToday && "ring-2 ring-accent/20 border-accent/30"
@@ -1122,7 +1140,7 @@ export function WeeklyFixedNotebook() {
                                     {(block.instruction || bIdx === 0) && (
                                         <div className="p-3 rounded-xl bg-accent/5 border border-accent/20">
                                             <Label className="text-[10px] font-bold text-accent uppercase flex items-center gap-1.5">
-                                                <Sparkles className="w-3 h-3" /> ESTRATÉGIA IA
+                                                <Sparkles className="w-3 h-3" /> DICA IA
                                             </Label>
                                             <p className="text-xs mt-1.5 leading-relaxed text-foreground/80">
                                                 {block.instruction || "Gere para ver a estratégia detalhada."}
@@ -1143,28 +1161,66 @@ export function WeeklyFixedNotebook() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 pt-2">
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => handleWriteScript(detailTab, bIdx)}
-                                            disabled={isWritingScript || isGenerating}
-                                            className={cn(
-                                                "h-10 text-xs font-bold border-accent/30 hover:bg-accent/5",
-                                                !block.notes && "border-accent/60 bg-accent/5"
-                                            )}
-                                        >
-                                            {isWritingScript ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Sparkles className="w-3.5 h-3.5 mr-2 text-accent" />}
-                                            {isWritingScript ? "Escrevendo..." : "Sugerir Roteiro"}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            className="h-10 text-xs font-bold border-primary/20 hover:bg-primary/5"
-                                            onClick={() => handleCreateWithAI(detailTab, bIdx)}
-                                            disabled={isGenerating}
-                                        >
-                                            <Layout className="w-3.5 h-3.5 mr-2 text-primary" />
-                                            Criar com a YAh
-                                        </Button>
+                                    <div className="space-y-3 pt-2">
+                                        {block.notes && adjustingBlock?.index === bIdx && adjustingBlock?.tab === detailTab ? (
+                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <Textarea
+                                                    placeholder="O que deseja mudar? (ex: 'mais curto', 'mais humor', 'foco em vendas')"
+                                                    className="min-h-[80px] bg-accent/5 border-accent/30 text-xs"
+                                                    value={adjustmentText}
+                                                    onChange={(e) => setAdjustmentText(e.target.value)}
+                                                />
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        className="flex-1 h-8 text-[10px]"
+                                                        onClick={() => handleWriteScript(detailTab, bIdx, adjustmentText)}
+                                                        disabled={isWritingScript || !adjustmentText}
+                                                    >
+                                                        {isWritingScript ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Wand2 className="w-3 h-3 mr-2" />}
+                                                        Aplicar Ajuste
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 text-[10px]"
+                                                        onClick={() => setAdjustingBlock(null)}
+                                                    >
+                                                        Cancelar
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        if (block.notes) {
+                                                            setAdjustingBlock({ tab: detailTab, index: bIdx || 0 });
+                                                        } else {
+                                                            handleWriteScript(detailTab, bIdx);
+                                                        }
+                                                    }}
+                                                    disabled={isWritingScript || isGenerating}
+                                                    className={cn(
+                                                        "h-10 text-xs font-bold border-accent/30 hover:bg-accent/5",
+                                                        !block.notes && "border-accent/60 bg-accent/5"
+                                                    )}
+                                                >
+                                                    {isWritingScript ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : (block.notes ? <Settings className="w-3.5 h-3.5 mr-2 text-accent" /> : <Sparkles className="w-3.5 h-3.5 mr-2 text-accent" />)}
+                                                    {isWritingScript ? "Processando..." : (block.notes ? "Ajustar Roteiro" : "Sugerir Roteiro")}
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="h-10 text-xs font-bold border-primary/20 hover:bg-primary/5"
+                                                    onClick={() => handleCreateWithAI(detailTab, bIdx)}
+                                                    disabled={isGenerating}
+                                                >
+                                                    <Layout className="w-3.5 h-3.5 mr-2 text-primary" />
+                                                    Criar com a YAh
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </CardContent>
@@ -1201,7 +1257,7 @@ export function WeeklyFixedNotebook() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto px-4 md:px-0 pb-20 md:pb-0">
+        <div className="max-w-5xl mx-auto px-0 md:px-0 pb-20 md:pb-0">
             {!isFormInitialized ? (
                 <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
             ) : (

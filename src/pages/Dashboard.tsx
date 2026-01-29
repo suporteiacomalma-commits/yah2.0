@@ -20,14 +20,29 @@ export default function Dashboard() {
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       toast.success("Pagamento concluído com sucesso!");
-      // Force refresh the profile to show Premium status immediately
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
 
-      // Perform a full page reload after a short delay to ensure everything is fresh
-      // and clear the success parameter from the URL to prevent loops
+      // Invalidate both immediately
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+
+      // Poll both for a few seconds to detect the upgrade from the webhook
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+        queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        if (attempts >= 5) clearInterval(interval);
+      }, 2000);
+
+      // Perform a clean URL reset after a short delay
       setTimeout(() => {
-        window.location.href = window.location.origin + "/dashboard";
-      }, 1500);
+        const url = new URL(window.location.href);
+        url.searchParams.delete("success");
+        window.history.replaceState({}, "", url.toString());
+        clearInterval(interval);
+      }, 10000);
+
+      return () => clearInterval(interval);
     }
   }, [searchParams, queryClient]);
 

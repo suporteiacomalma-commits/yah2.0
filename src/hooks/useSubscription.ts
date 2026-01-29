@@ -71,7 +71,7 @@ export function useSubscription() {
             };
         },
         enabled: !!user,
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 1000 * 10, // 10 seconds
     });
 
     return {

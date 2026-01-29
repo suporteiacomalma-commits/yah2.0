@@ -44,31 +44,37 @@ serve(async (req) => {
         }
 
         // 3. Handle Event
-        if (event.type === "checkout.session.completed") {
+        console.log(`Received Stripe event: ${event.type}`);
+
+        if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
             const session = event.data.object;
             const externalId = session.id;
 
-            console.log(`Processing completed checkout session: ${externalId}`);
+            console.log(`Processing session ${event.type}: ${externalId}`);
 
             // Call RPC to activate plan
-            const { error } = await supabaseClient.rpc("process_payment_activation", {
+            const { error, data: rpcData } = await supabaseClient.rpc("process_payment_activation", {
                 p_external_id: externalId,
                 p_status: "completed"
             });
 
             if (error) {
                 console.error("Error activating payment via RPC:", error);
-                return new Response("Internal Server Error processing payment", { status: 500 });
+                return new Response(JSON.stringify({ error: "RPC Failure", detail: error.message }), { status: 500 });
             }
+
+            console.log(`RPC Result for ${externalId}:`, rpcData);
+        } else {
+            console.log(`Ignored event type: ${event.type}`);
         }
 
-        return new Response(JSON.stringify({ received: true }), {
+        return new Response(JSON.stringify({ received: true, type: event.type }), {
             headers: { "Content-Type": "application/json" },
             status: 200,
         });
 
     } catch (error) {
-        console.error("Webhook processing error:", error);
+        console.error("Webhook critical error:", error.message);
         return new Response(
             JSON.stringify({ error: error.message }),
             {

@@ -211,6 +211,7 @@ export function AICarousels() {
             return;
         }
 
+        const toastId = toast.loading("Gerando carrossel estratégico de 10 slides...");
         setIsGenerating(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -339,10 +340,10 @@ export function AICarousels() {
 
             setShowGenModal(false);
             setCurrentSlide(0);
-            toast.success("Carrossel gerado! Agora personalize os slides.");
+            toast.success("Carrossel gerado! Agora personalize os slides.", { id: toastId });
         } catch (error: any) {
             console.error(error);
-            toast.error("Erro ao gerar: " + error.message);
+            toast.error("Erro ao gerar: " + error.message, { id: toastId });
         } finally {
             setIsGenerating(false);
         }

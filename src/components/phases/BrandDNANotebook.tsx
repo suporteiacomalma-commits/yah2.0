@@ -59,10 +59,11 @@ export function BrandDNANotebook() {
 
     const handleSuggestDNAFields = async (targetField?: keyof Brand, stepOverride?: number) => {
         if (isSuggesting || !brand?.result_essencia) return;
+        const toastId = toast.loading("Consultando IA para sugestões estratégicas...");
         setIsSuggesting(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
-            if (!apiKey) return;
+            if (!apiKey) throw new Error("Chave da API não configurada");
 
             const currentStep = stepOverride || step;
             const isInitialPhase1 = !targetField && currentStep === 1;
@@ -135,10 +136,10 @@ Saída em Português. Seja criativo, prático e impactante.`;
                 }
             });
 
-            toast.info(targetField ? "Nova sugestão gerada!" : "Sugestões da IA carregadas!");
-        } catch (error) {
+            toast.success(targetField ? "Nova sugestão gerada!" : "Sugestões da IA carregadas!", { id: toastId });
+        } catch (error: any) {
             console.error("Suggestion error:", error);
-            toast.error("Erro ao obter sugestão da IA.");
+            toast.error("Erro ao obter sugestão da IA: " + error.message, { id: toastId });
         } finally {
             setIsSuggesting(false);
         }
@@ -190,6 +191,7 @@ Saída em Português. Seja criativo, prático e impactante.`;
     };
 
     const handleGenerateDNA = async () => {
+        const toastId = toast.loading("IA cruzando dados e gerando tese de posicionamento...");
         setIsGenerating(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -284,10 +286,10 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
             }));
 
             setStep(3);
-            toast.success("DNA da Marca gerado com sucesso!");
+            toast.success("DNA da Marca gerado com sucesso!", { id: toastId });
         } catch (error: any) {
             console.error("DNA Generation error:", error);
-            toast.error("Erro ao gerar DNA: " + error.message);
+            toast.error("Erro ao gerar DNA: " + error.message, { id: toastId });
         } finally {
             setIsGenerating(false);
         }

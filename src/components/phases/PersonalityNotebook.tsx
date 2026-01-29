@@ -149,6 +149,7 @@ export function PersonalityNotebook() {
     };
 
     const handleGeneratePersonality = async () => {
+        const toastId = toast.loading("IA analisando seu perfil comportamental...");
         setIsGenerating(true);
 
         try {
@@ -222,10 +223,10 @@ export function PersonalityNotebook() {
             }));
 
             setStep(4);
-            toast.success("Personalidade gerada com sucesso!");
+            toast.success("Personalidade gerada com sucesso!", { id: toastId });
         } catch (error: any) {
             console.error("AI Generation error:", error);
-            toast.error("Erro ao gerar personalidade: " + error.message);
+            toast.error("Erro ao gerar personalidade: " + error.message, { id: toastId });
         } finally {
             setIsGenerating(false);
         }

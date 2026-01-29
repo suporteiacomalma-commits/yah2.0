@@ -198,7 +198,8 @@ export function SocialOptimization() {
       REGRAS CRÍTICAS:
       • Nunca usar frases genéricas, motivacionais ou vazias.
       • Nunca usar “ajudo pessoas”, “transformando vidas”, “sua melhor versão”, “você merece mais”, “vivendo seu propósito”.
-      • Máximo 150 caracteres no total.
+      • LIMITE ABSOLUTO DE 150 CARACTERES (incluindo espaços e quebras de linha).
+      • O Instagram corta qualquer coisa acima de 150. SEJA CONCISO.
       • Retorne apenas as 4 linhas, uma por linha.
 
       REGRAS PARA DESTAQUES (Gere 3):
@@ -258,6 +259,41 @@ export function SocialOptimization() {
             if (!response.ok) throw new Error("Erro na IA");
             const data = await response.json();
             const result = JSON.parse(data.choices[0].message.content);
+
+            // AUTO-RETRY IF BIO TOO LONG
+            if (result.bio && result.bio.length > 150) {
+                const shortenPrompt = `A bio abaixo ficou muito longa (${result.bio.length} caracteres). O limite do Instagram é 150.
+                Reescreva a mesma bio mantendo a essência, mas ENCURTE para menos de 150 caracteres. Use abreviações se necessário.
+                
+                BIO PARA ENCURTAR:
+                ${result.bio}
+                
+                Retorne apenas a bio encurtada.`;
+
+                try {
+                    const retryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: "gpt-4o-mini",
+                            messages: [
+                                { role: "system", content: "Você é um mestre em copywriting para Instagram. Retorne apenas o texto final da bio." },
+                                { role: "user", content: shortenPrompt }
+                            ]
+                        })
+                    });
+
+                    if (retryResponse.ok) {
+                        const retryData = await retryResponse.json();
+                        result.bio = retryData.choices[0].message.content.trim();
+                    }
+                } catch (err) {
+                    console.error("Erro ao encurtar bio:", err);
+                }
+            }
 
             const updates = {
                 diagnosis: result.diagnosis,
@@ -657,29 +693,46 @@ function Screen3A({ data, onBack, onSave, updateSocialData, markAsDirty }: { dat
             4. CTA direto e funcional.
 
             REGRAS CRÍTICAS:
-            • MÁXIMO 150 CARACTERES.
+            • LIMITE: Tente manter em ~135 caracteres para segurança.
+            • Se necessário, abrevie palavras ou simplifique a estrutura para caber.
             • Nunca usar frases genéricas, motivacionais ou vazias (ex: "ajudo pessoas", "transformando vidas").
             • Adaptar ao DNA da marca e tom de voz: ${data.diagnosis || ''}.
             • Retorne APENAS o texto final da bio no formato de 4 linhas, sem aspas e sem comentários.`;
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [
-                        { role: "system", content: "Você é um mestre em copywriting para Instagram. Retorne apenas o texto final da bio." },
-                        { role: "user", content: prompt }
-                    ]
-                })
-            });
+            const callAI = async (currentPrompt: string) => {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [
+                            { role: "system", content: "Você é um mestre em copywriting para Instagram. Retorne apenas o texto final da bio." },
+                            { role: "user", content: currentPrompt }
+                        ]
+                    })
+                });
+                if (!response.ok) throw new Error("Erro na IA");
+                const aiData = await response.json();
+                return aiData.choices[0].message.content.trim();
+            }
 
-            if (!response.ok) throw new Error("Erro na IA");
-            const aiData = await response.json();
-            const refinedBio = aiData.choices[0].message.content.trim();
+            let refinedBio = await callAI(prompt);
+
+            // AUTO-RETRY IF TOO LONG
+            if (refinedBio.length > 150) {
+                const shortenPrompt = `A bio abaixo ficou muito longa (${refinedBio.length} caracteres). O limite do Instagram é 150.
+                Reescreva a mesma bio mantendo a essência, mas ENCURTE para menos de 150 caracteres. Use abreviações se necessário.
+                
+                BIO PARA ENCURTAR:
+                ${refinedBio}
+                
+                Retorne apenas a bio encurtada.`;
+
+                refinedBio = await callAI(shortenPrompt);
+            }
 
             setBio(refinedBio);
             // Persistent save
@@ -1034,13 +1087,14 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             toast.error("Por favor, defina um título para o destaque primeiro");
             return;
         }
+
+        const toastId = toast.loading("Iniciando geração de ícone com IA...");
         setGeneratingIdx(idx);
+
         try {
             const apiKey = getSetting("openai_api_key")?.value;
-            if (!apiKey) throw new Error("Chave da API não configurada");
-            console.log("API Key loaded, length:", apiKey.length);
+            if (!apiKey) throw new Error("Chave da API não configurada no sistema (openai_api_key).");
 
-            console.log("DEBUG: handleGenerateImage called for", promptText);
             const response = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
                 mode: 'cors',
@@ -1049,30 +1103,34 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                     model: "dall-e-2",
                     prompt: `Minimalist line art icon for Instagram. Subject: ${promptText}. Simple clean graphic, bold high-contrast background.`,
                     n: 1,
-                    size: "256x256"
+                    size: "256x256",
+                    response_format: "b64_json"
                 })
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error("OpenAI API error:", errorData);
+                if (errorData.error?.code === 'content_policy_violation') {
+                    throw new Error("A IA recusou gerar este termo por segurança via Content Policy. Tente outro termo.");
+                }
                 throw new Error(errorData.error?.message || `Erro na API: ${response.status}`);
             }
 
             const res = await response.json();
-            const imageUrl = res.data[0].url;
-            if (!imageUrl) throw new Error("A IA não retornou a URL da imagem.");
-
-            console.log("Image URL received:", imageUrl);
+            const b64Data = res.data[0].b64_json;
+            if (!b64Data) throw new Error("A IA não retornou os dados da imagem.");
 
             // Convert base64 to Blob
-            const imageRes = await fetch(imageUrl);
-            if (!imageRes.ok) throw new Error("Erro ao baixar a imagem gerada.");
-            const imageBlob = await imageRes.blob();
-            const fileName = `ai_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
+            const byteCharacters = atob(b64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const imageBlob = new Blob([byteArray], { type: 'image/png' });
 
+            const fileName = `ai_icon_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
             const filePath = `highlight_covers/${brand?.id || 'default'}/${fileName}`;
-            console.log("Uploading to Storage path:", filePath);
 
             const { error: uploadError } = await supabase.storage
                 .from("brand_documents")
@@ -1088,16 +1146,15 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             newHighlights[idx].cover_url = publicUrl;
             setHighlights(newHighlights);
 
-            // Persistent save
             await updateSocialData.mutateAsync({
                 updates: { highlights: newHighlights },
                 silent: true
             });
 
-            toast.success("Ícone gerado e salvo com sucesso!");
+            toast.success("Ícone gerado e salvo com sucesso!", { id: toastId });
         } catch (e: any) {
             console.error("Full error generating/persisting icon:", e);
-            toast.error("Erro ao gerar ícone: " + (e.message || "Erro desconhecido"));
+            toast.error("Erro ao gerar ícone: " + (e.message || "Erro desconhecido"), { id: toastId });
         } finally {
             setGeneratingIdx(null);
         }
@@ -1108,6 +1165,7 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             toast.error("Por favor, defina um título para o destaque primeiro");
             return;
         }
+        const toastId = toast.loading("Gerando insights estratégicos...");
         setInsightGeneratingIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -1151,15 +1209,9 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             newHighlights[idx].description = content;
             setHighlights(newHighlights);
 
-            // Persistent save
-            await updateSocialData.mutateAsync({
-                updates: { highlights: newHighlights },
-                silent: true
-            });
-
-            toast.success("Sugestões da IA geradas!");
+            toast.success("Sugestões da IA geradas!", { id: toastId });
         } catch (e: any) {
-            toast.error("Erro ao gerar sugestões: " + e.message);
+            toast.error("Erro ao gerar sugestões: " + e.message, { id: toastId });
         } finally {
             setInsightGeneratingIdx(null);
         }
@@ -1170,6 +1222,7 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             toast.error("Por favor, gere as sugestões primeiro");
             return;
         }
+        const toastId = toast.loading("Criando roteiro detalhado...");
         setContentGeneratingIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -1212,15 +1265,9 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             newHighlights[idx].content = contentResult;
             setHighlights(newHighlights);
 
-            // Persistent save
-            await updateSocialData.mutateAsync({
-                updates: { highlights: newHighlights },
-                silent: true
-            });
-
-            toast.success("Roteiro gerado com sucesso!");
+            toast.success("Roteiro gerado com sucesso!", { id: toastId });
         } catch (e: any) {
-            toast.error("Erro ao gerar roteiro: " + e.message);
+            toast.error("Erro ao gerar roteiro: " + e.message, { id: toastId });
         } finally {
             setContentGeneratingIdx(null);
         }
@@ -1337,15 +1384,31 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                     <div className="absolute -bottom-1 -right-1 flex gap-1">
                                         <label className="h-9 w-9 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all" title="Anexar Foto">
                                             <Upload className="w-4 h-4 text-white" />
-                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleCoverUpload(e, idx)} />
+                                            <input type="file" className="hidden" accept="image/*" onClick={(e) => e.stopPropagation()} onChange={(e) => handleCoverUpload(e, idx)} />
                                         </label>
-                                        <div className="h-9 w-9 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all" onClick={() => handleGenerateImage(idx, h.title)} title="Gerar com IA">
+                                        <button
+                                            type="button"
+                                            className="h-9 w-9 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleGenerateImage(idx, h.title);
+                                            }}
+                                            title="Gerar com IA"
+                                        >
                                             <Wand2 className="w-4 h-4 text-white" />
-                                        </div>
+                                        </button>
                                         {h.cover_url && (
-                                            <div className="h-9 w-9 rounded-full bg-white/10 backdrop-blur-md shadow-xl flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all" onClick={() => handleDownloadCover(h.cover_url, h.title)} title="Baixar Capa">
+                                            <button
+                                                type="button"
+                                                className="h-9 w-9 rounded-full bg-white/10 backdrop-blur-md shadow-xl flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDownloadCover(h.cover_url, h.title);
+                                                }}
+                                                title="Baixar Capa"
+                                            >
                                                 <Download className="w-4 h-4 text-white" />
-                                            </div>
+                                            </button>
                                         )}
                                     </div>
                                 </div>
@@ -1623,6 +1686,7 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
     }, [initialIndex]);
 
     const handleGeneratePostContent = async (idx: number) => {
+        const toastId = toast.loading("Criando roteiro para post fixado...");
         setGeneratingContentIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -1666,39 +1730,67 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             newPosts[idx].content = content;
             setPosts(newPosts);
 
-            await updateSocialData.mutateAsync({
-                updates: { pinned_posts: newPosts },
-                silent: true
-            });
-
-            toast.success("Roteiro gerado com sucesso!");
+            toast.success("Roteiro gerado com sucesso!", { id: toastId });
         } catch (e: any) {
-            toast.error("Erro ao gerar roteiro: " + e.message);
+            toast.error("Erro ao gerar roteiro: " + e.message, { id: toastId });
         } finally {
             setGeneratingContentIdx(null);
         }
     };
 
     const handleGeneratePostCover = async (idx: number) => {
+        const toastId = toast.loading("Gerando capa premium com IA...");
         setGeneratingCoverIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) throw new Error("Chave da API não configurada.");
+
             const prompt = `Premium aesthetic professional cover for Instagram post. Type: ${posts[idx].type}. Theme: ${posts[idx].theme || 'Business strategy'}. Style: ultra-high-end luxury photography, cinematic lighting, professional branding, elegant textures, no faces.`;
 
             const response = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey.trim()}` },
                 body: JSON.stringify({
                     prompt,
                     n: 1,
-                    size: "1024x1024"
+                    size: "1024x1024",
+                    response_format: "b64_json"
                 })
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error?.message || `Erro na API: ${response.status}`);
+            }
+
             const res = await response.json();
-            if (res.error) throw new Error(res.error.message);
+            const b64Data = res.data[0].b64_json;
+            if (!b64Data) throw new Error("A IA não retornou os dados da imagem.");
+
+            // Convert base64 to Blob
+            const byteCharacters = atob(b64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const imageBlob = new Blob([byteArray], { type: 'image/png' });
+
+            const fileName = `post_cover_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
+            const filePath = `post_covers/${brand?.id || 'default'}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from("brand_documents")
+                .upload(filePath, imageBlob);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from("brand_documents")
+                .getPublicUrl(filePath);
 
             const newPosts = [...posts];
-            newPosts[idx].thumbnail_url = res.data[0].url;
+            newPosts[idx].thumbnail_url = publicUrl;
             setPosts(newPosts);
 
             await updateSocialData.mutateAsync({
@@ -1706,9 +1798,10 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                 silent: true
             });
 
-            toast.success("Capa gerada com sucesso!");
+            toast.success("Capa gerada com sucesso!", { id: toastId });
         } catch (e: any) {
-            toast.error("Erro ao gerar capa: " + e.message);
+            console.error("Error generating post cover:", e);
+            toast.error("Erro ao gerar capa: " + e.message, { id: toastId });
         } finally {
             setGeneratingCoverIdx(null);
         }
@@ -1761,9 +1854,13 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                 {/* Header Info */}
                                 <div className="flex flex-col md:flex-row gap-8">
                                     <div className="w-full md:w-[280px] space-y-4 shrink-0">
-                                        <div
-                                            className="aspect-square rounded-[2rem] bg-white/5 border border-white/10 relative overflow-hidden group/cover cursor-pointer hover:border-primary/30 transition-all shadow-2xl"
-                                            onClick={() => handleGeneratePostCover(idx)}
+                                        <button
+                                            type="button"
+                                            className="w-full h-full rounded-[2rem] bg-white/5 border border-white/10 relative overflow-hidden group/cover cursor-pointer hover:border-primary/30 transition-all shadow-2xl"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleGeneratePostCover(idx);
+                                            }}
                                         >
                                             {post.thumbnail_url ? (
                                                 <img src={post.thumbnail_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Capa" />
@@ -1783,7 +1880,7 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                                     <Wand2 className="w-8 h-8 text-white animate-pulse" />
                                                 )}
                                             </div>
-                                        </div>
+                                        </button>
 
                                         <div className="space-y-4">
                                             <div className="space-y-2">

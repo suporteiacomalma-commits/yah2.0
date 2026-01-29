@@ -5,7 +5,7 @@ import {
     Save,
     Wand2,
     Settings,
-    Calendar,
+    Calendar as CalendarIcon,
     Table,
     MoreHorizontal,
     Sparkles,
@@ -22,8 +22,12 @@ import {
     Camera,
     MessageSquare,
     Search,
-    Book
+    Book,
+    Link,
+    Share2
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useBrand, Brand } from "@/hooks/useBrand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -55,6 +59,20 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { jsPDF } from "jspdf";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format, differenceInCalendarDays, addDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Screen = "vision" | "routine" | "monthly" | "detail";
 type DetailTab = "feed" | "stories";
@@ -71,6 +89,7 @@ const FEED_FORMATS = ["Carrossel", "Reels", "Foto", "Alternar"];
 const STORIES_FORMATS = ["Caixa", "Diário", "Sequência", "Conversa"];
 
 export function WeeklyFixedNotebook() {
+    const { user } = useAuth();
     const { brand, updateBrand } = useBrand();
     const { getSetting } = useSystemSettings();
 
@@ -82,10 +101,12 @@ export function WeeklyFixedNotebook() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isGeneratingIntentions, setIsGeneratingIntentions] = useState(false);
     const [isWritingScript, setIsWritingScript] = useState(false);
+    const [isWritingCaption, setIsWritingCaption] = useState(false);
     const isDirty = useRef(false);
 
     const [routineData, setRoutineData] = useState<Partial<Brand>>({});
     const [weeklyData, setWeeklyData] = useState<any>({});
+    const [routineConfirmation, setRoutineConfirmation] = useState<{ isOpen: boolean, type: "planning" | "execution" | null, days: string[] }>({ isOpen: false, type: null, days: [] });
 
     useEffect(() => {
         if (brand && !isFormInitialized) {
@@ -155,6 +176,7 @@ export function WeeklyFixedNotebook() {
     };
 
     const generateWeeklyStructure = async () => {
+        const toastId = toast.loading("Gerando estrutura de 4 semanas com IA... Isso pode levar alguns segundos.");
         setIsGenerating(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -266,9 +288,9 @@ export function WeeklyFixedNotebook() {
 
             setWeeklyData(finalWeeks);
             setScreen("vision");
-            toast.success("Estratégia semanal gerada com sucesso!");
+            toast.success("Estratégia semanal gerada com sucesso!", { id: toastId });
         } catch (error: any) {
-            toast.error("Erro ao gerar: " + error.message);
+            toast.error("Erro ao gerar: " + error.message, { id: toastId });
         } finally {
             setIsGenerating(false);
         }
@@ -278,6 +300,7 @@ export function WeeklyFixedNotebook() {
     const [adjustmentText, setAdjustmentText] = useState("");
 
     const handleWriteScript = async (tab: DetailTab, blockIndex?: number, adjustment?: string) => {
+        const toastId = toast.loading(adjustment ? "Ajustando roteiro..." : "Gerando roteiro detalhado...");
         setIsWritingScript(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -327,14 +350,130 @@ export function WeeklyFixedNotebook() {
             const data = await response.json();
             const script = data.choices[0].message.content;
             handleDataChange(tab, "notes", script, blockIndex);
-            toast.success(adjustment ? "Roteiro ajustado com sucesso!" : "Roteiro sugerido com sucesso!");
+            toast.success(adjustment ? "Roteiro ajustado com sucesso!" : "Roteiro sugerido com sucesso!", { id: toastId });
             setAdjustingBlock(null);
             setAdjustmentText("");
         } catch (error: any) {
-            toast.error("Erro ao gerar roteiro: " + error.message);
+            toast.error("Erro ao gerar roteiro: " + error.message, { id: toastId });
         } finally {
             setIsWritingScript(false);
         }
+    };
+
+    const handleWriteCaption = async (tab: DetailTab, blockIndex?: number) => {
+        const toastId = toast.loading("Sugerindo legenda estratégica...");
+        setIsWritingCaption(true);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) throw new Error("API Key não configurada");
+
+            const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
+            const block = (blockIndex === undefined || blockIndex === 0)
+                ? dayData
+                : dayData.extraBlocks[blockIndex - 1];
+
+            const prompt = `Escreva uma legenda envolvente para o Instagram sobre este tema: "${block.headline}".
+            Intenção: ${block.intention}.
+            Use o tom de voz da marca: ${brand?.user_tone_selected?.join(", ") || "autêntico e profissional"}.
+            Inclua emojis e 3-5 hashtags relevantes.
+            Formatação: Quebras de linha limpas.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: "Expert em social media e copywriting. Você cria legendas que engajam e convertem." },
+                        { role: "user", content: prompt }
+                    ]
+                })
+            });
+
+            const data = await response.json();
+            const caption = data.choices[0].message.content;
+            handleDataChange(tab, "caption", caption, blockIndex);
+            toast.success("Legenda sugerida com sucesso!", { id: toastId });
+        } catch (error: any) {
+            toast.error("Erro ao gerar legenda: " + error.message, { id: toastId });
+        } finally {
+            setIsWritingCaption(false);
+        }
+    };
+
+    const handleExportWhatsApp = (tab: DetailTab, blockIndex?: number) => {
+        const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
+        const block = (blockIndex === undefined || blockIndex === 0)
+            ? dayData
+            : dayData.extraBlocks[blockIndex - 1];
+
+        const text = `📌 *TEMA:* ${block.headline || 'Sem título'}
+
+📝 *ROTEIRO:*
+${block.notes || 'Sem roteiro.'}
+
+✍️ *LEGENDA:*
+${block.caption || 'Sem legenda.'}`;
+
+        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+    };
+
+    const executeSendRoutineToAgenda = async () => {
+        const { type, days: selectedDays } = routineConfirmation;
+        if (!user || !type || selectedDays.length === 0) return;
+
+        const dayMapping: { [key: string]: number } = {
+            "Domingo": 0, "Segunda": 1, "Terça": 2, "Quarta": 3,
+            "Quinta": 4, "Sexta": 5, "Sábado": 6
+        };
+
+        const dayIds = selectedDays.map(day => dayMapping[day]).sort();
+
+        const title = type === "planning" ? "Criar Roteiros" : "Gravar/Executar Conteúdo";
+
+        // Data de hoje como referência inicial
+        const today = new Date();
+        const formattedDate = format(today, "yyyy-MM-dd");
+
+        const eventData = {
+            titulo: title,
+            categoria: "Conteúdo",
+            tipo: "Tarefa",
+            recorrencia: "Semanal",
+            dias_da_semana: dayIds,
+            data: formattedDate,
+            hora: "09:00",
+            duracao: 60,
+            status: "Pendente",
+            user_id: user.id,
+            descricao: `Tarefa recorrente gerada pela Rotina Semanal.`
+        };
+
+        try {
+            const { error } = await (supabase as any)
+                .from("eventos_do_cerebro")
+                .insert(eventData);
+
+            if (error) throw error;
+            toast.success(`Tarefas de ${type === "planning" ? "planejamento" : "execução"} agendadas!`);
+        } catch (error: any) {
+            console.error("Erro ao agendar rotina:", error);
+            toast.error("Erro ao agendar rotina.");
+        } finally {
+            setRoutineConfirmation({ isOpen: false, type: null, days: [] });
+        }
+    };
+
+    const handleSendRoutineToAgenda = (type: "planning" | "execution", selectedDays: string[]) => {
+        if (!selectedDays || selectedDays.length === 0) {
+            toast.error("Selecione pelo menos um dia da semana.");
+            return;
+        }
+        setRoutineConfirmation({ isOpen: true, type, days: selectedDays });
     };
 
 
@@ -399,6 +538,7 @@ export function WeeklyFixedNotebook() {
     };
 
     const handleGenerateIntentions = async () => {
+        const toastId = toast.loading("IA analisando marca e traçando jornada semanal...");
         setIsGeneratingIntentions(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -450,9 +590,9 @@ export function WeeklyFixedNotebook() {
             });
 
             handleRoutineChange("routine_intentions_prefs", newPrefs);
-            toast.success("Intenções geradas com estratégia de IA!");
+            toast.success("Intenções geradas com estratégia de IA!", { id: toastId });
         } catch (error: any) {
-            toast.error("Erro ao gerar intenções: " + error.message);
+            toast.error("Erro ao gerar intenções: " + error.message, { id: toastId });
         } finally {
             setIsGeneratingIntentions(false);
         }
@@ -465,6 +605,56 @@ export function WeeklyFixedNotebook() {
             newData[currentWeek - 1][selectedDayIndex][tab] = {};
             setWeeklyData(newData);
             toast.success(`${tab.toUpperCase()} limpo com sucesso!`);
+        }
+    };
+
+    const handleSaveToAgenda = async (tab: DetailTab, blockIndex?: number) => {
+        if (!user) {
+            toast.error("Usuário não autenticado");
+            return;
+        }
+
+        const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
+        const block = (blockIndex === undefined || blockIndex === 0)
+            ? dayData
+            : dayData.extraBlocks[blockIndex - 1];
+
+        if (!block.headline) {
+            toast.error("Adicione um título/tema antes de salvar na agenda.");
+            return;
+        }
+
+        // Calcular data correta
+        const today = new Date();
+        const currentDay = today.getDay();
+        const diff = currentDay === 0 ? -6 : 1 - currentDay;
+        const mondayOfWeek1 = new Date(today);
+        mondayOfWeek1.setDate(today.getDate() + diff);
+        const targetDate = new Date(mondayOfWeek1);
+        targetDate.setDate(mondayOfWeek1.getDate() + (currentWeek - 1) * 7 + (selectedDayIndex === 0 ? 6 : selectedDayIndex - 1));
+
+        const eventData = {
+            titulo: `${tab === 'feed' ? '[FEED]' : '[STORIES]'} ${block.headline}`,
+            categoria: "Conteúdo",
+            tipo: "Tarefa",
+            data: format(targetDate, "yyyy-MM-dd"),
+            hora: block.time || "09:00",
+            duracao: 60,
+            status: "Pendente",
+            user_id: user.id,
+            descricao: `Formato: ${block.format || '-'}\nIntenção: ${block.intention || '-'}\nLink: ${block.link || '-'}\n\nNotas:\n${block.notes || ''}`
+        };
+
+        try {
+            const { error } = await (supabase as any)
+                .from("eventos_do_cerebro")
+                .insert(eventData);
+
+            if (error) throw error;
+            toast.success("Tarefa salva na agenda com sucesso!");
+        } catch (error: any) {
+            console.error("Erro ao salvar na agenda:", error);
+            toast.error("Erro ao salvar na agenda.");
         }
     };
 
@@ -664,6 +854,63 @@ export function WeeklyFixedNotebook() {
         targetDate.setDate(mondayOfThisWeek.getDate() + (weekNum - 1) * 7 + (dayIdx === 0 ? 6 : dayIdx - 1));
 
         return targetDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    };
+
+    const handleDateSelect = (date: Date | undefined) => {
+        if (!date) return;
+
+        // Calcular a segunda-feira da semana atual (Semana 1)
+        const today = new Date();
+        const currentDay = today.getDay();
+        const diff = currentDay === 0 ? -6 : 1 - currentDay; // Ajuste para Segunda
+        const mondayOfWeek1 = new Date(today);
+        mondayOfWeek1.setDate(today.getDate() + diff);
+        mondayOfWeek1.setHours(0, 0, 0, 0); // Zerar horas para comparação justa
+
+        // Calcular a diferença em dias
+        const selectedDate = new Date(date);
+        selectedDate.setHours(0, 0, 0, 0);
+
+        const diffDays = differenceInCalendarDays(selectedDate, mondayOfWeek1);
+
+        // Calcular nova semana e dia
+        const newWeekIndex = Math.floor(diffDays / 7); // 0 a 3 para 4 semanas
+        const newWeekNum = newWeekIndex + 1;
+
+        // Validação: permitir apenas dentro das 4 semanas projetadas
+        if (newWeekNum < 1 || newWeekNum > 4) {
+            toast.error("Por favor, selecione uma data dentro das próximas 4 semanas.");
+            return;
+        }
+
+        const newDayIdx = selectedDate.getDay(); // 0 = Domingo, 1 = Segunda, etc.
+
+        // Mover o conteúdo
+        const oldContent = weeklyData[currentWeek - 1]?.[selectedDayIndex] || {};
+
+        // Clonar dados
+        const newWeeklyData = { ...weeklyData };
+
+        // Inicializar estruturas se não existirem
+        if (!newWeeklyData[newWeekIndex]) newWeeklyData[newWeekIndex] = {};
+        if (!newWeeklyData[newWeekIndex][newDayIdx]) newWeeklyData[newWeekIndex][newDayIdx] = { feed: {}, stories: {} };
+
+        // Copiar conteúdo para o novo dia
+        newWeeklyData[newWeekIndex][newDayIdx] = {
+            ...newWeeklyData[newWeekIndex][newDayIdx],
+            [detailTab]: oldContent[detailTab]
+        };
+
+        // Limpar o conteúdo do dia original
+        if (newWeeklyData[currentWeek - 1] && newWeeklyData[currentWeek - 1][selectedDayIndex]) {
+            newWeeklyData[currentWeek - 1][selectedDayIndex][detailTab] = {};
+        }
+
+        setWeeklyData(newWeeklyData);
+        setCurrentWeek(newWeekNum);
+        setSelectedDayIndex(newDayIdx);
+
+        toast.success(`Postagem movida para ${format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}`);
     };
 
     const renderVision = () => {
@@ -896,6 +1143,15 @@ export function WeeklyFixedNotebook() {
                                         </div>
                                     ))}
                                 </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-2 text-xs border-dashed text-muted-foreground hover:text-accent hover:border-accent"
+                                    onClick={() => handleSendRoutineToAgenda("planning", routineData.routine_planning_days || [])}
+                                >
+                                    <CalendarIcon className="w-3 h-3 mr-2" />
+                                    Enviar para agenda (Criar toda semana)
+                                </Button>
                             </div>
 
                             <div className="space-y-3">
@@ -916,6 +1172,15 @@ export function WeeklyFixedNotebook() {
                                         </div>
                                     ))}
                                 </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-2 text-xs border-dashed text-muted-foreground hover:text-accent hover:border-accent"
+                                    onClick={() => handleSendRoutineToAgenda("execution", routineData.routine_execution_days || [])}
+                                >
+                                    <CalendarIcon className="w-3 h-3 mr-2" />
+                                    Enviar para agenda (Criar toda semana)
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -1022,6 +1287,24 @@ export function WeeklyFixedNotebook() {
                         Gerar Estrutura 4 Semanas
                     </Button>
                 </div>
+
+                <AlertDialog open={routineConfirmation.isOpen} onOpenChange={(open) => !open && setRoutineConfirmation({ isOpen: false, type: null, days: [] })}>
+                    <AlertDialogContent className="bg-slate-950 border-border">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="text-white">Confirmar Agendamento Recorrente</AlertDialogTitle>
+                            <AlertDialogDescription className="text-muted-foreground">
+                                Você está prestes a criar uma tarefa RECORRENTE que se repetirá toda semana nos dias: <br />
+                                <span className="font-bold text-accent">{routineConfirmation.days.join(", ")}</span>.
+                                <br /><br />
+                                Deseja confirmar o agendamento de <span className="font-bold text-white">{routineConfirmation.type === "planning" ? "Criação de Roteiros" : "Gravação/Execução"}</span>?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-transparent text-white border-white/20 hover:bg-white/10">Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={executeSendRoutineToAgenda} className="bg-accent text-white hover:bg-accent/90">Confirmar Agendamento</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         );
     };
@@ -1081,7 +1364,33 @@ export function WeeklyFixedNotebook() {
                             {detailTab}
                         </span>
                         <h3 className="text-sm font-bold uppercase tracking-widest">{DAYS_OF_WEEK[selectedDayIndex]}</h3>
-                        <p className="text-[10px] text-muted-foreground uppercase">{getPostDate(currentWeek, selectedDayIndex)} • Semana {currentWeek}</p>
+                        <h3 className="text-sm font-bold uppercase tracking-widest">{DAYS_OF_WEEK[selectedDayIndex]}</h3>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent text-[10px] text-muted-foreground uppercase font-normal hover:text-accent transition-colors">
+                                    {getPostDate(currentWeek, selectedDayIndex)} • Semana {currentWeek}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="center">
+                                <Calendar
+                                    mode="single"
+                                    selected={(() => {
+                                        // Reconstruir a data atual selecionada para mostrar no calendário
+                                        const today = new Date();
+                                        const currentDay = today.getDay();
+                                        const diff = currentDay === 0 ? -6 : 1 - currentDay;
+                                        const monday = new Date(today);
+                                        monday.setDate(today.getDate() + diff);
+                                        const target = new Date(monday);
+                                        target.setDate(monday.getDate() + (currentWeek - 1) * 7 + (selectedDayIndex === 0 ? 6 : selectedDayIndex - 1));
+                                        return target;
+                                    })()}
+                                    onSelect={handleDateSelect}
+                                    initialFocus
+                                    locale={ptBR}
+                                />
+                            </PopoverContent>
+                        </Popover>
                     </div>
                     <Button variant="ghost" size="sm" onClick={saveWeeklyData} className="text-accent"><Save className="w-4 h-4 mr-1" /> Salvar</Button>
                 </div>
@@ -1144,6 +1453,27 @@ export function WeeklyFixedNotebook() {
                                         </div>
                                     </div>
 
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5"><Clock className="w-3 h-3" /> Horário</Label>
+                                            <Input
+                                                type="time"
+                                                className="h-9 bg-background/50"
+                                                value={block.time || ""}
+                                                onChange={(e) => handleDataChange(detailTab, "time", e.target.value, bIdx)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5"><Link className="w-3 h-3" /> Link / Ref</Label>
+                                            <Input
+                                                placeholder="https://..."
+                                                className="h-9 bg-background/50"
+                                                value={block.link || ""}
+                                                onChange={(e) => handleDataChange(detailTab, "link", e.target.value, bIdx)}
+                                            />
+                                        </div>
+                                    </div>
+
                                     {(block.instruction || bIdx === 0) && (
                                         <div className="p-3 rounded-xl bg-accent/5 border border-accent/20">
                                             <Label className="text-[10px] font-bold text-accent uppercase flex items-center gap-1.5">
@@ -1165,6 +1495,30 @@ export function WeeklyFixedNotebook() {
                                             className="min-h-[160px] bg-background/40 resize-none text-sm leading-relaxed"
                                             value={block.notes || ""}
                                             onChange={(e) => handleDataChange(detailTab, "notes", e.target.value, bIdx)}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Legenda do Post</Label>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleWriteCaption(detailTab, bIdx)}
+                                                    disabled={isWritingCaption}
+                                                    className="h-6 px-2 text-[10px] text-accent hover:text-accent hover:bg-accent/10"
+                                                >
+                                                    {isWritingCaption ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                                                    {isWritingCaption ? "Gerando..." : "Sugerir Legenda"}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <Textarea
+                                            placeholder="Escreva ou gere a legenda aqui..."
+                                            className="min-h-[100px] bg-background/40 resize-none text-sm leading-relaxed"
+                                            value={block.caption || ""}
+                                            onChange={(e) => handleDataChange(detailTab, "caption", e.target.value, bIdx)}
                                         />
                                     </div>
 
@@ -1218,13 +1572,18 @@ export function WeeklyFixedNotebook() {
                                                     {isWritingScript ? "Processando..." : (block.notes ? "Ajustar Roteiro" : "Sugerir Roteiro")}
                                                 </Button>
                                                 <Button
-                                                    variant="outline"
-                                                    className="h-10 text-xs font-bold border-primary/20 hover:bg-primary/5"
-                                                    onClick={() => handleCreateWithAI(detailTab, bIdx)}
-                                                    disabled={isGenerating}
+                                                    className="bg-accent/10 hover:bg-accent/20 text-accent border border-accent/20 h-10 text-xs font-bold"
+                                                    onClick={() => handleSaveToAgenda(detailTab, bIdx)}
                                                 >
-                                                    <Layout className="w-3.5 h-3.5 mr-2 text-primary" />
-                                                    Criar com a YAh
+                                                    <CalendarIcon className="w-3.5 h-3.5 mr-2" />
+                                                    Salvar na Agenda
+                                                </Button>
+                                                <Button
+                                                    className="bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 h-10 text-xs font-bold col-span-2"
+                                                    onClick={() => handleExportWhatsApp(detailTab, bIdx)}
+                                                >
+                                                    <Share2 className="w-3.5 h-3.5 mr-2" />
+                                                    Exportar para WhatsApp
                                                 </Button>
                                             </div>
                                         )}
@@ -1259,6 +1618,24 @@ export function WeeklyFixedNotebook() {
                         </Button>
                     </div>
                 </div>
+
+                <AlertDialog open={routineConfirmation.isOpen} onOpenChange={(open) => !open && setRoutineConfirmation({ isOpen: false, type: null, days: [] })}>
+                    <AlertDialogContent className="bg-slate-950 border-border">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="text-white">Confirmar Agendamento Recorrente</AlertDialogTitle>
+                            <AlertDialogDescription className="text-muted-foreground">
+                                Você está prestes a criar uma tarefa RECORRENTE que se repetirá toda semana nos dias: <br />
+                                <span className="font-bold text-accent">{routineConfirmation.days.join(", ")}</span>.
+                                <br /><br />
+                                Deseja confirmar o agendamento de <span className="font-bold text-white">{routineConfirmation.type === "planning" ? "Criação de Roteiros" : "Gravação/Execução"}</span>?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-transparent text-white border-white/20 hover:bg-white/10">Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={executeSendRoutineToAgenda} className="bg-accent text-white hover:bg-accent/90">Confirmar Agendamento</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         );
     };

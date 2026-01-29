@@ -35,7 +35,7 @@ export const phases: Phase[] = [
     id: 2,
     title: "DNA da Marca",
     shortTitle: "DNA",
-    description: "Defina missão, visão, valores e propósito",
+    description: "",
     icon: Dna,
     href: "/phase/2",
   },

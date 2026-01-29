@@ -21,7 +21,11 @@ const TONE_OPTIONS = [
     "Analítico(a) e profundo(a)",
     "Informal e amigável",
     "Estruturado(a) e didático(a)",
+    "Outro"
 ];
+
+// ... (rest of imports area, no change needed there)
+
 
 const CREATIVE_OPTIONS = [
     "Preciso de clareza antes de começar",
@@ -46,6 +50,7 @@ export function PersonalityNotebook() {
     // Local state for auto-save and UI responsiveness
     const [formData, setFormData] = useState<Partial<Brand>>({});
     const [isFormInitialized, setIsFormInitialized] = useState(false);
+    const [activeEditingCard, setActiveEditingCard] = useState<string | null>(null);
     const isDirty = useRef(false);
 
     useEffect(() => {
@@ -172,6 +177,14 @@ export function PersonalityNotebook() {
                 }
             });
 
+            // Update local state immediately so user sees results without refresh
+            setFormData(prev => ({
+                ...prev,
+                result_essencia: results.result_essencia,
+                result_tom_voz: results.result_tom_voz,
+                result_como_funciona: results.result_como_funciona
+            }));
+
             setStep(4);
             toast.success("Personalidade gerada com sucesso!");
         } catch (error: any) {
@@ -191,7 +204,7 @@ export function PersonalityNotebook() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="space-y-2">
+            <div className="space-y-2 print:hidden">
                 <div className="flex justify-between items-center text-sm font-medium text-muted-foreground mb-1">
                     <span>Progresso da Fase</span>
                     <span>{progressMap[step]}%</span>
@@ -235,8 +248,8 @@ export function PersonalityNotebook() {
                                 className="bg-background/50 border-border h-12"
                             />
                         </div>
-                        <div className="flex justify-end pt-4">
-                            <Button onClick={() => setStep(2)} className="gradient-primary text-white px-8">
+                        <div className="flex justify-end pt-4 w-full">
+                            <Button onClick={() => setStep(2)} className="w-full md:w-auto gradient-primary text-white px-8">
                                 Próximo <ChevronRight className="ml-2 w-4 h-4" />
                             </Button>
                         </div>
@@ -262,25 +275,49 @@ export function PersonalityNotebook() {
                                         onClick={() => toggleArrayOption("user_tone_selected", option, 2)}
                                         className={cn(
                                             "flex items-center space-x-3 p-4 rounded-xl border-2 transition-all cursor-pointer",
-                                            (formData.user_tone_selected || []).includes(option)
+                                            (formData.user_tone_selected || []).some(t => t.startsWith(option) || (option === "Outro" && !TONE_OPTIONS.slice(0, 6).includes(t)))
                                                 ? "border-primary bg-primary/10"
                                                 : "border-border hover:border-primary/50"
                                         )}
                                     >
                                         <Checkbox
-                                            checked={(formData.user_tone_selected || []).includes(option)}
+                                            checked={(formData.user_tone_selected || []).some(t => t.startsWith(option) || (option === "Outro" && !TONE_OPTIONS.slice(0, 6).includes(t)))}
                                             className="rounded-full"
                                         />
                                         <span className="font-medium">{option}</span>
                                     </div>
                                 ))}
                             </div>
+
+                            {/* Custom Tone Input */}
+                            {(formData.user_tone_selected || []).some(t => !TONE_OPTIONS.slice(0, 6).includes(t)) && (
+                                <div className="space-y-2 animate-fade-in pl-4 border-l-2 border-primary/30">
+                                    <Label className="text-sm">Qual outro tom?</Label>
+                                    <Input
+                                        placeholder="Ex: Poético, Sarcástico, Motivacional..."
+                                        value={(formData.user_tone_selected || []).find(t => !TONE_OPTIONS.slice(0, 6).includes(t))?.replace("Outro: ", "") || ""}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const currentTones = formData.user_tone_selected || [];
+                                            // Remove old custom tone
+                                            const cleanTones = currentTones.filter(t => TONE_OPTIONS.slice(0, 6).includes(t));
+
+                                            if (val.trim()) {
+                                                handleInputChange("user_tone_selected", [...cleanTones, `Outro: ${val}`]);
+                                            } else {
+                                                handleInputChange("user_tone_selected", [...cleanTones, "Outro"]);
+                                            }
+                                        }}
+                                        className="bg-background/50 border-primary/50"
+                                    />
+                                </div>
+                            )}
                         </div>
-                        <div className="flex justify-between pt-4">
-                            <Button variant="outline" onClick={() => setStep(1)}>
+                        <div className="flex flex-col-reverse md:flex-row justify-between pt-4 gap-3 md:gap-0">
+                            <Button variant="outline" onClick={() => setStep(1)} className="w-full md:w-auto">
                                 <ChevronLeft className="mr-2 w-4 h-4" /> Voltar
                             </Button>
-                            <Button onClick={() => setStep(3)} className="gradient-primary text-white px-8">
+                            <Button onClick={() => setStep(3)} className="w-full md:w-auto gradient-primary text-white px-8">
                                 Próximo <ChevronRight className="ml-2 w-4 h-4" />
                             </Button>
                         </div>
@@ -344,23 +381,23 @@ export function PersonalityNotebook() {
                             />
                         </div>
 
-                        <div className="flex justify-between pt-6">
-                            <Button variant="outline" onClick={() => setStep(2)}>
+                        <div className="flex flex-col-reverse md:flex-row justify-between pt-6 gap-3 md:gap-0">
+                            <Button variant="outline" onClick={() => setStep(2)} className="w-full md:w-auto">
                                 <ChevronLeft className="mr-2 w-4 h-4" /> Voltar
                             </Button>
                             <Button
                                 onClick={handleGeneratePersonality}
                                 disabled={isGenerating}
-                                className="gradient-primary text-white px-10 h-12 text-lg shadow-lg shadow-primary/20"
+                                className="w-full md:w-auto gradient-primary text-white px-4 md:px-10 h-auto min-h-[3rem] py-3 md:py-0 text-sm md:text-lg shadow-lg shadow-primary/20 whitespace-normal leading-tight mx-auto"
                             >
                                 {isGenerating ? (
                                     <>
-                                        <Loader2 className="mr-2 animate-spin w-5 h-5" />
+                                        <Loader2 className="mr-2 animate-spin w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                                         Tecendo sua personalidade...
                                     </>
                                 ) : (
                                     <>
-                                        <Wand2 className="mr-2 w-5 h-5" />
+                                        <Wand2 className="mr-2 w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
                                         Gerar Minha Personalidade
                                     </>
                                 )}
@@ -376,36 +413,46 @@ export function PersonalityNotebook() {
                         <div className="inline-flex items-center justify-center p-3 rounded-full bg-green-500/10 text-green-500 mb-2">
                             <CheckCircle2 className="w-12 h-12" />
                         </div>
-                        <h2 className="text-4xl font-extrabold text-foreground">Sua Personalidade</h2>
-                        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                        <h2 className="text-3xl md:text-4xl font-extrabold text-foreground">Sua Personalidade</h2>
+                        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
                             Aqui está o reflexo estratégico da sua essência. Você pode editar os resultados para que fiquem 100% com a sua cara.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-6">
+                    <div className="grid grid-cols-1 gap-6 print:block print:space-y-6">
                         <ResultCard
                             title="Sua Essência"
                             content={formData.result_essencia || ""}
                             onSave={(val) => handleInputChange("result_essencia", val)}
+                            isEditing={activeEditingCard === "result_essencia"}
+                            onToggle={() => setActiveEditingCard(activeEditingCard === "result_essencia" ? null : "result_essencia")}
                             icon={<Wand2 className="w-5 h-5 text-primary" />}
                         />
                         <ResultCard
                             title="Seu Tom de Voz"
                             content={formData.result_tom_voz || ""}
                             onSave={(val) => handleInputChange("result_tom_voz", val)}
+                            isEditing={activeEditingCard === "result_tom_voz"}
+                            onToggle={() => setActiveEditingCard(activeEditingCard === "result_tom_voz" ? null : "result_tom_voz")}
                             icon={<FileText className="w-5 h-5 text-blue-500" />}
                         />
                         <ResultCard
                             title="Como você funciona"
                             content={formData.result_como_funciona || ""}
                             onSave={(val) => handleInputChange("result_como_funciona", val)}
+                            isEditing={activeEditingCard === "result_como_funciona"}
+                            onToggle={() => setActiveEditingCard(activeEditingCard === "result_como_funciona" ? null : "result_como_funciona")}
                             icon={<Loader2 className="w-5 h-5 text-orange-500" />}
                         />
                     </div>
 
-                    <div className="flex flex-col items-center gap-6 pt-12">
+                    <div className="flex flex-col items-center gap-6 pt-12 print:hidden">
                         <div className="flex flex-wrap justify-center gap-4">
-                            <Button variant="outline" className="px-8 border-primary text-primary hover:bg-primary/5">
+                            <Button
+                                variant="outline"
+                                onClick={() => setActiveEditingCard("result_essencia")}
+                                className="px-8 border-primary text-primary hover:bg-primary/5"
+                            >
                                 <Pencil className="mr-2 w-4 h-4" /> Adicionar informações
                             </Button>
                             <Button onClick={() => window.print()} className="px-8 gradient-blue text-white">
@@ -417,7 +464,7 @@ export function PersonalityNotebook() {
                             Esse documento ficará salvo aqui dentro. Você pode editar, acrescentar ou exportar quando quiser.
                         </p>
 
-                        <div className="w-full mt-12 p-8 rounded-3xl bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/20 text-center space-y-6">
+                        <div className="w-full mt-12 p-8 rounded-3xl bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/20 text-center space-y-6 print:hidden">
                             <h3 className="text-2xl font-bold">Pronta para o próximo nível?</h3>
                             <p className="text-muted-foreground max-w-xl mx-auto">
                                 Agora que definimos quem você é estrategicamente, vamos transformar isso em uma marca visual inesquecível.
@@ -428,20 +475,27 @@ export function PersonalityNotebook() {
                                         onSuccess: () => navigate("/phase/2")
                                     });
                                 }}
-                                className="gradient-primary text-white h-14 px-12 text-xl font-bold rounded-full shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
+                                className="w-full md:w-auto gradient-primary text-white h-auto py-4 px-8 md:px-12 text-lg md:text-xl font-bold rounded-full shadow-xl shadow-primary/20 hover:scale-105 transition-transform whitespace-normal"
                             >
                                 Salvar e desbloquear DNA de Marca
                             </Button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                </div >
+            )
+            }
+        </div >
     );
 }
 
-function ResultCard({ title, content, onSave, icon }: { title: string; content: string; onSave: (val: string) => void; icon: React.ReactNode }) {
-    const [isEditing, setIsEditing] = useState(false);
+function ResultCard({ title, content, onSave, icon, isEditing, onToggle }: {
+    title: string;
+    content: string;
+    onSave: (val: string) => void;
+    icon: React.ReactNode;
+    isEditing: boolean;
+    onToggle: () => void;
+}) {
     const [value, setValue] = useState(content);
 
     useEffect(() => {
@@ -450,20 +504,55 @@ function ResultCard({ title, content, onSave, icon }: { title: string; content: 
 
     const handleSave = () => {
         onSave(value);
-        setIsEditing(false);
+        onToggle();
+    };
+
+    const formatContent = (text: string) => {
+        if (!text) return "Aguardando geração...";
+        try {
+            // Try to parse if it looks like JSON objects/arrays
+            if (text.trim().startsWith('[') || text.trim().startsWith('{')) {
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) {
+                    return (
+                        <div className="flex flex-wrap gap-2">
+                            {parsed.map((item, i) => (
+                                <span key={i} className="bg-primary/20 text-primary px-3 py-1 rounded-full text-sm font-medium print:border print:border-gray-300 print:text-black">
+                                    {typeof item === 'string' ? item : JSON.stringify(item)}
+                                </span>
+                            ))}
+                        </div>
+                    );
+                } else if (typeof parsed === 'object') {
+                    return (
+                        <div className="space-y-2">
+                            {Object.entries(parsed).map(([key, val]) => (
+                                <div key={key} className="bg-white/5 p-3 rounded-lg print:bg-transparent print:p-0 print:border-b print:border-gray-200">
+                                    <strong className="text-primary block capitalize mb-1 print:text-black">{key.replace(/_/g, ' ')}:</strong>
+                                    <span className="text-foreground/90 print:text-black">{String(val)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                }
+            }
+        } catch (e) {
+            // Not JSON or parse error, return raw text
+        }
+        return text;
     };
 
     return (
-        <Card className="bg-card border-border overflow-hidden">
-            <div className="p-1 h-1 bg-gradient-to-r from-primary/50 to-primary/10" />
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
+        <Card className="bg-card border-border overflow-hidden print:shadow-none print:border print:border-gray-300 print:bg-white print:mb-4">
+            <div className="p-1 h-1 bg-gradient-to-r from-primary/50 to-primary/10 print:hidden" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0 print:hidden">
                         {icon}
                     </div>
-                    <CardTitle className="text-xl">{title}</CardTitle>
+                    <CardTitle className="text-xl truncate print:text-2xl print:text-black">{title}</CardTitle>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)} className="text-primary">
+                <Button variant="ghost" size="sm" onClick={onToggle} className="text-primary flex-shrink-0 ml-2 print:hidden">
                     {isEditing ? "Cancelar" : <Pencil className="w-4 h-4" />}
                 </Button>
             </CardHeader>
@@ -480,8 +569,8 @@ function ResultCard({ title, content, onSave, icon }: { title: string; content: 
                         </Button>
                     </div>
                 ) : (
-                    <div className="whitespace-pre-wrap leading-relaxed text-foreground text-lg opacity-90 p-4 rounded-xl bg-background/30">
-                        {content || "Aguardando geração..."}
+                    <div className="whitespace-pre-wrap leading-relaxed text-foreground text-lg opacity-90 p-4 rounded-xl bg-background/30 break-words overflow-hidden print:bg-transparent print:p-0 print:text-black print:text-base">
+                        {typeof formatContent(content) === 'string' ? content : formatContent(content)}
                     </div>
                 )}
             </CardContent>

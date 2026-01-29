@@ -77,9 +77,6 @@ export default function PhasePage() {
               {isCompleted ? <Check className="w-7 h-7" /> : <Icon className="w-7 h-7" />}
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1">
-                {phaseNumber <= 4 ? `Etapa ${phaseNumber} de 4` : `Fase ${phaseNumber}`}
-              </p>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 {phase.title}
               </h1>
@@ -134,14 +131,6 @@ export default function PhasePage() {
             </div>
           )}
 
-          {isCompleted && phaseNumber !== 6 && phaseNumber !== 7 && phaseNumber !== 8 && (
-            <div className="text-center py-4 animate-fade-in">
-              <p className="text-green-600 font-medium flex items-center justify-center gap-2">
-                <Check className="w-5 h-5" />
-                Fase concluída!
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </MinimalLayout>

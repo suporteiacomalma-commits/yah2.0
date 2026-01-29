@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft, Save, Loader2, Wand2, FileText, CheckCircle2
 import { useBrand, Brand } from "@/hooks/useBrand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,6 +35,8 @@ export function BrandDNANotebook() {
     const [outroObjetivo, setOutroObjetivo] = useState("");
     const [isFormInitialized, setIsFormInitialized] = useState(false);
     const isDirty = useRef(false);
+    const [isComplementOpen, setIsComplementOpen] = useState(false);
+    const [newComplement, setNewComplement] = useState({ title: "", description: "" });
 
     useEffect(() => {
         if (brand && !isFormInitialized) {
@@ -263,6 +266,22 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                 }
             });
 
+            // Update local state immediately so results appear without refresh
+            setFormData(prev => ({
+                ...prev,
+                dna_tese: results.dna_tese,
+                dna_pilares: results.dna_pilares,
+                mission: results.mission,
+                vision: results.vision,
+                values: results.values,
+                purpose: results.purpose,
+                dna_objecao_comum: results.dna_objecao_comum,
+                dna_persona_data: results.persona_data,
+                dna_competidores: results.dna_competidores,
+                dna_comparativo: results.dna_comparativo,
+                dna_uvp: results.dna_uvp
+            }));
+
             setStep(3);
             toast.success("DNA da Marca gerado com sucesso!");
         } catch (error: any) {
@@ -273,6 +292,26 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
         }
     };
 
+    const handleAddComplement = () => {
+        if (!newComplement.title || !newComplement.description) {
+            toast.error("Preencha título e descrição");
+            return;
+        }
+
+        const currentData = (formData.dna_persona_data as any) || {};
+        const currentComplements = currentData.complements || [];
+
+        const newData = {
+            ...currentData,
+            complements: [...currentComplements, newComplement]
+        };
+
+        handleInputChange("dna_persona_data", newData);
+        setNewComplement({ title: "", description: "" });
+        setIsComplementOpen(false);
+        toast.success("Complemento adicionado!");
+    };
+
     const progressMap: Record<number, number> = {
         1: 50,
         2: 75,
@@ -281,7 +320,18 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="space-y-2">
+            <style>{`
+                @media print {
+                    .print\\:hidden { display: none !important; }
+                    body { background: white; color: black; }
+                    .bg-card, .bg-background { background: white !important; border: 1px solid #e5e7eb; }
+                    .text-white { color: black !important; }
+                    button, nav, header { display: none !important; }
+                    .p-10 { padding: 0 !important; box-shadow: none !important; border: none !important; }
+                    .h-32 { height: auto !important; }
+                }
+            `}</style>
+            <div className="space-y-2 print:hidden">
                 <div className="flex justify-between items-center text-sm font-medium text-muted-foreground mb-1">
                     <span>Progresso do DNA</span>
                     <span>{progressMap[step]}%</span>
@@ -300,7 +350,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                     <CardContent className="space-y-6">
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-primary/80">1. Qual é o seu nicho específico?</Label>
+                                <Label className="text-base font-semibold text-white">1. Qual é o seu nicho específico?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -324,7 +374,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-primary/80">2. Qual é o produto/serviço que você quer posicionar?</Label>
+                                <Label className="text-base font-semibold text-white">2. Qual é o produto/serviço que você quer posicionar?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -347,7 +397,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                             />
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-base font-semibold text-primary/80">3. Qual é o objetivo principal com sua marca?</Label>
+                            <Label className="text-base font-semibold text-white">3. Qual é o objetivo principal com sua marca?</Label>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {OBJETIVO_OPTIONS.map((opt) => (
                                     <div
@@ -387,9 +437,9 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                                 </div>
                             </div>
                         </div>
-                        <div className="flex justify-end pt-4 gap-4">
-                            <Button variant="ghost" onClick={() => navigate("/dashboard")}>Voltar ao Início</Button>
-                            <Button onClick={handleNextStep} className="gradient-primary text-white px-8 h-12">
+                        <div className="flex flex-col-reverse md:flex-row justify-end pt-4 gap-4">
+                            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="w-full md:w-auto h-12">Voltar ao Início</Button>
+                            <Button onClick={handleNextStep} className="gradient-primary text-white px-8 h-12 w-full md:w-auto">
                                 Próximo <ChevronRight className="ml-2 w-4 h-4" />
                             </Button>
                         </div>
@@ -408,7 +458,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                     <CardContent className="space-y-6">
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-primary/80">4. Descreva a dor principal do seu público.</Label>
+                                <Label className="text-base font-semibold text-white">4. Descreva a dor principal do seu público.</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -432,7 +482,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-primary/80">5. Qual sonho seu público tem?</Label>
+                                <Label className="text-base font-semibold text-white">5. Qual sonho seu público tem?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -456,7 +506,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-primary/80">6. Qual transformação sua marca entrega (Antes → Depois)?</Label>
+                                <Label className="text-base font-semibold text-white">6. Qual transformação sua marca entrega (Antes → Depois)?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -480,7 +530,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-primary/80">7. O que te torna diferente?</Label>
+                                <Label className="text-base font-semibold text-white">7. O que te torna diferente?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -502,14 +552,14 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                                 )}
                             />
                         </div>
-                        <div className="flex justify-between pt-4">
-                            <Button variant="outline" onClick={() => setStep(1)} className="h-12">
+                        <div className="flex flex-col-reverse md:flex-row justify-between pt-4 gap-4 md:gap-0">
+                            <Button variant="outline" onClick={() => setStep(1)} className="h-12 w-full md:w-auto">
                                 <ChevronLeft className="mr-2 w-4 h-4" /> Voltar
                             </Button>
                             <Button
                                 onClick={handleGenerateDNA}
                                 disabled={isGenerating}
-                                className="gradient-primary text-white px-10 h-12 text-lg font-bold shadow-lg"
+                                className="gradient-primary text-white px-10 h-12 text-lg font-bold shadow-lg w-full md:w-auto"
                             >
                                 {isGenerating ? (
                                     <>
@@ -685,6 +735,32 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                         </Card>
 
                         <ResultSection title="Comparativo de Mercado" content={formData.dna_comparativo || ""} onSave={(v) => handleInputChange("dna_comparativo", v)} fullWidth />
+
+                        {/* SEÇÃO 4 — COMPLEMENTOS */}
+                        {((formData.dna_persona_data as any)?.complements?.length > 0) && (
+                            <div className="space-y-6">
+                                <div className="text-center">
+                                    <h3 className="text-2xl font-bold">🎯 SEÇÃO 4 — COMPLEMENTOS</h3>
+                                    <p className="text-muted-foreground">Informações extras adicionadas por você.</p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-6">
+                                    {(formData.dna_persona_data as any).complements.map((comp: any, idx: number) => (
+                                        <ResultSection
+                                            key={idx}
+                                            title={comp.title}
+                                            content={comp.description}
+                                            onSave={(v) => {
+                                                const currentData = (formData.dna_persona_data as any) || {};
+                                                const newComplements = [...currentData.complements];
+                                                newComplements[idx] = { ...newComplements[idx], description: v };
+                                                handleInputChange("dna_persona_data", { ...currentData, complements: newComplements });
+                                            }}
+                                            fullWidth
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col items-center gap-6 pt-12 pb-12">
@@ -692,17 +768,17 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                             <Button variant="outline" className="px-6 h-12" onClick={() => window.print()}>
                                 <FileDown className="mr-2 w-4 h-4" /> Exportar DNA Completo (PDF)
                             </Button>
-                            <Button variant="outline" className="px-6 h-12">
+                            <Button variant="outline" className="px-6 h-12 print:hidden" onClick={() => setIsComplementOpen(true)}>
                                 <Plus className="mr-2 w-4 h-4" /> Adicionar Complementos
                             </Button>
                         </div>
 
-                        <div className="w-full mt-12 p-10 rounded-[3rem] bg-gradient-to-br from-primary/30 via-primary/5 to-card border border-primary/20 text-center space-y-6 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-8 opacity-10">
+                        <div className="w-full mt-12 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-gradient-to-br from-primary/30 via-primary/5 to-card border border-primary/20 text-center space-y-4 md:space-y-6 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 print:hidden">
                                 <Rocket className="w-32 h-32" />
                             </div>
-                            <h3 className="text-3xl font-black">Pronto! Seu DNA está completo.</h3>
-                            <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-medium">
+                            <h3 className="text-2xl md:text-3xl font-black">Pronto! Seu DNA está completo.</h3>
+                            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-medium">
                                 Agora que sua estratégia está desenhada, vamos estruturar sua rotina semanal e colocar tudo em movimento?
                             </p>
                             <Button
@@ -711,7 +787,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                                         onSuccess: () => navigate("/phase/6")
                                     });
                                 }}
-                                className="gradient-primary text-white h-16 px-16 text-2xl font-black rounded-full shadow-xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+                                className="gradient-primary text-white h-auto md:h-16 py-3 md:py-0 px-6 md:px-16 text-base md:text-2xl font-black rounded-full shadow-xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all w-full md:w-auto mt-4 whitespace-normal leading-tight"
                             >
                                 Estruturar Minha Rotina 📅
                             </Button>
@@ -743,7 +819,12 @@ function ResultSection({ title, description, content, onSave, fullWidth }: { tit
             <CardContent>
                 {isEditing ? (
                     <div className="space-y-3">
-                        <Textarea value={value} onChange={(e) => setValue(e.target.value)} className="min-h-[100px]" />
+                        <Textarea
+                            value={value}
+                            onChange={(e) => setValue(e.target.value)}
+                            placeholder={`Escreva seu ${title.toLowerCase()} aqui...`}
+                            className="min-h-[100px] text-foreground"
+                        />
                         <Button size="sm" onClick={() => { onSave(value); setIsEditing(false); }} className="w-full">Salvar</Button>
                     </div>
                 ) : (

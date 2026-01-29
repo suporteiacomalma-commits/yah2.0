@@ -3,7 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Crown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export function TrialBanner() {
+interface TrialBannerProps {
+    onUpgradeClick?: () => void;
+}
+
+export function TrialBanner({ onUpgradeClick }: TrialBannerProps) {
     const { isTrial, daysRemaining, isExpired, isAdmin } = useSubscription();
     const navigate = useNavigate();
 
@@ -30,11 +34,11 @@ export function TrialBanner() {
                     variant="ghost"
                     className="h-7 text-xs font-bold text-purple-400 hover:text-purple-300 hover:bg-purple-500/20"
                     onClick={() => {
-                        // For now redirect to a contact or upgrade page. 
-                        // Since we don't have a payment page yet, maybe just show a toast or nothing?
-                        // Or redirect to profile where they might see plan details?
-                        // For now let's just create a shell action
-                        navigate("/profile");
+                        if (onUpgradeClick) {
+                            onUpgradeClick();
+                        } else {
+                            navigate("/profile");
+                        }
                     }}
                 >
                     <Crown className="w-3 h-3 mr-2" />

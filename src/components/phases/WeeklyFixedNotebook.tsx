@@ -618,8 +618,9 @@ export function WeeklyFixedNotebook() {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const scroll = (direction: 'left' | 'right') => {
         if (scrollContainerRef.current) {
-            const scrollAmount = 350;
-            scrollContainerRef.current.scrollBy({
+            const container = scrollContainerRef.current;
+            const scrollAmount = container.offsetWidth * 0.85; // Bate com o min-w-[85vw]
+            container.scrollBy({
                 left: direction === 'left' ? -scrollAmount : scrollAmount,
                 behavior: 'smooth'
             });
@@ -651,13 +652,13 @@ export function WeeklyFixedNotebook() {
         const weekData = weeklyData[currentWeek - 1] || {};
         return (
             <div className="space-y-6 animate-in fade-in duration-500">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <h2 className="text-2xl font-bold">Estrutura fixa semanal</h2>
+                <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="text-xl md:text-2xl font-bold">Estrutura fixa semanal</h2>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="bg-background/50 border-border hover:bg-white/5">
-                                    Semana {currentWeek} <ChevronLeft className="w-4 h-4 ml-2 rotate-[-90deg]" />
+                                <Button variant="outline" size="sm" className="bg-background/50 border-border hover:bg-white/5 h-8">
+                                    Semana {currentWeek} <ChevronLeft className="w-4 h-4 ml-1 rotate-[-90deg]" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start">
@@ -669,11 +670,11 @@ export function WeeklyFixedNotebook() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive">
-                                    <Trash2 className="w-4 h-4 mr-1" /> Limpar
+                                <Button variant="ghost" size="sm" className="h-8 text-[10px] md:text-xs text-muted-foreground hover:text-destructive px-2">
+                                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Limpar
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
@@ -685,19 +686,40 @@ export function WeeklyFixedNotebook() {
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        <Button variant="outline" size="sm" onClick={handleExportPDF} className="border-accent/40 hover:bg-accent/5">
-                            <Book className="w-4 h-4 mr-1 text-accent" /> Exportar PDF
+                        <Button variant="outline" size="sm" onClick={handleExportPDF} className="h-8 text-[10px] md:text-xs border-accent/40 hover:bg-accent/5 px-2">
+                            <Book className="w-3.5 h-3.5 mr-1 text-accent" /> Exportar PDF
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setScreen("routine")}>
-                            <Settings className="w-4 h-4 mr-1" /> Rotina
+                        <Button variant="outline" size="sm" onClick={() => setScreen("routine")} className="h-8 text-[10px] md:text-xs px-2">
+                            <Settings className="w-3.5 h-3.5 mr-1" /> Rotina
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setScreen("monthly")}>
-                            <Table className="w-4 h-4 mr-1" /> 30 Dias
+                        <Button variant="outline" size="sm" onClick={() => setScreen("monthly")} className="h-8 text-[10px] md:text-xs px-2">
+                            <Table className="w-3.5 h-3.5 mr-1" /> 30 Dias
                         </Button>
                     </div>
                 </div>
 
+
                 <div className="relative group">
+                    {/* Botões de navegação para mobile - Agora com Voltar e Avançar */}
+                    <div className="md:hidden absolute -bottom-10 left-0 right-0 z-30 flex justify-center gap-6 pointer-events-none">
+                        <Button
+                            variant="secondary"
+                            size="icon"
+                            className="w-12 h-12 rounded-full shadow-2xl bg-background text-accent border-2 border-accent/20 pointer-events-auto shadow-black/20 active:scale-90 transition-transform"
+                            onClick={() => scroll('left')}
+                        >
+                            <ChevronLeft className="w-6 h-6" />
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="icon"
+                            className="w-12 h-12 rounded-full shadow-2xl bg-accent text-white border-none animate-pulse pointer-events-auto shadow-accent/40 active:scale-90 transition-transform"
+                            onClick={() => scroll('right')}
+                        >
+                            <ChevronRight className="w-6 h-6" />
+                        </Button>
+                    </div>
+
                     <Button
                         variant="secondary"
                         size="icon"
@@ -709,13 +731,13 @@ export function WeeklyFixedNotebook() {
 
                     <div
                         ref={scrollContainerRef}
-                        className="flex gap-4 overflow-x-auto pb-6 scroll-smooth snap-x snap-mandatory px-2 custom-scrollbar"
+                        className="flex gap-4 overflow-x-auto pb-14 pt-2 scroll-smooth snap-x snap-mandatory px-[10vw] md:px-2 custom-scrollbar"
                     >
                         {DAYS_OF_WEEK.map((day, idx) => {
                             const dayContent = weekData[idx] || { feed: {}, stories: {} };
                             const isToday = new Date().getDay() === idx;
                             return (
-                                <div key={day} className="min-w-[280px] md:min-w-[320px] snap-center">
+                                <div key={day} className="min-w-[80vw] md:min-w-[320px] snap-center snap-always">
                                     <Card className={cn(
                                         "h-full border-border bg-card/40 backdrop-blur-sm transition-all",
                                         isToday && "ring-2 ring-accent/20 border-accent/30"
@@ -730,31 +752,31 @@ export function WeeklyFixedNotebook() {
                                         </CardHeader>
                                         <CardContent className="p-4 pt-0 space-y-4">
                                             <div className="flex-1 space-y-3">
-                                                <div className="p-3 rounded-xl bg-background/40 hover:bg-white/5 cursor-pointer border border-transparent hover:border-accent/30 transition-all space-y-2 shadow-sm"
+                                                <div className="p-4 rounded-xl bg-background/60 hover:bg-white/5 cursor-pointer border border-white/5 hover:border-accent/50 transition-all space-y-2 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.5),offset-x_0_1px_rgba(255,255,255,0.05)_inset] hover:translate-y-[-2px] active:translate-y-[0px]"
                                                     onClick={() => { setSelectedDayIndex(idx); setDetailTab("feed"); setScreen("detail"); }}>
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-xs font-semibold flex items-center gap-1.5"><Instagram className="w-3 h-3 text-pink-500" /> FEED</span>
+                                                        <span className="text-[10px] font-bold flex items-center gap-1.5 opacity-80"><Instagram className="w-3 h-3 text-pink-500" /> FEED</span>
                                                         <div className="flex gap-1">
-                                                            <span className="px-1.5 py-0.5 rounded-full bg-accent/10 text-accent text-[9px] font-bold uppercase">{dayContent.feed?.format || '---'}</span>
+                                                            <span className="px-1.5 py-0.5 rounded-full bg-accent/20 text-accent text-[9px] font-black uppercase ring-1 ring-accent/30">{dayContent.feed?.format || '---'}</span>
                                                             {(dayContent.feed?.extraBlocks?.length || 0) > 0 && (
                                                                 <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-white text-[9px] font-bold">+{dayContent.feed.extraBlocks.length}</span>
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <p className="text-sm font-bold line-clamp-2 leading-tight">{dayContent.feed?.headline || 'Título da IA...'}</p>
+                                                    <p className="text-sm font-bold line-clamp-2 leading-tight text-white/90">{dayContent.feed?.headline || 'Título da IA...'}</p>
                                                 </div>
-                                                <div className="p-3 rounded-xl bg-background/40 hover:bg-white/5 cursor-pointer border border-transparent hover:border-accent/30 transition-all space-y-2 shadow-sm"
+                                                <div className="p-4 rounded-xl bg-background/60 hover:bg-white/5 cursor-pointer border border-white/5 hover:border-accent/50 transition-all space-y-2 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.5),offset-x_0_1px_rgba(255,255,255,0.05)_inset] hover:translate-y-[-2px] active:translate-y-[0px]"
                                                     onClick={() => { setSelectedDayIndex(idx); setDetailTab("stories"); setScreen("detail"); }}>
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-xs font-semibold flex items-center gap-1.5"><MessageSquare className="w-3 h-3 text-orange-400" /> STORIES</span>
+                                                        <span className="text-[10px] font-bold flex items-center gap-1.5 opacity-80"><MessageSquare className="w-3 h-3 text-orange-400" /> STORIES</span>
                                                         <div className="flex gap-1">
-                                                            <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-bold uppercase">{dayContent.stories?.format || '---'}</span>
+                                                            <span className="px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-black uppercase ring-1 ring-primary/30">{dayContent.stories?.format || '---'}</span>
                                                             {(dayContent.stories?.extraBlocks?.length || 0) > 0 && (
                                                                 <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-white text-[9px] font-bold">+{dayContent.stories.extraBlocks.length}</span>
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <p className="text-sm font-bold line-clamp-2 leading-tight">{dayContent.stories?.headline || 'Headline Stories...'}</p>
+                                                    <p className="text-sm font-bold line-clamp-2 leading-tight text-white/90">{dayContent.stories?.headline || 'Headline Stories...'}</p>
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -793,10 +815,10 @@ export function WeeklyFixedNotebook() {
                         <CardContent className="p-6 space-y-6">
                             <div className="space-y-3">
                                 <Label>Posts por semana</Label>
-                                <div className="flex gap-4">
+                                <div className="grid grid-cols-3 gap-2 md:gap-4">
                                     {[3, 5, 7].map(num => (
                                         <Button key={num} variant={routineData.routine_posts_per_week === num ? "default" : "outline"}
-                                            onClick={() => handleRoutineChange("routine_posts_per_week", num)} className="flex-1">
+                                            onClick={() => handleRoutineChange("routine_posts_per_week", num)} className="w-full text-xs md:text-sm px-1">
                                             {num} dias
                                         </Button>
                                     ))}
@@ -806,9 +828,9 @@ export function WeeklyFixedNotebook() {
                             <div className="space-y-3">
                                 <Label>Dias de Postagem (Frequência: {routineData.routine_posts_per_week} posts/semana)</Label>
                                 <p className="text-[10px] text-muted-foreground italic -mt-2">Selecione exatamente os dias em que deseja postar.</p>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                                     {DAYS_OF_WEEK.map(day => (
-                                        <div key={day} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background/50 border border-border">
+                                        <div key={day} className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-background/50 border border-border">
                                             <Checkbox
                                                 id={`post-${day}`}
                                                 checked={routineData.routine_posting_days?.includes(day)}
@@ -825,7 +847,7 @@ export function WeeklyFixedNotebook() {
                                                     }
                                                 }}
                                             />
-                                            <Label htmlFor={`post-${day}`} className="text-xs cursor-pointer">{day.substring(0, 3)}</Label>
+                                            <Label htmlFor={`post-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{day.substring(0, 3)}</Label>
                                         </div>
                                     ))}
                                 </div>
@@ -833,9 +855,9 @@ export function WeeklyFixedNotebook() {
 
                             <div className="space-y-3">
                                 <Label>Dias para criar roteiros (planejar)</Label>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                                     {DAYS_OF_WEEK.map(day => (
-                                        <div key={day} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background/50 border border-border">
+                                        <div key={day} className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-background/50 border border-border">
                                             <Checkbox
                                                 id={`plan-${day}`}
                                                 checked={routineData.routine_planning_days?.includes(day)}
@@ -845,7 +867,7 @@ export function WeeklyFixedNotebook() {
                                                     else handleRoutineChange("routine_planning_days", current.filter(d => d !== day));
                                                 }}
                                             />
-                                            <Label htmlFor={`plan-${day}`} className="text-xs cursor-pointer">{day.substring(0, 3)}</Label>
+                                            <Label htmlFor={`plan-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{day.substring(0, 3)}</Label>
                                         </div>
                                     ))}
                                 </div>
@@ -853,9 +875,9 @@ export function WeeklyFixedNotebook() {
 
                             <div className="space-y-3">
                                 <Label>Dias para gravar/executar</Label>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
                                     {DAYS_OF_WEEK.map(day => (
-                                        <div key={day} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background/50 border border-border">
+                                        <div key={day} className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-background/50 border border-border">
                                             <Checkbox
                                                 id={`exec-${day}`}
                                                 checked={routineData.routine_execution_days?.includes(day)}
@@ -865,7 +887,7 @@ export function WeeklyFixedNotebook() {
                                                     else handleRoutineChange("routine_execution_days", current.filter(d => d !== day));
                                                 }}
                                             />
-                                            <Label htmlFor={`exec-${day}`} className="text-xs cursor-pointer">{day.substring(0, 3)}</Label>
+                                            <Label htmlFor={`exec-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{day.substring(0, 3)}</Label>
                                         </div>
                                     ))}
                                 </div>
@@ -908,7 +930,7 @@ export function WeeklyFixedNotebook() {
                         </CardHeader>
                         <CardContent className="p-6 space-y-4">
                             <p className="text-xs text-muted-foreground">Você tem horários ocupados? A YAh evitará sugerir tarefas nesses períodos.</p>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 {["08h-12h", "13h-18h", "18h-22h"].map(block => (
                                     <Button
                                         key={block}
@@ -918,9 +940,10 @@ export function WeeklyFixedNotebook() {
                                             if (current.includes(block)) handleRoutineChange("routine_fixed_hours", current.filter(b => b !== block));
                                             else handleRoutineChange("routine_fixed_hours", [...current, block]);
                                         }}
-                                        className="text-xs py-6"
+                                        className="text-xs py-5 md:py-6 h-auto flex flex-col md:flex-row gap-2"
                                     >
-                                        <Clock className="w-3 h-3 mr-1.5" /> {block}
+                                        <Clock className="w-3.5 h-3.5" />
+                                        <span>{block}</span>
                                     </Button>
                                 ))}
                             </div>
@@ -1178,7 +1201,7 @@ export function WeeklyFixedNotebook() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto px-4 md:px-0">
+        <div className="max-w-5xl mx-auto px-4 md:px-0 pb-20 md:pb-0">
             {!isFormInitialized ? (
                 <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
             ) : (

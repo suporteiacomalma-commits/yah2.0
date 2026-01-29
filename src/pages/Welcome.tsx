@@ -17,7 +17,7 @@ export default function Welcome() {
 
             <div className="w-full max-w-2xl relative z-10 text-center space-y-6 animate-fade-in py-4">
                 <div className="flex flex-col items-center">
-                    <div className="w-64 h-64">
+                    <div className="w-48 h-48 sm:w-64 sm:h-64 -my-4">
                         <img
                             src="/logo.png"
                             alt="YAh Logo"
@@ -32,14 +32,15 @@ export default function Welcome() {
                     <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
                     <div className="space-y-4 relative z-10">
+                        <p className="text-base text-muted-foreground font-medium">
+                            Vamos começar garantindo que você tenha a melhor experiência possível.
+                        </p>
+
                         <p className="text-xl md:text-2xl font-medium text-foreground leading-relaxed">
                             Você não entrou aqui para produzir mais conteúdo. Entrou para <span className="text-primary font-bold">parar de carregar tudo sozinha(o).</span>
                         </p>
 
                         <div className="space-y-2 text-muted-foreground text-base md:text-lg leading-relaxed">
-                            <p>
-                                Vamos configurar o cérebro que vai sustentar sua rotina e sua marca.
-                            </p>
                             <p>
                                 Em poucos minutos, vamos organizar suas ideias para que a IA possa trabalhar com você.
                             </p>
@@ -66,7 +67,7 @@ export default function Welcome() {
                         size="lg"
                         className="h-14 px-10 text-lg font-bold gradient-primary text-primary-foreground hover:opacity-90 glow-primary rounded-2xl group transition-all duration-300 hover:scale-105 active:scale-95"
                     >
-                        Começar
+                        Começar a experiência
                         <ArrowRight className="ml-3 w-5 h-5 group-hover:translate-x-2 transition-transform" />
                     </Button>
 

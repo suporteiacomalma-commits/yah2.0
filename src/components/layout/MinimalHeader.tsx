@@ -22,15 +22,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface MinimalHeaderProps {
   brandName?: string;
+  isPurchaseOpen?: boolean;
+  setIsPurchaseOpen?: (isOpen: boolean) => void;
 }
 
-export function MinimalHeader({ brandName }: MinimalHeaderProps) {
+export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpen, setIsPurchaseOpen: externalSetIsPurchaseOpen }: MinimalHeaderProps) {
   const { signOut } = useAuth();
   const { profile, updateProfile } = useProfile();
   const { createBilling } = useAbacatePay();
   const { createStripeCheckout } = useStripe();
   const navigate = useNavigate();
-  const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
+
+  // Use external state if provided, otherwise local state (backward compatibility)
+  const [internalIsPurchaseOpen, setInternalIsPurchaseOpen] = useState(false);
+  const isPurchaseOpen = externalIsPurchaseOpen !== undefined ? externalIsPurchaseOpen : internalIsPurchaseOpen;
+  const setIsPurchaseOpen = externalSetIsPurchaseOpen || setInternalIsPurchaseOpen;
+
   const [cpf, setCpf] = useState(profile?.tax_id || "");
   const [phone, setPhone] = useState(profile?.cellphone || "");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
@@ -169,7 +176,7 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase opacity-70">CPF / CNPJ</label>
                 <input
@@ -195,13 +202,13 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
             <Tabs defaultValue="pix" value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "pix" | "card")} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="pix" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
-                  <span className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" /> PIX (Instantâneo)
+                  <span className="flex items-center gap-2 text-xs sm:text-sm">
+                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> PIX (Instantâneo)
                   </span>
                 </TabsTrigger>
                 <TabsTrigger value="card" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
-                  <span className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" /> Cartão de Crédito
+                  <span className="flex items-center gap-2 text-xs sm:text-sm">
+                    <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Cartão
                   </span>
                 </TabsTrigger>
               </TabsList>
@@ -225,7 +232,7 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
                 return (
                   <div
                     key={plan.id}
-                    onClick={() => !isActive && !createBilling.isPending && handlePurchase(plan)}
+                    onClick={() => !isActive && !createBilling.isPending && !createStripeCheckout.isPending && handlePurchase(plan)}
                     className={`relative group p-5 rounded-2xl border transition-all duration-300 ${isActive
                       ? "bg-purple-500/10 border-purple-500/50 cursor-default"
                       : "bg-background/40 border-border hover:border-purple-500/50 cursor-pointer hover:bg-white/5"
@@ -246,15 +253,15 @@ export function MinimalHeader({ brandName }: MinimalHeaderProps) {
                       </div>
                     )}
 
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="space-y-1">
+                    <div className="flex flex-col sm:flex-row justify-between items-start mb-3 gap-2 sm:gap-0">
+                      <div className="space-y-1 w-full sm:w-auto">
                         <h3 className="font-bold text-lg flex items-center gap-2">
                           {plan.name}
                           {isActive && <Badge className="bg-green-500/20 text-green-500 border-green-500/30 text-[10px] uppercase font-bold py-0 h-5">Ativo</Badge>}
                         </h3>
                         <p className="text-sm text-muted-foreground line-clamp-2">{plan.description}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right w-full sm:w-auto flex flex-row sm:flex-col justify-between sm:justify-start items-center sm:items-end">
                         <div className="font-black text-xl text-foreground">R$ {plan.amount}</div>
                         <div className="text-xs text-muted-foreground">{plan.period}</div>
                       </div>

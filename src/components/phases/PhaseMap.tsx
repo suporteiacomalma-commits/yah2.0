@@ -55,7 +55,7 @@ export function PhaseMap({ currentPhase, completedPhases }: PhaseMapProps) {
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {filteredPhases.map((phase) => (
           <PhaseIcon
             key={phase.id}

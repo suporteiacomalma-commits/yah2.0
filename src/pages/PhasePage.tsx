@@ -71,11 +71,11 @@ export default function PhasePage() {
           {/* Phase Header */}
           <div className="flex items-start gap-4 mb-8 animate-fade-in">
             <div className={cn(
-              "w-14 h-14 rounded-2xl flex items-center justify-center",
+              "w-10 h-10 md:w-14 md:h-14 rounded-2xl flex items-center justify-center",
               isCompleted ? "bg-green-500/20 text-green-600" : "gradient-primary text-primary-foreground"
             )}>
               <div className="relative">
-                <Icon className="w-7 h-7" />
+                <Icon className="w-5 h-5 md:w-7 md:h-7" />
                 {isCompleted && (
                   <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-md border-2 border-green-500">
                     <Check className="w-2.5 h-2.5 text-green-600" strokeWidth={4} />
@@ -84,10 +84,10 @@ export default function PhasePage() {
               </div>
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+              <h1 className="text-lg md:text-3xl font-bold text-foreground">
                 {phase.title}
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-sm md:text-base text-muted-foreground mt-1">
                 {phase.description}
               </p>
             </div>

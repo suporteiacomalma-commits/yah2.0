@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { generatePDF } from "@/lib/pdf";
 import { ChevronRight, ChevronLeft, Save, Loader2, Wand2, FileText, CheckCircle2, Pencil } from "lucide-react";
 import { useBrand, Brand } from "@/hooks/useBrand";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,37 @@ export function PersonalityNotebook() {
         handleInputChange(field, newArray);
     };
 
+    const handleAddExtraInfo = () => {
+        console.log("Adding extra info...");
+        const newInfo = {
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+            title: "Nova Informação (clique no lápis para editar)",
+            content: "Descreva aqui a informação adicional..."
+        };
+        const currentExtras = formData.extra_infos || [];
+        handleInputChange("extra_infos", [...currentExtras, newInfo]);
+        // Automatically open for editing
+        setActiveEditingCard(newInfo.id);
+        toast.success("Nova caixa de informação adicionada!");
+    };
+
+    const handleUpdateExtraInfo = (id: string, newContent: string, newTitle?: string) => {
+        const currentExtras = formData.extra_infos || [];
+        const updatedExtras = currentExtras.map(info =>
+            info.id === id
+                ? { ...info, content: newContent, title: newTitle || info.title }
+                : info
+        );
+        handleInputChange("extra_infos", updatedExtras);
+    };
+
+    const handleDeleteExtraInfo = (id: string) => {
+        const currentExtras = formData.extra_infos || [];
+        const updatedExtras = currentExtras.filter(info => info.id !== id);
+        handleInputChange("extra_infos", updatedExtras);
+        toast.success("Informação removida.");
+    };
+
     const handleGeneratePersonality = async () => {
         setIsGenerating(true);
 
@@ -130,6 +162,8 @@ export function PersonalityNotebook() {
             // Mock delay for simulation as requested (1-2s)
             await new Promise(resolve => setTimeout(resolve, 2000));
 
+            const extraInfoText = formData.extra_infos?.map(info => `${info.title}: ${info.content}`).join("\n        ") || "";
+
             const prompt = `Com base nestas informações, gere um perfil de personalidade estratégico:
         Profissão/Papel: ${formData.user_role}
         Motivação: ${formData.user_motivation}
@@ -138,6 +172,8 @@ export function PersonalityNotebook() {
         Perfil criativo: ${formData.user_creative_profile?.join(", ")}
         Horários de energia: ${formData.user_energy_times?.join(", ")}
         Trava/Cansaço: ${formData.user_blockers}
+        Informações Adicionais:
+        ${extraInfoText}
 
         Gere 3 conteúdos em Português:
         1. Result Essencia: Uma descrição comportamental profunda. Modelo: "Você é uma pessoa [descrição], movida por [motivação] e orientada a gerar [impacto]. Seu modo de se colocar no mundo combina [tons]."
@@ -194,6 +230,45 @@ export function PersonalityNotebook() {
             setIsGenerating(false);
         }
     };
+
+    const handleExportPDF = () => {
+        const cleanContent = (text: string) => {
+            if (!text) return "Não preenchido";
+            try {
+                if (text.trim().startsWith('[') || text.trim().startsWith('{')) {
+                    const parsed = JSON.parse(text);
+                    if (Array.isArray(parsed)) {
+                        return parsed.map(item => typeof item === 'string' ? item : JSON.stringify(item)).join(", ");
+                    } else if (typeof parsed === 'object') {
+                        return Object.entries(parsed)
+                            .map(([key, val]) => `${key.replace(/_/g, ' ').toUpperCase()}:\n${val}`)
+                            .join("\n\n");
+                    }
+                }
+            } catch (e) {
+                // Not JSON
+            }
+            return text;
+        };
+
+        const sections = [
+            { title: "Sua Essência", content: cleanContent(formData.result_essencia || "") },
+            { title: "Seu Tom de Voz", content: cleanContent(formData.result_tom_voz || "") },
+            { title: "Como você funciona", content: cleanContent(formData.result_como_funciona || "") },
+            ...(formData.extra_infos?.map(info => ({
+                title: info.title,
+                content: cleanContent(info.content)
+            })) || [])
+        ];
+
+        generatePDF({
+            title: "Caderno de Personalidade - YAH 2.0",
+            sections,
+            fileName: "personalidade-yah.pdf"
+        });
+    };
+
+
 
     const progressMap: Record<number, number> = {
         1: 20,
@@ -444,18 +519,33 @@ export function PersonalityNotebook() {
                             onToggle={() => setActiveEditingCard(activeEditingCard === "result_como_funciona" ? null : "result_como_funciona")}
                             icon={<Loader2 className="w-5 h-5 text-orange-500" />}
                         />
+
+                        {/* Extra Infos Rendering */}
+                        {formData.extra_infos?.map((info) => (
+                            <ResultCard
+                                key={info.id}
+                                title={info.title}
+                                content={info.content}
+                                onSave={(content, title) => handleUpdateExtraInfo(info.id, content, title)}
+                                isEditing={activeEditingCard === info.id}
+                                onToggle={() => setActiveEditingCard(activeEditingCard === info.id ? null : info.id)}
+                                icon={<FileText className="w-5 h-5 text-green-500" />}
+                                onTitleSave={true}
+                                onDelete={() => handleDeleteExtraInfo(info.id)}
+                            />
+                        ))}
                     </div>
 
                     <div className="flex flex-col items-center gap-6 pt-12 print:hidden">
                         <div className="flex flex-wrap justify-center gap-4">
                             <Button
                                 variant="outline"
-                                onClick={() => setActiveEditingCard("result_essencia")}
+                                onClick={handleAddExtraInfo}
                                 className="px-8 border-primary text-primary hover:bg-primary/5"
                             >
                                 <Pencil className="mr-2 w-4 h-4" /> Adicionar informações
                             </Button>
-                            <Button onClick={() => window.print()} className="px-8 gradient-blue text-white">
+                            <Button onClick={handleExportPDF} className="px-8 gradient-blue text-white">
                                 <FileText className="mr-2 w-4 h-4" /> Exportar em PDF
                             </Button>
                         </div>
@@ -471,9 +561,8 @@ export function PersonalityNotebook() {
                             </p>
                             <Button
                                 onClick={() => {
-                                    completePhase.mutate(1, {
-                                        onSuccess: () => navigate("/phase/2")
-                                    });
+                                    completePhase.mutate(1);
+                                    navigate("/phase/2");
                                 }}
                                 className="w-full md:w-auto gradient-primary text-white h-auto py-4 px-8 md:px-12 text-lg md:text-xl font-bold rounded-full shadow-xl shadow-primary/20 hover:scale-105 transition-transform whitespace-normal"
                             >
@@ -488,22 +577,26 @@ export function PersonalityNotebook() {
     );
 }
 
-function ResultCard({ title, content, onSave, icon, isEditing, onToggle }: {
+function ResultCard({ title, content, onSave, icon, isEditing, onToggle, onTitleSave, onDelete }: {
     title: string;
     content: string;
-    onSave: (val: string) => void;
+    onSave: (val: string, title?: string) => void;
     icon: React.ReactNode;
     isEditing: boolean;
     onToggle: () => void;
+    onTitleSave?: boolean;
+    onDelete?: () => void;
 }) {
     const [value, setValue] = useState(content);
+    const [titleValue, setTitleValue] = useState(title);
 
     useEffect(() => {
         setValue(content);
-    }, [content]);
+        setTitleValue(title);
+    }, [content, title]);
 
     const handleSave = () => {
-        onSave(value);
+        onSave(value, titleValue);
         onToggle();
     };
 
@@ -546,15 +639,32 @@ function ResultCard({ title, content, onSave, icon, isEditing, onToggle }: {
         <Card className="bg-card border-border overflow-hidden print:shadow-none print:border print:border-gray-300 print:bg-white print:mb-4">
             <div className="p-1 h-1 bg-gradient-to-r from-primary/50 to-primary/10 print:hidden" />
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <div className="flex items-center gap-3 overflow-hidden">
+                <div className="flex items-center gap-3 overflow-hidden flex-1">
                     <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0 print:hidden">
                         {icon}
                     </div>
-                    <CardTitle className="text-xl truncate print:text-2xl print:text-black">{title}</CardTitle>
+                    {isEditing && onTitleSave ? (
+                        <Input
+                            value={titleValue}
+                            onChange={(e) => setTitleValue(e.target.value)}
+                            className="h-8 font-bold text-lg bg-background/50 border-primary/30"
+                            placeholder="Título da informação"
+                        />
+                    ) : (
+                        <CardTitle className="text-xl truncate print:text-2xl print:text-black">{title}</CardTitle>
+                    )}
                 </div>
-                <Button variant="ghost" size="sm" onClick={onToggle} className="text-primary flex-shrink-0 ml-2 print:hidden">
-                    {isEditing ? "Cancelar" : <Pencil className="w-4 h-4" />}
-                </Button>
+                <div className="flex items-center gap-2">
+                    {onDelete && isEditing && (
+                        <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-500 hover:bg-red-500/10 flex-shrink-0 ml-2 print:hidden" title="Excluir">
+                            <span className="sr-only">Excluir</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={onToggle} className="text-primary flex-shrink-0 ml-2 print:hidden">
+                        {isEditing ? "Cancelar" : <Pencil className="w-4 h-4" />}
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="pt-4">
                 {isEditing ? (

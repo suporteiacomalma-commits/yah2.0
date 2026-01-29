@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { generatePDF } from "@/lib/pdf";
 import { ChevronRight, ChevronLeft, Save, Loader2, Wand2, FileText, CheckCircle2, Pencil, Plus, Trash2, Dna, FileDown, Rocket, Target, Sparkles } from "lucide-react";
 import { useBrand, Brand } from "@/hooks/useBrand";
 import { Button } from "@/components/ui/button";
@@ -293,13 +294,13 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
     };
 
     const handleAddComplement = () => {
-        if (!newComplement.title || !newComplement.description) {
-            toast.error("Preencha título e descrição");
-            return;
-        }
-
         const currentData = (formData.dna_persona_data as any) || {};
         const currentComplements = currentData.complements || [];
+
+        const newComplement = {
+            title: "Novo Complemento",
+            description: "Clique no lápis para editar..."
+        };
 
         const newData = {
             ...currentData,
@@ -307,9 +308,74 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
         };
 
         handleInputChange("dna_persona_data", newData);
-        setNewComplement({ title: "", description: "" });
-        setIsComplementOpen(false);
         toast.success("Complemento adicionado!");
+    };
+
+    const handleExportPDF = () => {
+        const cleanContent = (text: string) => {
+            if (!text) return "Não preenchido";
+            try {
+                if (text.trim().startsWith('[') || text.trim().startsWith('{')) {
+                    const parsed = JSON.parse(text);
+                    if (Array.isArray(parsed)) {
+                        return parsed.map(item => typeof item === 'string' ? item : JSON.stringify(item)).join(", ");
+                    } else if (typeof parsed === 'object') {
+                        return Object.entries(parsed)
+                            .map(([key, val]) => `${key.replace(/_/g, ' ').toUpperCase()}:\n${val}`)
+                            .join("\n\n");
+                    }
+                }
+            } catch (e) { }
+            return text;
+        };
+
+        const sections = [
+            { title: "Tese Central", content: cleanContent(formData.dna_tese || "") },
+            {
+                title: "Pilares da Marca",
+                content: (formData.dna_pilares as any[])?.map(p => `${p.title}: ${p.description}`).join("\n\n") || "Não definido"
+            },
+            { title: "Missão", content: cleanContent(formData.mission || "") },
+            { title: "Visão", content: cleanContent(formData.vision || "") },
+            { title: "Valores", content: cleanContent(formData.values || "") },
+            { title: "Propósito", content: cleanContent(formData.purpose || "") },
+            { title: "Nicho", content: cleanContent(formData.dna_nicho || "") },
+            { title: "Produto/Serviço", content: cleanContent(formData.dna_produto || "") },
+            { title: "Objetivo", content: cleanContent(formData.dna_objetivo || "") },
+            { title: "Dor Principal", content: cleanContent(formData.dna_dor_principal || "") },
+            { title: "Sonho Principal", content: cleanContent(formData.dna_sonho_principal || "") },
+            { title: "Transformação", content: cleanContent(formData.dna_transformacao || "") },
+            { title: "Diferencial", content: cleanContent(formData.dna_diferencial || "") },
+            { title: "Objeção Comum", content: cleanContent(formData.dna_objecao_comum || "") },
+            { title: "UVP", content: cleanContent(formData.dna_uvp || "") },
+            { title: "Comparativo de Mercado", content: cleanContent(formData.dna_comparativo || "") },
+
+            // Persona Data Structured
+            {
+                title: "Dados da Persona",
+                content: `Nome: ${(formData.dna_persona_data as any)?.name || "N/A"}
+Profissão: ${(formData.dna_persona_data as any)?.job || "N/A"}
+Sonho: ${(formData.dna_persona_data as any)?.dream || "N/A"}
+
+DORES:
+${(formData.dna_persona_data as any)?.pains?.join("\n") || "N/A"}
+
+OBJEÇÕES:
+${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
+            },
+
+            // Complements
+            ...((formData.dna_persona_data as any)?.complements?.map((comp: any) => ({
+                title: comp.title,
+                content: cleanContent(comp.description)
+            })) || [])
+        ];
+
+        generatePDF({
+            title: "DNA de Marca - YAH 2.0",
+            sections,
+            fileName: "dna-marca-yah.pdf"
+        });
     };
 
     const progressMap: Record<number, number> = {
@@ -755,6 +821,12 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                                                 newComplements[idx] = { ...newComplements[idx], description: v };
                                                 handleInputChange("dna_persona_data", { ...currentData, complements: newComplements });
                                             }}
+                                            onDelete={() => {
+                                                const currentData = (formData.dna_persona_data as any) || {};
+                                                const newComplements = currentData.complements.filter((_: any, i: number) => i !== idx);
+                                                handleInputChange("dna_persona_data", { ...currentData, complements: newComplements });
+                                                toast.success("Complemento removido");
+                                            }}
                                             fullWidth
                                         />
                                     ))}
@@ -765,10 +837,10 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
 
                     <div className="flex flex-col items-center gap-6 pt-12 pb-12">
                         <div className="flex flex-wrap justify-center gap-4">
-                            <Button variant="outline" className="px-6 h-12" onClick={() => window.print()}>
+                            <Button variant="outline" className="px-6 h-12" onClick={handleExportPDF}>
                                 <FileDown className="mr-2 w-4 h-4" /> Exportar DNA Completo (PDF)
                             </Button>
-                            <Button variant="outline" className="px-6 h-12 print:hidden" onClick={() => setIsComplementOpen(true)}>
+                            <Button variant="outline" className="px-6 h-12 print:hidden" onClick={handleAddComplement}>
                                 <Plus className="mr-2 w-4 h-4" /> Adicionar Complementos
                             </Button>
                         </div>
@@ -783,9 +855,8 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
                             </p>
                             <Button
                                 onClick={() => {
-                                    completePhase.mutate(2, {
-                                        onSuccess: () => navigate("/phase/6")
-                                    });
+                                    completePhase.mutate(2);
+                                    navigate("/phase/3");
                                 }}
                                 className="gradient-primary text-white h-auto md:h-16 py-3 md:py-0 px-6 md:px-16 text-base md:text-2xl font-black rounded-full shadow-xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all w-full md:w-auto mt-4 whitespace-normal leading-tight"
                             >
@@ -799,7 +870,7 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
     );
 }
 
-function ResultSection({ title, description, content, onSave, fullWidth }: { title: string; description?: string; content: string; onSave: (val: string) => void; fullWidth?: boolean }) {
+function ResultSection({ title, description, content, onSave, fullWidth, onDelete }: { title: string; description?: string; content: string; onSave: (val: string) => void; fullWidth?: boolean; onDelete?: () => void }) {
     const [isEditing, setIsEditing] = useState(false);
     const [value, setValue] = useState(content);
 
@@ -812,9 +883,16 @@ function ResultSection({ title, description, content, onSave, fullWidth }: { tit
                     <CardTitle className="text-lg font-bold">{title}</CardTitle>
                     {description && <p className="text-xs text-muted-foreground">{description}</p>}
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
-                    {isEditing ? "Cancelar" : <Pencil className="w-4 h-4" />}
-                </Button>
+                <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
+                        {isEditing ? "Cancelar" : <Pencil className="w-4 h-4" />}
+                    </Button>
+                    {onDelete && (
+                        <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:bg-destructive/10">
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
                 {isEditing ? (
@@ -828,7 +906,7 @@ function ResultSection({ title, description, content, onSave, fullWidth }: { tit
                         <Button size="sm" onClick={() => { onSave(value); setIsEditing(false); }} className="w-full">Salvar</Button>
                     </div>
                 ) : (
-                    <div className="p-3 rounded-lg bg-background/50 border text-sm leading-relaxed">
+                    <div className="p-3 rounded-lg bg-background/50 border text-sm leading-relaxed whitespace-pre-line">
                         {content || "Gere o DNA para ver este resultado..."}
                     </div>
                 )}

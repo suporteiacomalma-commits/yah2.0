@@ -689,24 +689,6 @@ export function WeeklyFixedNotebook() {
                         </DropdownMenu>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 text-[10px] md:text-xs text-muted-foreground hover:text-destructive px-2">
-                                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Limpar
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem onClick={handleClearWeek} className="text-destructive focus:text-destructive">
-                                    Apagar Semana {currentWeek}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleClearAll} className="text-destructive focus:text-destructive font-bold">
-                                    Apagar Tudo (4 Semanas)
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button variant="outline" size="sm" onClick={handleExportPDF} className="h-8 text-[10px] md:text-xs border-accent/40 hover:bg-accent/5 px-2">
-                            <Book className="w-3.5 h-3.5 mr-1 text-accent" /> Exportar PDF
-                        </Button>
                         <Button variant="outline" size="sm" onClick={() => setScreen("routine")} className="h-8 text-[10px] md:text-xs px-2">
                             <Settings className="w-3.5 h-3.5 mr-1" /> Rotina
                         </Button>
@@ -714,29 +696,13 @@ export function WeeklyFixedNotebook() {
                             <Table className="w-3.5 h-3.5 mr-1" /> 30 Dias
                         </Button>
                     </div>
+
                 </div>
 
 
                 <div className="relative group">
                     {/* Botões de navegação para mobile - Agora com Voltar e Avançar */}
-                    <div className="md:hidden absolute -bottom-14 left-0 right-0 z-30 flex justify-center gap-8 pointer-events-none">
-                        <Button
-                            variant="secondary"
-                            size="icon"
-                            className="w-14 h-14 rounded-full shadow-2xl bg-background text-accent border-2 border-accent/20 pointer-events-auto shadow-black/20 active:scale-95 transition-all text-accent"
-                            onClick={() => scroll('left')}
-                        >
-                            <ChevronLeft className="w-8 h-8" />
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            size="icon"
-                            className="w-14 h-14 rounded-full shadow-2xl bg-accent text-white border-none animate-pulse pointer-events-auto shadow-accent/40 active:scale-95 transition-all"
-                            onClick={() => scroll('right')}
-                        >
-                            <ChevronRight className="w-8 h-8" />
-                        </Button>
-                    </div>
+
 
                     <Button
                         variant="secondary"
@@ -749,7 +715,7 @@ export function WeeklyFixedNotebook() {
 
                     <div
                         ref={scrollContainerRef}
-                        className="flex gap-4 overflow-x-auto pb-24 pt-2 scroll-smooth snap-x snap-mandatory px-6 md:px-2 custom-scrollbar"
+                        className="flex gap-4 overflow-x-auto pb-4 pt-2 scroll-smooth snap-x snap-mandatory px-6 md:px-2 custom-scrollbar"
                     >
                         {DAYS_OF_WEEK.map((day, idx) => {
                             const dayContent = weekData[idx] || { feed: {}, stories: {} };
@@ -772,7 +738,7 @@ export function WeeklyFixedNotebook() {
                                             <div className="flex-1 space-y-3">
                                                 <div className="p-4 rounded-xl bg-background/60 hover:bg-white/5 cursor-pointer border border-white/5 hover:border-accent/50 transition-all space-y-2 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.5),offset-x_0_1px_rgba(255,255,255,0.05)_inset] hover:translate-y-[-2px] active:translate-y-[0px]"
                                                     onClick={() => { setSelectedDayIndex(idx); setDetailTab("feed"); setScreen("detail"); }}>
-                                                    <div className="flex items-center justify-between">
+                                                    <div className="flex flex-wrap items-center justify-between gap-y-2">
                                                         <span className="text-[10px] font-bold flex items-center gap-1.5 opacity-80"><Instagram className="w-3 h-3 text-pink-500" /> FEED</span>
                                                         <div className="flex gap-1">
                                                             <span className="px-1.5 py-0.5 rounded-full bg-accent/20 text-accent text-[9px] font-black uppercase ring-1 ring-accent/30">{dayContent.feed?.format || '---'}</span>
@@ -785,7 +751,7 @@ export function WeeklyFixedNotebook() {
                                                 </div>
                                                 <div className="p-4 rounded-xl bg-background/60 hover:bg-white/5 cursor-pointer border border-white/5 hover:border-accent/50 transition-all space-y-2 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.5),offset-x_0_1px_rgba(255,255,255,0.05)_inset] hover:translate-y-[-2px] active:translate-y-[0px]"
                                                     onClick={() => { setSelectedDayIndex(idx); setDetailTab("stories"); setScreen("detail"); }}>
-                                                    <div className="flex items-center justify-between">
+                                                    <div className="flex flex-wrap items-center justify-between gap-y-2">
                                                         <span className="text-[10px] font-bold flex items-center gap-1.5 opacity-80"><MessageSquare className="w-3 h-3 text-orange-400" /> STORIES</span>
                                                         <div className="flex gap-1">
                                                             <span className="px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[9px] font-black uppercase ring-1 ring-primary/30">{dayContent.stories?.format || '---'}</span>
@@ -811,6 +777,47 @@ export function WeeklyFixedNotebook() {
                         onClick={() => scroll('right')}
                     >
                         <ChevronRight className="w-5 h-5" />
+                    </Button>
+                </div>
+
+                <div className="flex flex-wrap justify-end gap-2 pt-4 pb-16">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 text-[10px] md:text-xs text-muted-foreground hover:text-destructive px-2">
+                                <Trash2 className="w-3.5 h-3.5 mr-1" /> Limpar
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={handleClearWeek} className="text-destructive focus:text-destructive">
+                                Apagar Semana {currentWeek}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleClearAll} className="text-destructive focus:text-destructive font-bold">
+                                Apagar Tudo (4 Semanas)
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button variant="outline" size="sm" onClick={handleExportPDF} className="h-8 text-[10px] md:text-xs border-accent/40 hover:bg-accent/5 px-2">
+                        <Book className="w-3.5 h-3.5 mr-1 text-accent" /> Exportar PDF
+                    </Button>
+                </div>
+
+                {/* Botões de navegação para mobile - Agora com Voltar e Avançar */}
+                <div className="relative flex justify-center gap-8 mt-6 pb-8 md:hidden">
+                    <Button
+                        variant="secondary"
+                        size="icon"
+                        className="w-14 h-14 rounded-full shadow-2xl bg-background text-accent border-2 border-accent/20 pointer-events-auto shadow-black/20 active:scale-95 transition-all text-accent"
+                        onClick={() => scroll('left')}
+                    >
+                        <ChevronLeft className="w-8 h-8" />
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="icon"
+                        className="w-14 h-14 rounded-full shadow-2xl bg-accent text-white border-none animate-pulse pointer-events-auto shadow-accent/40 active:scale-95 transition-all"
+                        onClick={() => scroll('right')}
+                    >
+                        <ChevronRight className="w-8 h-8" />
                     </Button>
                 </div>
             </div>

@@ -17,7 +17,7 @@ export default function Welcome() {
 
             <div className="w-full max-w-2xl relative z-10 text-center space-y-6 animate-fade-in py-4">
                 <div className="flex flex-col items-center">
-                    <div className="w-48 h-48 sm:w-64 sm:h-64 -my-4">
+                    <div className="w-80 h-80 sm:w-96 sm:h-96 -my-24 relative z-20">
                         <img
                             src="/logo.png"
                             alt="YAh Logo"

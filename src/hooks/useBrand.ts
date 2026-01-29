@@ -64,6 +64,7 @@ export interface Brand {
   dna_competidores: any[] | null;
   dna_comparativo: string | null;
   dna_uvp: string | null;
+  extra_infos?: { id: string; title: string; content: string }[] | null;
   trunk_categories?: string[] | null;
   current_phase: number;
   phases_completed: number[];

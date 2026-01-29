@@ -346,6 +346,7 @@ export default function Admin() {
       setEditingUser(null);
       setNewPassword("");
     } catch (error) {
+      console.error("Error updating user:", error);
       toast.error("Erro ao salvar alterações");
     }
   };

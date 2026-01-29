@@ -228,6 +228,11 @@ export default function Admin() {
   const [showKey, setShowKey] = useState(false);
   const [abacatePayKey, setAbacatePayKey] = useState("");
   const [showAbacateKey, setShowAbacateKey] = useState(false);
+  const [stripePublishableKey, setStripePublishableKey] = useState("");
+  const [stripeSecretKey, setStripeSecretKey] = useState("");
+  const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
+  const [showStripeKey, setShowStripeKey] = useState(false);
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
 
   // Edit User State
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -253,6 +258,15 @@ export default function Admin() {
 
     const akey = getSetting("abacate_pay_api_key");
     if (akey) setAbacatePayKey(akey.value);
+
+    const spk = getSetting("stripe_publishable_key");
+    if (spk) setStripePublishableKey(spk.value);
+
+    const ssk = getSetting("stripe_secret_key");
+    if (ssk) setStripeSecretKey(ssk.value);
+
+    const sws = getSetting("stripe_webhook_secret");
+    if (sws) setStripeWebhookSecret(sws.value);
   }, [settings]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -351,6 +365,30 @@ export default function Admin() {
           key: "abacate_pay_api_key",
           value: abacatePayKey,
           description: "Chave da API do AbacatePay para processamento de pagamentos"
+        });
+      }
+
+      if (stripePublishableKey) {
+        await updateSetting.mutateAsync({
+          key: "stripe_publishable_key",
+          value: stripePublishableKey,
+          description: "Chave pública do Stripe"
+        });
+      }
+
+      if (stripeSecretKey) {
+        await updateSetting.mutateAsync({
+          key: "stripe_secret_key",
+          value: stripeSecretKey,
+          description: "Chave secreta do Stripe"
+        });
+      }
+
+      if (stripeWebhookSecret) {
+        await updateSetting.mutateAsync({
+          key: "stripe_webhook_secret",
+          value: stripeWebhookSecret,
+          description: "Segredo do Webhook do Stripe"
         });
       }
 
@@ -631,6 +669,69 @@ export default function Admin() {
                   <p className="text-xs text-muted-foreground italic">
                     Usado para processamento de pagamentos e assinaturas PIX.
                   </p>
+                </div>
+
+                <div className="h-px bg-border my-6" />
+
+                {/* Stripe Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Stripe (Cartão de Crédito)</h3>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stripe-pk" className="text-foreground">Stripe Publishable Key</Label>
+                    <Input
+                      id="stripe-pk"
+                      placeholder="pk_test_..."
+                      value={stripePublishableKey}
+                      onChange={(e) => setStripePublishableKey(e.target.value)}
+                      className="bg-background border-border"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stripe-sk" className="text-foreground">Stripe Secret Key</Label>
+                    <div className="relative flex-1">
+                      <Input
+                        id="stripe-sk"
+                        type={showStripeKey ? "text" : "password"}
+                        placeholder="sk_test_..."
+                        value={stripeSecretKey}
+                        onChange={(e) => setStripeSecretKey(e.target.value)}
+                        className="bg-background border-border pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowStripeKey(!showStripeKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showStripeKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="stripe-whs" className="text-foreground">Stripe Webhook Secret</Label>
+                    <div className="relative flex-1">
+                      <Input
+                        id="stripe-whs"
+                        type={showWebhookSecret ? "text" : "password"}
+                        placeholder="whsec_..."
+                        value={stripeWebhookSecret}
+                        onChange={(e) => setStripeWebhookSecret(e.target.value)}
+                        className="bg-background border-border pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showWebhookSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground italic">
+                      Encontrado no Dashboard do Stripe após criar o endpoint do webhook.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-4">

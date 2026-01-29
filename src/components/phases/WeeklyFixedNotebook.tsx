@@ -721,12 +721,12 @@ export function WeeklyFixedNotebook() {
                             const dayContent = weekData[idx] || { feed: {}, stories: {} };
                             const isToday = new Date().getDay() === idx;
                             return (
-                                <div key={day} className="min-w-[calc(100vw-48px)] md:min-w-[320px] snap-center">
+                                <div key={day} className="min-w-[calc(100vw-72px)] md:min-w-[320px] snap-center">
                                     <Card className={cn(
                                         "h-full border-border bg-card/40 backdrop-blur-sm transition-all",
                                         isToday && "ring-2 ring-accent/20 border-accent/30"
                                     )}>
-                                        <CardHeader className="p-4 pb-2">
+                                        <CardHeader className="p-3 md:p-4 pb-2">
                                             <div className="flex justify-between items-center">
                                                 <span className={cn("text-xs font-bold uppercase tracking-wider", isToday ? "text-accent" : "text-muted-foreground")}>
                                                     {isToday ? "Hoje — " : ""}{day}
@@ -734,7 +734,7 @@ export function WeeklyFixedNotebook() {
                                                 <div className={cn("w-2 h-2 rounded-full", getStatusColor(dayContent.feed?.status || 'planned'))} />
                                             </div>
                                         </CardHeader>
-                                        <CardContent className="p-4 pt-0 space-y-4">
+                                        <CardContent className="p-3 md:p-4 pt-0 space-y-4">
                                             <div className="flex-1 space-y-3">
                                                 <div className="p-4 rounded-xl bg-background/60 hover:bg-white/5 cursor-pointer border border-white/5 hover:border-accent/50 transition-all space-y-2 shadow-[0_8px_16px_-4px_rgba(0,0,0,0.5),offset-x_0_1px_rgba(255,255,255,0.05)_inset] hover:translate-y-[-2px] active:translate-y-[0px]"
                                                     onClick={() => { setSelectedDayIndex(idx); setDetailTab("feed"); setScreen("detail"); }}>

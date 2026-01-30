@@ -416,14 +416,17 @@ export function AICarousels() {
     const handleExport = async () => {
         if (!carousel.slides?.length) return;
         setIsExporting(true);
-        const toastId = toast.loading("Preparando download das imagens...");
+        const toastId = toast.loading("Preparando imagens para exportação...");
 
         try {
+            const files: File[] = [];
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const canShare = navigator.share && navigator.canShare && isMobile;
+
             for (let i = 0; i < carousel.slides.length; i++) {
                 const el = slideRefs.current[i];
                 if (el) {
-                    // Update toast for progress
-                    toast.loading(`Baixando imagem ${i + 1} de ${carousel.slides.length}...`, { id: toastId });
+                    toast.loading(`Capturando slide ${i + 1} de ${carousel.slides.length}...`, { id: toastId });
 
                     const dataUrl = await toPng(el, {
                         width: 1080,
@@ -431,20 +434,45 @@ export function AICarousels() {
                         pixelRatio: 1
                     });
 
-                    // Create direct download
-                    const link = document.createElement("a");
-                    link.href = dataUrl;
-                    link.download = `slide_${String(i + 1).padStart(2, '0')}_${carousel.topic?.slice(0, 10) || 'yah'}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    const filename = `slide_${String(i + 1).padStart(2, '0')}_${carousel.topic?.slice(0, 10).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah'}.png`;
 
-                    // Small delay to ensure browser handles multiple downloads
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    if (canShare) {
+                        // For mobile sharing: collect files
+                        const res = await fetch(dataUrl);
+                        const blob = await res.blob();
+                        files.push(new File([blob], filename, { type: "image/png" }));
+                    } else {
+                        // For desktop: direct download
+                        const link = document.createElement("a");
+                        link.href = dataUrl;
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        // Small delay to prevent browser throttling
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    }
                 }
             }
 
-            toast.success("Download concluído! Verifique sua pasta de downloads.", { id: toastId });
+            if (canShare && files.length > 0) {
+                toast.loading("Abrindo menu de compartilhamento...", { id: toastId });
+                try {
+                    await navigator.share({
+                        files: files,
+                        title: `Carrossel: ${carousel.topic || 'Yah 2.0'}`,
+                        text: 'Confira as imagens do meu carrossel!'
+                    });
+                    toast.success("Abra as opções de compartilhamento e selecione 'Salvar Imagens'!", { id: toastId });
+                } catch (shareError: any) {
+                    if (shareError.name !== 'AbortError') {
+                        throw shareError;
+                    }
+                    toast.dismiss(toastId);
+                }
+            } else {
+                toast.success("Download concluído! Verifique sua pasta de arquivos.", { id: toastId });
+            }
         } catch (error: any) {
             console.error(error);
             toast.error("Erro ao exportar: " + error.message, { id: toastId });
@@ -456,125 +484,15 @@ export function AICarousels() {
     return (
         <div className="flex flex-col min-h-screen bg-[#09090B] pb-32">
             {/* Header */}
-            <header className="p-8 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <h1 className="text-3xl font-black italic tracking-tighter text-white">
-                        Templates – <span className="text-primary not-italic font-bold">Carrossel IA</span>
-                    </h1>
-                    <p className="text-muted-foreground text-sm font-medium mt-1">
-                        Gere um carrossel completo em 1 clique e personalize do seu jeito.
-                    </p>
+            <header className="p-4 md:p-8 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-6 empty:hidden">
+                <div className="empty:hidden">
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
-                    {/* History button removed */}
-
-                    <Dialog open={showGenModal} onOpenChange={setShowGenModal}>
-                        <DialogTrigger asChild>
-                            <Button className="gradient-primary text-white h-12 px-4 sm:px-8 rounded-2xl font-bold gap-2 sm:gap-3 shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto text-sm sm:text-base">
-                                <Sparkles className="w-5 h-5" />
-                                Gerar carrossel com IA
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-slate-950 border-white/10 text-white max-w-lg rounded-[32px]">
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl font-black italic">Configurar Estratégia</DialogTitle>
-                                <DialogDescription className="text-muted-foreground">Personalize as diretrizes da IA</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-6 py-4 px-2">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Modo do carrossel</Label>
-                                    <Select value={carousel.mode} onValueChange={(v: any) => setCarousel(prev => ({ ...prev, mode: v }))}>
-                                        <SelectTrigger className="h-14 bg-white/5 border-white/5 rounded-2xl px-6 focus:ring-primary/20">
-                                            <SelectValue placeholder="Escolha o modo" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-slate-900 border-white/10 text-white">
-                                            <SelectItem value="editorial">Modo Editorial (Emocional/Profundo)</SelectItem>
-                                            <SelectItem value="cultural">Modo Cultural (Crítico/Sofisticado)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Tema do carrossel</Label>
-                                    <Input
-                                        className="h-14 bg-white/5 border-white/5 rounded-2xl px-6 focus:ring-primary/20"
-                                        placeholder="Ex: Como proteger sua mente..."
-                                        value={carousel.topic}
-                                        onChange={(e) => setCarousel(prev => ({ ...prev, topic: e.target.value }))}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Objetivo</Label>
-                                        <Select value={carousel.objective} onValueChange={(v: any) => setCarousel(prev => ({ ...prev, objective: v }))}>
-                                            <SelectTrigger className="h-14 bg-white/5 border-white/5 rounded-2xl px-6 focus:ring-primary/20">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-slate-900 border-white/10 text-white">
-                                                {["atração", "conexão", "venda invisível", "educacional"].map(o => (
-                                                    <SelectItem key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Emoção</Label>
-                                        <Select value={carousel.emotion} onValueChange={(v: any) => setCarousel(prev => ({ ...prev, emotion: v }))}>
-                                            <SelectTrigger className="h-14 bg-white/5 border-white/5 rounded-2xl px-6 focus:ring-primary/20">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-slate-900 border-white/10 text-white">
-                                                {["identificação", "alívio", "coragem", "provocação", "inspiração"].map(e => (
-                                                    <SelectItem key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2 pt-4 border-t border-white/5">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Fonte de Conteúdo</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
-                                            id="useTrained"
-                                            checked={useTrainedContent}
-                                            onCheckedChange={(c) => setUseTrainedContent(!!c)}
-                                        />
-                                        <label htmlFor="useTrained" className="text-xs font-bold text-white cursor-pointer">
-                                            Usar IA Treinada (Carrossel Cultural)
-                                        </label>
-                                    </div>
-                                </div>
-
-                                {useTrainedContent && (
-                                    <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 text-xs text-primary/80 leading-relaxed">
-                                        <p>A IA irá ignorar o tema acima e usará o último roteiro gerado pelo agente <strong>YAh – Carrossel Cultural</strong>.</p>
-                                    </div>
-                                )}
-                            </div>
-                            <DialogFooter className="pt-4">
-                                <Button
-                                    onClick={handleGenerateWithAI}
-                                    disabled={isGenerating}
-                                    className="w-full h-16 rounded-[24px] gradient-primary font-black text-lg gap-3"
-                                >
-                                    {isGenerating ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />}
-                                    Criar carrossel com IA
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                <div className="flex flex-wrap items-center gap-4 empty:hidden">
+                    {/* History button and Generate button moved to empty state */}
                 </div>
             </header>
 
-            {/* Editor Container - Responsive Layout 
-                Mobile: Standard scroll flow
-                Desktop: Fixed height split-pane 
-            */}
             <div className="flex-1 relative lg:overflow-hidden">
                 {
                     carousel.slides && carousel.slides.length > 0 && carousel.slides[currentSlide] ? (
@@ -1073,22 +991,127 @@ export function AICarousels() {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex-1 w-full max-w-6xl mx-auto px-8 flex flex-col items-center justify-center h-full">
+                        <div className="flex-1 w-full max-w-6xl mx-auto px-6 sm:px-8 flex flex-col items-center justify-center h-full min-h-[70vh]">
                             {/* Empty State / Welcome */}
-                            <div className="flex flex-col items-center justify-center py-12 text-center animate-in fade-in duration-1000">
-                                <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-white/10 flex items-center justify-center mb-6 ring-4 ring-primary/10 rotate-3">
-                                    <Sparkles className="w-8 h-8 text-primary animate-pulse" />
+                            <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center animate-in fade-in duration-1000 w-full">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-slate-900 border border-white/10 flex items-center justify-center mb-6 ring-4 ring-primary/10 rotate-3">
+                                    <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-primary animate-pulse" />
                                 </div>
-                                <h2 className="text-2xl font-black text-white italic">Motor de Carrosséis <span className="text-primary not-italic">Yah 2.0</span></h2>
-                                <p className="text-muted-foreground text-sm max-w-sm mt-3 font-medium">
+                                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white italic leading-tight">
+                                    Motor de Carrosséis <span className="text-primary not-italic">Yah 2.0</span>
+                                </h2>
+                                <p className="text-muted-foreground text-xs sm:text-sm max-w-[280px] sm:max-w-sm mt-4 font-medium leading-relaxed">
                                     Dê vida às suas teses e diagnósticos. Gere uma narrativa completa e estratégica pronta para publicar.
                                 </p>
-                                <button
-                                    onClick={() => setShowGenModal(true)}
-                                    className="mt-8 h-14 px-10 rounded-2xl bg-white text-black font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5"
-                                >
-                                    Criar novo carrossel
-                                </button>
+
+                                <div className="mt-10 flex flex-col gap-4 items-center w-full max-w-[320px] sm:max-w-none">
+                                    <Dialog open={showGenModal} onOpenChange={setShowGenModal}>
+                                        <DialogTrigger asChild>
+                                            <Button className="gradient-primary text-white h-14 sm:h-16 px-8 sm:px-10 rounded-2xl sm:rounded-[24px] font-black gap-3 shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all w-full sm:w-auto text-base sm:text-lg">
+                                                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+                                                Gerar carrossel com IA
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="bg-slate-950 border-white/10 text-white max-w-lg rounded-[32px] w-[95vw] sm:w-full">
+                                            <DialogHeader>
+                                                <DialogTitle className="text-2xl font-black italic">Configurar Estratégia</DialogTitle>
+                                                <DialogDescription className="text-muted-foreground">Personalize as diretrizes da IA</DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-6 py-4 px-2">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Modo do carrossel</Label>
+                                                    <Select value={carousel.mode} onValueChange={(v: any) => setCarousel(prev => ({ ...prev, mode: v }))}>
+                                                        <SelectTrigger className="h-14 bg-white/5 border-white/5 rounded-2xl px-6 focus:ring-primary/20">
+                                                            <SelectValue placeholder="Escolha o modo" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                                            <SelectItem value="editorial">Modo Editorial (Emocional/Profundo)</SelectItem>
+                                                            <SelectItem value="cultural">Modo Cultural (Crítico/Sofisticado)</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Tema do carrossel</Label>
+                                                    <Input
+                                                        className="h-14 bg-white/5 border-white/5 rounded-2xl px-6 focus:ring-primary/20"
+                                                        placeholder="Ex: Como proteger sua mente..."
+                                                        value={carousel.topic}
+                                                        onChange={(e) => setCarousel(prev => ({ ...prev, topic: e.target.value }))}
+                                                    />
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Objetivo</Label>
+                                                        <Select value={carousel.objective} onValueChange={(v: any) => setCarousel(prev => ({ ...prev, objective: v }))}>
+                                                            <SelectTrigger className="h-14 bg-white/5 border-white/5 rounded-2xl px-6 focus:ring-primary/20">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                                                {["atração", "conexão", "venda invisível", "educacional"].map(o => (
+                                                                    <SelectItem key={o} value={o}>{o.charAt(0).toUpperCase() + o.slice(1)}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Emoção</Label>
+                                                        <Select value={carousel.emotion} onValueChange={(v: any) => setCarousel(prev => ({ ...prev, emotion: v }))}>
+                                                            <SelectTrigger className="h-14 bg-white/5 border-white/5 rounded-2xl px-6 focus:ring-primary/20">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                                                {["identificação", "alívio", "coragem", "provocação", "inspiração"].map(e => (
+                                                                    <SelectItem key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 pt-4 border-t border-white/5">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground ml-2">Fonte de Conteúdo</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Checkbox
+                                                            id="useTrained"
+                                                            checked={useTrainedContent}
+                                                            onCheckedChange={(c) => setUseTrainedContent(!!c)}
+                                                        />
+                                                        <label htmlFor="useTrained" className="text-xs font-bold text-white cursor-pointer">
+                                                            Usar IA Treinada (Carrossel Cultural)
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                {useTrainedContent && (
+                                                    <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 text-xs text-primary/80 leading-relaxed">
+                                                        <p>A IA irá ignorar o tema acima e usará o último roteiro gerado pelo agente <strong>YAh – Carrossel Cultural</strong>.</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <DialogFooter className="pt-4">
+                                                <Button
+                                                    onClick={handleGenerateWithAI}
+                                                    disabled={isGenerating}
+                                                    className="w-full h-16 rounded-[24px] gradient-primary font-black text-lg gap-3"
+                                                >
+                                                    {isGenerating ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />}
+                                                    Criar carrossel com IA
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    <button
+                                        onClick={() => setShowGenModal(true)}
+                                        className="h-14 px-8 sm:px-10 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 font-bold uppercase text-[10px] sm:text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all w-full sm:w-auto"
+                                    >
+                                        Criar novo carrossel
+                                    </button>
+                                </div>
                             </div>
 
                             {/* History Section */}

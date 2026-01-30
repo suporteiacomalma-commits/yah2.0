@@ -64,6 +64,6 @@ export function useMercadoPago() {
         loadMercadoPago,
         processPayment,
         isProcessing,
-        publicKey: getSetting("mercado_pago_public_key")?.value
+        publicKey: getSetting("mercado_pago_public_key")?.value?.trim()
     };
 }

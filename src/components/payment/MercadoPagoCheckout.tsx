@@ -40,9 +40,8 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
             // Small delay to ensure DOM is ready
             await new Promise(r => setTimeout(r, 200));
 
-            if (containerRef.current) {
-                containerRef.current.innerHTML = "";
-            }
+            if (!containerRef.current) return;
+            containerRef.current.innerHTML = "";
 
             const mercadopago = new mp(publicKey, { locale: "pt-BR" });
             const bricksBuilder = mercadopago.bricks();
@@ -53,10 +52,14 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                     payer: {
                         email: email,
                     },
+                    // Adding installments to initialization can help show the selector
+                    installments: 1,
                 },
                 customization: {
                     paymentMethods: {
                         maxInstallments: 12,
+                        // Be explicit about allowed types in cardPayment
+                        creditCard: 'all',
                     },
                     visual: {
                         style: {
@@ -102,12 +105,16 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                 },
             };
 
-            controller = await bricksBuilder.create(
-                "cardPayment",
-                "mercado-pago-card-brick-container",
-                settings
-            );
-            brickController.current = controller;
+            try {
+                controller = await bricksBuilder.create(
+                    "cardPayment",
+                    "mercado-pago-card-brick-container",
+                    settings
+                );
+                brickController.current = controller;
+            } catch (e) {
+                console.error("Error creating Brick:", e);
+            }
         };
 
         initMP();
@@ -123,7 +130,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                 }
             }
         };
-    }, [publicKey, amount, email, planId, fullName, cpf, phone]);
+    }, [publicKey, amount, email, planId]); // Reduced dependencies to prevent flickering
 
     if (!publicKey) {
         return (
@@ -160,7 +167,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                 </p>
             </div>
 
-            <div key={`${planId}-${amount}`} id="mercado-pago-card-brick-container" ref={containerRef}></div>
+            <div id="mercado-pago-card-brick-container" ref={containerRef}></div>
         </div>
     );
 }

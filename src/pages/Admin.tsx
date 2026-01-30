@@ -401,6 +401,19 @@ export default function Admin() {
         }
       ];
 
+      // Validate Mercado Pago keys consistency
+      const isMPPublicTest = mercadoPagoPublicKey.trim().startsWith("TEST-");
+      const isMPAccessTest = mercadoPagoAccessToken.trim().startsWith("TEST-");
+      const isMPPublicProd = mercadoPagoPublicKey.trim().startsWith("APP_USR-");
+      const isMPAccessProd = mercadoPagoAccessToken.trim().startsWith("APP_USR-");
+
+      if (mercadoPagoPublicKey && mercadoPagoAccessToken) {
+        if ((isMPPublicTest && isMPAccessProd) || (isMPPublicProd && isMPAccessTest)) {
+          toast.error("Erro de configuração: Você está misturando chaves de TESTE com chaves de PRODUÇÃO no Mercado Pago. Ambas devem ser do mesmo tipo.");
+          return;
+        }
+      }
+
       await Promise.all(
         settingsToUpdate.map(setting => updateSetting.mutateAsync(setting))
       );

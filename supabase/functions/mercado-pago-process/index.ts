@@ -14,7 +14,7 @@ serve(async (req) => {
     try {
         const body = await req.json();
         console.log("Request Body:", body);
-        const { planId, userId, cardToken, paymentMethodId, issuerId, installments, email, fullName, cpf, phone } = body;
+        const { action, planId, userId, cardToken, paymentMethodId, issuerId, installments, email, fullName, cpf, phone } = body;
 
         const supabaseClient = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
@@ -45,7 +45,53 @@ serve(async (req) => {
             throw new Error("Plan not found");
         }
 
-        // 3. Create Pending Transaction
+        // NEW: ACTION - CREATE PREFERENCE
+        if (action === "create_preference") {
+            const preferenceData = {
+                items: [
+                    {
+                        title: `Plano ${plan.name} - YAh`,
+                        quantity: 1,
+                        unit_price: Number(plan.amount),
+                        currency_id: "BRL",
+                    },
+                ],
+                payer: {
+                    email: email,
+                },
+                payment_methods: {
+                    installments: 12,
+                },
+                external_reference: `pref_${Date.now()}`,
+                back_urls: {
+                    success: `${Deno.env.get("SUPABASE_URL")}/dashboard`,
+                    failure: `${Deno.env.get("SUPABASE_URL")}/dashboard`,
+                    pending: `${Deno.env.get("SUPABASE_URL")}/dashboard`,
+                },
+                auto_return: "approved",
+            };
+
+            console.log("Creating preference:", JSON.stringify(preferenceData));
+
+            const prefResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${mpAccessToken}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(preferenceData),
+            });
+
+            const prefResult = await prefResponse.json();
+            if (!prefResponse.ok) throw new Error(prefResult.message || "Failed to create preference");
+
+            return new Response(JSON.stringify({ preferenceId: prefResult.id }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200,
+            });
+        }
+
+        // 3. Create Pending Transaction (Existing Flow)
         const { data: transaction, error: txError } = await supabaseClient
             .from("payment_transactions")
             .insert({

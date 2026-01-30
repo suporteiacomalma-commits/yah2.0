@@ -60,8 +60,28 @@ export function useMercadoPago() {
         }
     };
 
+    const createPreference = async (planId: string, email: string) => {
+        try {
+            const { data, error } = await supabase.functions.invoke("mercado-pago-process", {
+                body: {
+                    action: "create_preference",
+                    planId,
+                    email,
+                    userId: user?.id
+                }
+            });
+
+            if (error) throw error;
+            return data.preferenceId;
+        } catch (error: any) {
+            console.error("Error creating preference:", error);
+            throw error;
+        }
+    };
+
     return {
         loadMercadoPago,
+        createPreference,
         processPayment,
         isProcessing,
         publicKey: getSetting("mercado_pago_public_key")?.value?.trim()

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMercadoPago } from "@/hooks/useMercadoPago";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
         console.log("Initializing Mercado Pago with Public Key:", `${publicKey.substring(0, 8)}...${publicKey.substring(publicKey.length - 4)}`);
 
         let controller: any = null;
+        let isMovingOut = false;
 
         const initMP = async () => {
             if (Number(amount) <= 0) {
@@ -35,12 +36,12 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
             }
 
             const mp = await loadMercadoPago();
-            if (!mp) return;
+            if (!mp || isMovingOut) return;
 
             // Small delay to ensure DOM is ready
             await new Promise(r => setTimeout(r, 200));
 
-            if (!containerRef.current) return;
+            if (!containerRef.current || isMovingOut) return;
             containerRef.current.innerHTML = "";
 
             const mercadopago = new mp(publicKey, { locale: "pt-BR" });
@@ -51,9 +52,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                     amount: Number(amount),
                     payer: {
                         email: email,
-                    },
-                    // Adding installments to initialization can help show the selector
-                    installments: 1,
+                    }
                 },
                 customization: {
                     paymentMethods: {
@@ -106,6 +105,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
             };
 
             try {
+                if (isMovingOut) return;
                 controller = await bricksBuilder.create(
                     "cardPayment",
                     "mercado-pago-card-brick-container",
@@ -120,6 +120,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
         initMP();
 
         return () => {
+            isMovingOut = true;
             if (controller) {
                 try {
                     if (typeof controller.unmount === 'function') {
@@ -130,7 +131,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                 }
             }
         };
-    }, [publicKey, amount, email, planId]); // Reduced dependencies to prevent flickering
+    }, [publicKey, amount, email, planId]); // Reverted dependencies
 
     if (!publicKey) {
         return (
@@ -145,7 +146,9 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
             {isProcessing && (
                 <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center gap-3 animate-fade-in rounded-xl">
                     <Loader2 className="h-10 w-10 animate-spin text-purple-500" />
-                    <p className="text-sm font-bold text-purple-400 uppercase tracking-widest animate-pulse">Processando Pagamento...</p>
+                    <p className="text-sm font-bold text-purple-400 uppercase tracking-widest animate-pulse">
+                        Processando Pagamento...
+                    </p>
                 </div>
             )}
 

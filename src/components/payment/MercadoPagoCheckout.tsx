@@ -25,7 +25,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, onSuccess
             if (!mp) return;
 
             // Small delay to ensure DOM is ready
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 200));
 
             if (containerRef.current) {
                 containerRef.current.innerHTML = "";
@@ -36,13 +36,16 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, onSuccess
 
             const settings = {
                 initialization: {
-                    amount: Number(Number(amount).toFixed(2)),
+                    amount: Number(amount),
                     payer: {
                         email: email,
                     },
                 },
                 customization: {
                     paymentMethods: {
+                        types: {
+                            included: ['credit_card']
+                        },
                         maxInstallments: 12,
                     },
                     visual: {
@@ -53,14 +56,16 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, onSuccess
                 },
                 callbacks: {
                     onReady: () => {
-                        console.log("Card Payment Brick is ready");
+                        console.log("Payment Brick is ready");
                     },
-                    onSubmit: async (cardFormData: any) => {
+                    onSubmit: async ({ selectedPaymentMethod, formData }: any) => {
+                        console.log("Payment Data:", { selectedPaymentMethod, formData });
+
                         const result = await processPayment({
                             planId,
-                            cardToken: cardFormData.token,
-                            paymentMethodId: cardFormData.payment_method_id,
-                            installments: cardFormData.installments,
+                            cardToken: formData.token,
+                            paymentMethodId: formData.payment_method_id,
+                            installments: formData.installments,
                             email,
                             fullName
                         });
@@ -70,13 +75,13 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, onSuccess
                         }
                     },
                     onError: (error: any) => {
-                        console.error("Card Payment Brick Error:", error);
+                        console.error("Payment Brick Error:", error);
                     },
                 },
             };
 
             controller = await bricksBuilder.create(
-                "cardPayment",
+                "payment",
                 "mercado-pago-card-brick-container",
                 settings
             );
@@ -88,7 +93,6 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, onSuccess
         return () => {
             if (controller) {
                 try {
-                    // Try to unmount safely
                     if (typeof controller.unmount === 'function') {
                         controller.unmount();
                     }

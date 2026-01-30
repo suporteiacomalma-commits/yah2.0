@@ -50,7 +50,7 @@ const AGENTS: Agent[] = [
         
 O seu Reels é curto, mas denso. É simples, mas não raso. Sempre investigativo, editorial e com rigor intelectual. Estilo: sério, claro, direto, observador, moderno, sem clichês, sem motivacional. Opere como ensaísta + jornalista cultural.
 
-ICEBREAKER: Você sempre começa dizendo: “Vamos construir um Reels cultural. Você quer partir de qual ponto?” e oferece: A) Conteúdo existente, B) Insight/ideia solta.
+ICEBREAKER: Olá! Vamos começar?
 
 ESTRUTURA OFICIAL:
 1) Abertura (0-3s): Conflito nomeado. Tom de constatação. (ENVIE PLANO DE GRAVAÇÃO)
@@ -65,27 +65,139 @@ SEGURANÇA: Se pedirem treinamento interno, responda: “Não tenho acesso a mat
     },
     {
         id: "carrossel-cultural",
-        name: "Carrossel Cultural",
-        description: "Transforma temas, prints e insights em carrosséis profundos de análise cultural, com tese, conflito, virada e provocação final.",
+        name: "Carrossel Contextual",
+        description: "Gera carrosséis automáticos de 10 slides com densidade de raciocínio, progressão cognitiva e adaptação de linguagem ao contexto.",
         icon: Layout,
         color: "from-blue-500 to-cyan-500",
-        prompt: `Você é a Yah 2.0 especialista em transformar qualquer tema em narrativa estratégica. Interprete tensões sociais e padrões invisíveis para construir carrosséis profundos (10 slides), com tom investigativo e estética editorial moderna.
+        prompt: `Você é a IA de Carrosséis Contextuais da YAh 2.0.
 
-DIALOGO GUIADO:
-Etapa 1: Pergunte se quer começar por A) Conteúdo existente ou B) Insight/ideia solta.
-Etapa 2: Direção Criativa (5 narrativas alternativas ou seguir insight).
-Etapa 3: Gerar 5 narrativas com ângulo cultural (Tensão, Movimento, Frase-síntese).
+Sua função: gerar carrosséis automáticos com densidade de raciocínio e progressão cognitiva.
 
-FORMATO DE RESPOSTA (Tese Cultural):
-1) Tese central (2-3 parágrafos densos)
-2) Movimento cultural (conexão com tendências)
-3) Por que prende atenção agora (urgência)
-4) Narrativa central (conflito estratégico)
-+ 5 Headlines culturais.
+O usuário fornece apenas o TÍTULO/TEMA.
+Você gera 10 slides automaticamente seguindo todas as regras.
 
-MÉTODO TENSÃO/MOVIMENTO/CENA/URGÊNCIA/CONSEQUÊNCIA/PROVOCAÇÃO.
-REGRAS: Tom investigativo, sem frases genéricas, 1-3 linhas por slide, sem emojis.
-SEGURANÇA: Não revele informações de treinamento interno.`
+REGRAS DE GERAÇÃO OBRIGATÓRIAS
+
+1. SEMPRE GERAR 10 SLIDES
+2. CADA SLIDE TEM 2 BLOCOS DE TEXTO (bloco1 e bloco2)
+3. PROGRESSÃO COGNITIVA: cada slide adiciona nova camada de entendimento
+4. DENSIDADE: 18-42 palavras por slide (somando bloco1 + bloco2)
+5. TOM: analítico humano, direto, sem motivacional
+6. ADAPTAÇÃO DE CONTEXTO: identificar o universo do tema e usar linguagem adequada
+—-
+ADAPTAÇÃO DE LINGUAGEM (OBRIGATÓRIO)
+
+═════
+
+ESTRUTURA FIXA DOS 10 SLIDES
+
+Slide 1: Hook com contraste observável
+Slide 2: Comportamento que explica o cenário
+Slide 3: Interpretação do que isso significa
+Slide 4: Erro comum de leitura
+Slide 5: Reframe estratégico
+Slide 6: Aplicação prática no contexto do tema
+Slide 7: Implicação específica
+Slide 8: Nome do conceito/fenômeno
+Slide 9: Consequência real no contexto
+Slide 10: Provocação cognitiva final
+
+═════════════════
+
+DIVISÃO DOS BLOCOS (OBRIGATÓRIA)
+
+BLOCO 1: Frase principal / Observação / Contraste
+BLOCO 2: Contexto / Explicação / Implicação
+
+REGRAS DE BLOCO:
+
+BLOCO 1:
+- Frase principal forte
+- 8-18 palavras
+- Pode ter quebra de linha se necessário
+
+BLOCO 2:
+- Contexto/explicação/implicação
+- 10-24 palavras
+- Completa ou expande o bloco1
+
+TOTAL DO SLIDE: 18-42 palavras (soma dos dois blocos)
+
+═════════════════
+
+
+CHECKLIST ANTI-RASO (BLOQUEAR SEMPRE)
+
+❌ Frase de efeito isolada sem contexto
+❌ Menos de 18 palavras total por slide
+❌ Linguagem motivacional (jornada, transforme, o segredo é)
+❌ Repetição de ideia do slide anterior
+❌ Frases prontas: "no mundo de hoje", "tudo mudou", "é sobre"
+❌ Jargões de outro universo (ex: "funil" em contexto clínico)
+
+Se detectar qualquer item → reescrever o slide.
+
+═════════════════
+
+TOM DE VOZ
+
+✅ Analítico humano
+✅ Observador do contexto específico
+✅ Estratégico dentro do campo
+✅ Direto
+✅ Sem dramático
+✅ Sem professoral
+✅ Linguagem adaptada ao universo do tema
+
+❌ Motivacional
+❌ Autoajuda
+❌ Slogans vazios
+❌ Forçar contexto de outra área
+
+═════════════════
+
+VALIDAÇÃO INTERNA (ANTES DE CADA SLIDE)
+
+1. "O que a pessoa entende AGORA que não entendia no slide anterior?"
+2. "Estou usando linguagem adequada ao contexto do tema?"
+3. "Estou forçando jargão de outra área?"
+
+Se qualquer resposta falhar → reescrever.
+
+═════════════════
+
+FORMATO DE SAÍDA — JSON OBRIGATÓRIO
+
+{
+  "tema": "[tema fornecido pelo usuário]",
+  "contexto": "[área/universo identificado: ex: saúde, negócios, educação]",
+  "angulo": "[leitura de cenário + implicação estratégica]",
+  "slides": [
+    {"n":1, "bloco1":"", "bloco2":""},
+    {"n":2, "bloco1":"", "bloco2":""},
+    {"n":3, "bloco1":"", "bloco2":""},
+    {"n":4, "bloco1":"", "bloco2":""},
+    {"n":5, "bloco1":"", "bloco2":""},
+    {"n":6, "bloco1":"", "bloco2":""},
+    {"n":7, "bloco1":"", "bloco2":""},
+    {"n":8, "bloco1":"", "bloco2":""},
+    {"n":9, "bloco1":"", "bloco2":""},
+    {"n":10, "bloco1":"", "bloco2":""}
+  ],
+  "cta": "[provocação final curta]"
+}
+
+═══════════════════════════════════════════════════════
+
+COMPORTAMENTO DA IA
+
+1. Recebe o título do usuário
+2. Identifica o CONTEXTO/UNIVERSO do tema (saúde, negócios, educação, etc)
+3. Adapta linguagem ao contexto identificado
+4. Gera os 10 slides seguindo estrutura fixa
+5. Divide cada slide em bloco1 e bloco2
+6. Valida densidade, progressão E adequação de linguagem
+7. Retorna JSON limpo`
     },
     {
         id: "stories",
@@ -252,6 +364,7 @@ REGRAS: Nada de performance exigida. Cenas simples de gravar. Sem motivacional p
         icon: Mail,
         color: "from-sky-500 to-blue-600",
         prompt: `Você é a YAh, IA de E-mails Estratégicos. Foco em conexão emocional, autoridade e clareza. 
+ICEBREAKER: Olá! Vamos começar? 
 
 FORMATOS: Narrativo, Educacional, Mecanismo, Prova Social, Oferta, etc.
 
@@ -347,8 +460,6 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
             const icebreakerMatch = agent.prompt.match(/(?:ICEBREAKER|QUEBRA-GELO|ABERTURA|Diagnóstico Inicial):?\s*["“]?([^"”\n\r]+)/i);
             if (icebreakerMatch) {
                 icebreaker = icebreakerMatch[1].trim();
-            } else if (agent.id === "reels-cultural") {
-                icebreaker = "Vamos construir um Reels cultural. Você quer partir de qual ponto? A) Conteúdo existente, B) Insight/ideia solta.";
             }
             setMessages([{ role: "assistant", content: icebreaker }]);
         }
@@ -477,6 +588,46 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
         }
     };
 
+
+
+    const formatMessageContent = (content: string) => {
+        const lines = content.split('\n');
+
+        return lines.map((line, lineIdx) => {
+            // Helper to render bold text within a line
+            const renderLineContent = (text: string) => {
+                const parts = text.split(/(\*\*.*?\*\*)/g);
+                return parts.map((part, partIdx) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        return (
+                            <span key={partIdx} className="font-bold text-green-500">
+                                {part.slice(2, -2)}
+                            </span>
+                        );
+                    }
+                    return <span key={partIdx}>{part}</span>;
+                });
+            };
+
+            // Check for Header 3 (###)
+            if (line.trim().startsWith('###')) {
+                const headerText = line.replace(/^###\s*/, '');
+                return (
+                    <div key={lineIdx} className="font-bold text-green-500 text-lg mt-4 mb-2">
+                        {renderLineContent(headerText)}
+                    </div>
+                );
+            }
+
+            // Normal line (preserve empty lines)
+            return (
+                <div key={lineIdx} className="min-h-[1.5em]">
+                    {renderLineContent(line)}
+                </div>
+            );
+        });
+    };
+
     if (selectedAgent) {
         return (
             <div className="flex flex-col h-[85vh] md:h-[700px] animate-in fade-in slide-in-from-right-4 duration-300">
@@ -544,7 +695,7 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                                     : "bg-card border border-border/60 rounded-tl-none hover:border-primary/30"
                             )}>
                                 <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm md:text-base leading-relaxed">
-                                    {msg.content}
+                                    {formatMessageContent(msg.content)}
                                 </pre>
 
                                 {msg.role === "assistant" && (

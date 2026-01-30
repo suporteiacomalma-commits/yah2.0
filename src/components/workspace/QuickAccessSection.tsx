@@ -27,7 +27,7 @@ export function QuickAccessSection() {
           <Lightbulb className="w-5 h-5 text-amber-400" />
         </div>
         <div className="text-left">
-          <h3 className="text-sm font-semibold text-foreground">Ideia Inbox</h3>
+          <h3 className="text-sm font-semibold text-foreground">Guardar ideias</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Capture. Enriqueça com IA.</p>
         </div>
       </Link>

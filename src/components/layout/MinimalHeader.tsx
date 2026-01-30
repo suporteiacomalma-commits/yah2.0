@@ -84,7 +84,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
 
   return (
     <header className="h-16 border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
-      <div className="h-full max-w-6xl mx-auto px-4 flex items-center justify-between">
+      <div className="h-full max-w-6xl mx-auto px-4 flex items-center justify-between relative">
         {/* Logo / Brand */}
         <div className="flex items-center gap-3">
           <div className="w-16 h-16 overflow-hidden">
@@ -99,6 +99,16 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
               {brandName}
             </span>
           )}
+        </div>
+
+        {/* Center - Greeting */}
+        <div className="hidden md:flex flex-col items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <h2 className="text-lg font-bold text-foreground tracking-tight text-center leading-none mb-1">
+            Olá, <span className="text-primary">{profile?.full_name?.split(' ')[0] || "Visitante"}</span>
+          </h2>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold text-center">
+            O que vamos organizar agora?
+          </p>
         </div>
 
         {/* Center/Right - Balances & Menu */}

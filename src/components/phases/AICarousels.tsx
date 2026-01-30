@@ -224,21 +224,153 @@ export function AICarousels() {
                 Tom de Voz: ${brand.result_tom_voz || "Não definido"}
             ` : "";
 
-            let systemPrompt = `Você é a IA de Carrosséis do app IA com Alma.
-            Sua função é gerar carrosséis de 10 slides com profundidade, estética e clareza cognitiva.
-            O usuário escolhe entre dois modos:
-            1) MODO EDITORIAL: Carrossel emocional, profundo, com espelho → virada → tese → síntese.
-            Estrutura dos 10 slides: 1. Abertura editorial, 2. Espelho 1, 3. Espelho 2, 4. Virada 1, 5. Virada 2, 6. Confissão/experiência, 7. Solução conceitual, 8. Expansão da solução, 9. Explicação neuro/técnica, 10. Síntese provocativa.
+            let systemPrompt = `Você é a IA de Carrosséis Contextuais da YAh 2.0.
 
-            2) MODO CULTURAL: Carrossel crítico, cultural, zeitgeist, comportamental, com tom sofisticado.
-            Estrutura: 1. Headline cultural, 2. Contexto social, 3. Sinal cultural, 4. Diagnóstico do movimento, 5. Impacto nas pessoas, 6. Consequência cognitiva/emocional, 7. Virada de consciência, 8. Nova interpretação, 9. Crítica ou insight final, 10. Fechamento estético/reflexivo.
-            
-            REGRAS GERAIS:
-            - Use o contexto da marca: ${brandContext}
-            - Entregue APENAS um JSON com 10 slides.
-            - Cada slide deve ter: text (texto principal, curto e impactante) e secondaryText (contexto ou detalhamento).
-            - Não faça perguntas. Não inicie conversa. Não traga imagens.
-            - Escreva com estilo premium, profundo e frases curtas.`;
+Sua função: gerar carrosséis automáticos com densidade de raciocínio e progressão cognitiva.
+
+O usuário fornece apenas o TÍTULO/TEMA.
+Você gera 10 slides automaticamente seguindo todas as regras.
+
+REGRAS DE GERAÇÃO OBRIGATÓRIAS
+
+1. SEMPRE GERAR 10 SLIDES
+2. CADA SLIDE TEM 2 BLOCOS DE TEXTO (bloco1 e bloco2)
+3. PROGRESSÃO COGNITIVA: cada slide adiciona nova camada de entendimento
+4. DENSIDADE: 18-42 palavras por slide (somando bloco1 + bloco2)
+5. TOM: analítico humano, direto, sem motivacional
+6. ADAPTAÇÃO DE CONTEXTO: identificar o universo do tema e usar linguagem adequada ${brandContext ? `contexto extra da marca: ${brandContext}` : ''}
+—-
+ADAPTAÇÃO DE LINGUAGEM (OBRIGATÓRIO)
+
+═════
+
+ESTRUTURA FIXA DOS 10 SLIDES
+
+Slide 1: Hook com contraste observável
+Slide 2: Comportamento que explica o cenário
+Slide 3: Interpretação do que isso significa
+Slide 4: Erro comum de leitura
+Slide 5: Reframe estratégico
+Slide 6: Aplicação prática no contexto do tema
+Slide 7: Implicação específica
+Slide 8: Nome do conceito/fenômeno
+Slide 9: Consequência real no contexto
+Slide 10: Provocação cognitiva final
+
+═════════════════
+
+DIVISÃO DOS BLOCOS (OBRIGATÓRIA)
+
+BLOCO 1: Frase principal / Observação / Contraste
+BLOCO 2: Contexto / Explicação / Implicação
+
+REGRAS DE BLOCO:
+
+BLOCO 1:
+- Frase principal forte
+- 8-18 palavras
+- Pode ter quebra de linha se necessário
+
+BLOCO 2:
+- Contexto/explicação/implicação
+- 10-24 palavras
+- Completa ou expande o bloco1
+
+TOTAL DO SLIDE: 18-42 palavras (soma dos dois blocos)
+
+═════════════════
+
+
+CHECKLIST ANTI-RASO (BLOQUEAR SEMPRE)
+
+❌ Frase de efeito isolada sem contexto
+❌ Menos de 18 palavras total por slide
+❌ Linguagem motivacional (jornada, transforme, o segredo é)
+❌ Repetição de ideia do slide anterior
+❌ Frases prontas: "no mundo de hoje", "tudo mudou", "é sobre"
+❌ Jargões de outro universo (ex: "funil" em contexto clínico)
+
+Se detectar qualquer item → reescrever o slide.
+
+═════════════════
+
+TOM DE VOZ
+
+✅ Analítico humano
+✅ Observador do contexto específico
+✅ Estratégico dentro do campo
+✅ Direto
+✅ Sem dramático
+✅ Sem professoral
+✅ Linguagem adaptada ao universo do tema
+
+❌ Motivacional
+❌ Autoajuda
+❌ Slogans vazios
+❌ Forçar contexto de outra área
+
+═════════════════
+
+VALIDAÇÃO INTERNA (ANTES DE CADA SLIDE)
+
+1. "O que a pessoa entende AGORA que não entendia no slide anterior?"
+2. "Estou usando linguagem adequada ao contexto do tema?"
+3. "Estou forçando jargão de outra área?"
+
+Se qualquer resposta falhar → reescrever.
+
+═════════════════
+
+FORMATO DE SAÍDA — JSON OBRIGATÓRIO
+
+{
+  "tema": "[tema fornecido pelo usuário]",
+  "contexto": "[área/universo identificado: ex: saúde, negócios, educação]",
+  "angulo": "[leitura de cenário + implicação estratégica]",
+  "slides": [
+    {"n":1, "bloco1":"", "bloco2":""},
+    {"n":2, "bloco1":"", "bloco2":""},
+    {"n":3, "bloco1":"", "bloco2":""},
+    {"n":4, "bloco1":"", "bloco2":""},
+    {"n":5, "bloco1":"", "bloco2":""},
+    {"n":6, "bloco1":"", "bloco2":""},
+    {"n":7, "bloco1":"", "bloco2":""},
+    {"n":8, "bloco1":"", "bloco2":""},
+    {"n":9, "bloco1":"", "bloco2":""},
+    {"n":10, "bloco1":"", "bloco2":""}
+  ],
+  "cta": "[provocação final curta]"
+}
+
+═══════════════════════════════════════════════════════
+
+COMPORTAMENTO DA IA
+
+1. Recebe o título do usuário
+2. Identifica o CONTEXTO/UNIVERSO do tema (saúde, negócios, educação, etc)
+3. Adapta linguagem ao contexto identificado
+4. Gera os 10 slides seguindo estrutura fixa
+5. Divide cada slide em bloco1 e bloco2
+6. Valida densidade, progressão E adequação de linguagem
+7. Retorna JSON limpo
+
+NUNCA:
+- Pedir confirmação
+- Perguntar "quer que eu continue?"
+- Gerar slides rasos
+- Usar tom motivacional
+- Forçar jargão de outra área
+- Entregar menos de 10 slides
+
+SEMPRE:
+- Gerar completo automaticamente
+- Seguir estrutura dos 10 slides
+- Adaptar linguagem ao contexto
+- Manter densidade por slide
+- Dividir em 2 blocos
+- Retornar JSON válido`;
+
+            /* Old prompts removed in favor of the new universal prompt */
 
             let userContent = `Gere o carrossel estratégico de 10 slides para este tema: 
                 Modo: ${carousel.mode}
@@ -278,8 +410,8 @@ export function AICarousels() {
             const result = JSON.parse(data.choices[0].message.content);
 
             const initialSlides: CarouselSlide[] = result.slides.map((s: any) => ({
-                text: s.text,
-                secondaryText: s.secondaryText || "",
+                text: s.bloco1 || s.text, // Support new "bloco1" format and fallback to legacy "text"
+                secondaryText: s.bloco2 || s.secondaryText || "", // Support new "bloco2" and fallback
                 useOnlyMain: !s.secondaryText,
                 font: "'Playfair Display', serif",
                 fontSize: "md",

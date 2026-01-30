@@ -19,6 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useAbacatePay } from "@/hooks/useAbacatePay";
 import { useStripe } from "@/hooks/useStripe";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MercadoPagoCheckout } from "@/components/payment/MercadoPagoCheckout";
+
 
 interface MinimalHeaderProps {
   brandName?: string;
@@ -41,6 +43,8 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
   const [cpf, setCpf] = useState(profile?.tax_id || "");
   const [phone, setPhone] = useState(profile?.cellphone || "");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+
 
   useEffect(() => {
     if (profile?.tax_id) setCpf(profile.tax_id);
@@ -72,11 +76,10 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
         cpf: cpf,
         phone: phone
       });
+      setIsPurchaseOpen(false);
     } else {
-      await createStripeCheckout.mutateAsync(plan.id);
+      setSelectedPlan(plan);
     }
-
-    setIsPurchaseOpen(false);
   };
 
   return (
@@ -213,7 +216,34 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+
+            {paymentMethod === "card" && selectedPlan && (
+              <div className="mt-6 border-t border-border pt-6 animate-fade-in">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-purple-400">Dados do Cartão</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[10px]"
+                    onClick={() => setSelectedPlan(null)}
+                  >
+                    Trocar Plano
+                  </Button>
+                </div>
+                <MercadoPagoCheckout
+                  planId={selectedPlan.id}
+                  amount={selectedPlan.amount}
+                  email={profile?.email || ""}
+                  fullName={profile?.full_name || ""}
+                  onSuccess={() => {
+                    setIsPurchaseOpen(false);
+                    setSelectedPlan(null);
+                  }}
+                />
+              </div>
+            )}
           </div>
+
 
           <div className="grid gap-4 py-2 max-h-[50vh] overflow-y-auto pr-1">
             {plansLoading ? (

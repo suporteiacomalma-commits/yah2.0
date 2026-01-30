@@ -233,6 +233,10 @@ export default function Admin() {
   const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
   const [showStripeKey, setShowStripeKey] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  const [mercadoPagoPublicKey, setMercadoPagoPublicKey] = useState("");
+  const [mercadoPagoAccessToken, setMercadoPagoAccessToken] = useState("");
+  const [showMPAccessToken, setShowMPAccessToken] = useState(false);
+
 
   // Edit User State
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -267,6 +271,12 @@ export default function Admin() {
 
     const sws = getSetting("stripe_webhook_secret");
     if (sws) setStripeWebhookSecret(sws.value);
+
+    const mp_pk = getSetting("mercado_pago_public_key");
+    if (mp_pk) setMercadoPagoPublicKey(mp_pk.value);
+
+    const mp_at = getSetting("mercado_pago_access_token");
+    if (mp_at) setMercadoPagoAccessToken(mp_at.value);
   }, [settings]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -353,49 +363,52 @@ export default function Admin() {
 
   const handleSaveSettings = async () => {
     try {
-      if (openaiKey) {
-        await updateSetting.mutateAsync({
+      const settingsToUpdate = [
+        {
           key: "openai_api_key",
           value: openaiKey,
           description: "Chave da API do OpenAI para integração com o assistente"
-        });
-      }
-
-      if (abacatePayKey) {
-        await updateSetting.mutateAsync({
+        },
+        {
           key: "abacate_pay_api_key",
           value: abacatePayKey,
           description: "Chave da API do AbacatePay para processamento de pagamentos"
-        });
-      }
-
-      if (stripePublishableKey) {
-        await updateSetting.mutateAsync({
+        },
+        {
           key: "stripe_publishable_key",
           value: stripePublishableKey,
           description: "Chave pública do Stripe"
-        });
-      }
-
-      if (stripeSecretKey) {
-        await updateSetting.mutateAsync({
+        },
+        {
           key: "stripe_secret_key",
           value: stripeSecretKey,
           description: "Chave secreta do Stripe"
-        });
-      }
-
-      if (stripeWebhookSecret) {
-        await updateSetting.mutateAsync({
+        },
+        {
           key: "stripe_webhook_secret",
           value: stripeWebhookSecret,
           description: "Segredo do Webhook do Stripe"
-        });
-      }
+        },
+        {
+          key: "mercado_pago_public_key",
+          value: mercadoPagoPublicKey,
+          description: "Public Key do Mercado Pago"
+        },
+        {
+          key: "mercado_pago_access_token",
+          value: mercadoPagoAccessToken,
+          description: "Access Token do Mercado Pago"
+        }
+      ];
+
+      await Promise.all(
+        settingsToUpdate.map(setting => updateSetting.mutateAsync(setting))
+      );
 
       toast.success("Configurações salvas com sucesso");
     } catch (error) {
       console.error(error);
+      toast.error("Erro ao salvar algumas configurações");
     }
   };
 
@@ -734,6 +747,46 @@ export default function Admin() {
                     </p>
                   </div>
                 </div>
+
+                <div className="h-px bg-border my-6" />
+
+                {/* Mercado Pago Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Mercado Pago (Checkout Transparente)</h3>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mp-pk" className="text-foreground">Mercado Pago Public Key</Label>
+                    <Input
+                      id="mp-pk"
+                      placeholder="APP_USR-..."
+                      value={mercadoPagoPublicKey}
+                      onChange={(e) => setMercadoPagoPublicKey(e.target.value)}
+                      className="bg-background border-border"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mp-at" className="text-foreground">Mercado Pago Access Token</Label>
+                    <div className="relative flex-1">
+                      <Input
+                        id="mp-at"
+                        type={showMPAccessToken ? "text" : "password"}
+                        placeholder="APP_USR-..."
+                        value={mercadoPagoAccessToken}
+                        onChange={(e) => setMercadoPagoAccessToken(e.target.value)}
+                        className="bg-background border-border pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowMPAccessToken(!showMPAccessToken)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showMPAccessToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
 
                 <div className="flex justify-end pt-4">
                   <Button

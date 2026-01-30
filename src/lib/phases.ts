@@ -68,7 +68,7 @@ export const phases: Phase[] = [
     id: 6,
     title: "IAs Treinadas",
     shortTitle: "IAs",
-    description: "Configure assistentes de IA personalizados",
+    description: "",
     icon: Bot,
     href: "/phase/6",
   },

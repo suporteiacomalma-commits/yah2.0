@@ -443,7 +443,7 @@ export function SocialOptimization() {
                         <div className="flex-1 overflow-y-auto custom-scrollbar bg-white text-black">
 
                             {/* Profile Header Block */}
-                            <div className="px-5 pt-2 pb-5 space-y-4">
+                            <div className="px-5 pt-2 pb-5 space-y-2.5">
                                 <div className="flex items-start gap-4">
                                     {/* Photo */}
                                     <div className="relative shrink-0">
@@ -541,8 +541,8 @@ export function SocialOptimization() {
                                 </div>
 
                                 {/* Highlights section */}
-                                <div className="space-y-3 pt-2">
-                                    <h3 className="text-xs font-bold text-slate-900">Destaques</h3>
+                                <div className="space-y-3 pt-1">
+                                    <h3 className="text-xs font-bold text-slate-900">Destaques Estratégicos</h3>
                                     <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
                                         {localData.highlights?.map((highlight, idx) => (
                                             <div key={idx} className="flex flex-col items-center gap-1.5 group cursor-pointer shrink-0" onClick={() => { setHighlightIndex(idx); setStep("tela3b"); }}>
@@ -1082,6 +1082,19 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
         }
     };
 
+    const getIconMetaphor = (text: string) => {
+        const lower = text.toLowerCase();
+        if (lower.includes("resultado") || lower.includes("venda") || lower.includes("lucro")) return "an ascending business growth chart with an arrow pointing up";
+        if (lower.includes("duvida") || lower.includes("pergunt") || lower.includes("faq")) return "a large clean stylized question mark symbol";
+        if (lower.includes("metodo") || lower.includes("processo") || lower.includes("como funciona")) return "three interlocking mechanical gear wheels";
+        if (lower.includes("feedback") || lower.includes("depoimento") || lower.includes("cliente")) return "a group of five sparkling five-point stars";
+        if (lower.includes("contato") || lower.includes("whatsapp") || lower.includes("fale")) return "a modern speech bubble icon";
+        if (lower.includes("quem sou") || lower.includes("sobre") || lower.includes("historia")) return "a simple human silhouette profile icon";
+        if (lower.includes("oferta") || lower.includes("preço") || lower.includes("comprar")) return "a shopping price tag icon";
+        if (lower.includes("lives") || lower.includes("aula") || lower.includes("video")) return "a centered play button triangle icon";
+        return text; // Fallback to original text if no metaphor found
+    };
+
     const handleGenerateImage = async (idx: number, promptText: string) => {
         if (!promptText) {
             toast.error("Por favor, defina um título para o destaque primeiro");
@@ -1095,13 +1108,15 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             const apiKey = getSetting("openai_api_key")?.value;
             if (!apiKey) throw new Error("Chave da API não configurada no sistema (openai_api_key).");
 
+            const metaphor = getIconMetaphor(promptText);
+
             const response = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
                 mode: 'cors',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey.trim()}` },
                 body: JSON.stringify({
                     model: "dall-e-2",
-                    prompt: `Minimalist line art icon for Instagram. Subject: ${promptText}. Simple clean graphic, bold high-contrast background.`,
+                    prompt: `Ultra-minimalist symbolic pictogram of ${metaphor}. Style: Pure white vector icon, flat design. BACKGROUND: Solid dark carbon #111111 background. THE IMAGE MUST ONLY CONTAIN THE CENTRAL SYMBOL. ABSOLUTELY NO TEXT. NO WORDS. NO LETTERS. NO TYPOGRAPHY. NO SIGNS. ZERO ALPHABET CHARACTERS. EXCLUSIVELY GRAPHIC SYMBOLISM.`,
                     n: 1,
                     size: "256x256",
                     response_format: "b64_json"
@@ -1567,37 +1582,39 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                     </Button>
                                 </div>
 
-                                <div className="flex items-center gap-3 pt-4 border-t border-white/5">
+                                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-4 border-t border-white/5">
                                     <Button
                                         variant="secondary"
-                                        className="flex-1 h-14 rounded-2xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/5 transition-all group/save px-2 sm:px-4"
+                                        className="flex-1 h-12 sm:h-14 rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 border border-white/5 transition-all group/save px-2 sm:px-4"
                                         onClick={async () => {
                                             const n = [...highlights];
                                             await updateSocialData.mutateAsync({ updates: { highlights: n } });
                                             toast.success("Estratégia salva!");
                                         }}
                                     >
-                                        <Save className="w-4 h-4 mr-1 sm:mr-2 group-hover/save:scale-110 transition-transform shrink-0" />
+                                        <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2 group-hover/save:scale-110 transition-transform shrink-0" />
                                         <span className="truncate">Salvar Destaque</span>
                                     </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="h-14 w-12 sm:w-14 p-0 rounded-2xl border-white/5 hover:bg-white/10 transition-all hover:border-green-500/30 group/ws shrink-0"
-                                        onClick={() => handleShareWhatsApp(h)}
-                                    >
-                                        <MessageSquare className="w-4 h-4 text-green-500 group-hover/ws:scale-110 transition-transform" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        className="h-14 w-12 sm:w-14 p-0 rounded-2xl text-red-500/40 hover:text-red-500 hover:bg-red-500/10 transition-all group/del shrink-0"
-                                        onClick={() => {
-                                            const n = [...highlights];
-                                            n[idx] = { ...n[idx], description: "", content: "", link: "", who_behind: "", for_who: "", not_for_who: "" };
-                                            setHighlights(n);
-                                        }}
-                                    >
-                                        <Trash2 className="w-4 h-4 group-hover/del:scale-110 transition-transform" />
-                                    </Button>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Button
+                                            variant="outline"
+                                            className="h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-2xl border-white/5 hover:bg-white/10 transition-all hover:border-green-500/30 group/ws"
+                                            onClick={() => handleShareWhatsApp(h)}
+                                        >
+                                            <MessageSquare className="w-4 h-4 text-green-500 group-hover/ws:scale-110 transition-transform" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            className="h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-2xl text-red-500/40 hover:text-red-500 hover:bg-red-500/10 transition-all group/del"
+                                            onClick={() => {
+                                                const n = [...highlights];
+                                                n[idx] = { ...n[idx], description: "", content: "", link: "", who_behind: "", for_who: "", not_for_who: "" };
+                                                setHighlights(n);
+                                            }}
+                                        >
+                                            <Trash2 className="w-4 h-4 group-hover/del:scale-110 transition-transform" />
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 {
@@ -1660,11 +1677,11 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             </div>
 
             <Button
-                className="w-full h-20 rounded-3xl text-lg font-black gradient-primary shadow-2xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 mt-12"
+                className="w-full h-16 sm:h-20 rounded-2xl sm:rounded-3xl text-sm sm:text-lg font-black gradient-primary shadow-2xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 sm:gap-3 mt-8 sm:mt-12 px-4"
                 onClick={() => { onSave({ highlights }); onBack(); toast.success("Estratégia salva!"); }}
             >
-                <Save className="w-6 h-6" />
-                Salvar Estratégia dos Destaques
+                <Save className="w-5 h-5 sm:w-6 sm:h-6" />
+                <span className="truncate">Salvar Estratégia dos Destaques</span>
             </Button>
         </div>
     );
@@ -1676,6 +1693,8 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
     const [generatingContentIdx, setGeneratingContentIdx] = useState<number | null>(null);
     const [generatingCoverIdx, setGeneratingCoverIdx] = useState<number | null>(null);
     const postRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const coverInputRef = useRef<HTMLInputElement>(null);
+    const [activeIdx, setActiveIdx] = useState<number | null>(null);
 
     useEffect(() => {
         if (postRefs.current[initialIndex]) {
@@ -1684,6 +1703,50 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
             }, 100);
         }
     }, [initialIndex]);
+
+    const handleUploadPostCover = async (idx: number, file: File) => {
+        const toastId = toast.loading("Fazendo upload da capa...");
+        try {
+            const fileName = `post_cover_upload_${Math.random().toString(36).substring(2)}_${Date.now()}.${file.name.split('.').pop()}`;
+            const filePath = `post_covers/${brand?.id || 'default'}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from("brand_documents")
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from("brand_documents")
+                .getPublicUrl(filePath);
+
+            const newPosts = [...posts];
+            newPosts[idx].thumbnail_url = publicUrl;
+            setPosts(newPosts);
+
+            await updateSocialData.mutateAsync({
+                updates: { pinned_posts: newPosts },
+                silent: true
+            });
+
+            toast.success("Capa enviada com sucesso!", { id: toastId });
+        } catch (e: any) {
+            toast.error("Erro no upload: " + e.message, { id: toastId });
+        }
+    };
+
+    const handleDownloadPostCover = (url: string) => {
+        if (!url) return;
+        if (url.startsWith('http')) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `cover_${Date.now()}.png`;
+            link.target = "_blank";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
 
     const handleGeneratePostContent = async (idx: number) => {
         const toastId = toast.loading("Criando roteiro para post fixado...");
@@ -1717,8 +1780,30 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        { role: "system", content: "Você é um estrategista de conteúdo para Instagram premium. Saída estruturada e visual." },
-                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nTEMA: ${posts[idx].theme}\n\nOBJETIVO: ${specificPrompt}\n\nCrie um roteiro de legenda para post fixado.` }
+                        {
+                            role: "system",
+                            content: `Você é um especialista em criação de conteúdo para cards de redes sociais. Sua missão é gerar um conteúdo único, direto, claro e impactante.
+
+Regras obrigatórias:
+- Saída SEMPRE em 3 linhas curtas.
+- Linguagem simples e forte (formato de card).
+- Não enrolar nem explicar demais.
+- Entregar valor prático ou reflexão clara.
+- Não usar emojis em excesso.
+- Não usar hashtags.
+- Não mencionar IA.
+- Não repetir o título exatamente como está.
+- Soar humano e natural.
+
+Estrutura do card:
+1ª linha: frase de impacto ou afirmação principal
+2ª linha: complemento ou explicação curta
+3ª linha: fechamento memorável ou chamada de ação leve`
+                        },
+                        {
+                            role: "user",
+                            content: `CONTEXTO DA MARCA: ${brandContext}\n\nTÍTULO: "${posts[idx].theme}"\n\nGere o conteúdo do card pronto para ser usado na arte.`
+                        }
                     ]
                 })
             });
@@ -1739,13 +1824,18 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
     };
 
     const handleGeneratePostCover = async (idx: number) => {
+        if (!posts[idx].theme) {
+            toast.error("Por favor, defina um Tema Principal primeiro para guiar a IA.");
+            return;
+        }
+
         const toastId = toast.loading("Gerando capa premium com IA...");
         setGeneratingCoverIdx(idx);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
             if (!apiKey) throw new Error("Chave da API não configurada.");
 
-            const prompt = `Premium aesthetic professional cover for Instagram post. Type: ${posts[idx].type}. Theme: ${posts[idx].theme || 'Business strategy'}. Style: ultra-high-end luxury photography, cinematic lighting, professional branding, elegant textures, no faces.`;
+            const prompt = `High-end professional cinematic photography representing the theme: "${posts[idx].theme}". Visual metaphor: a bold conceptual scene related to ${posts[idx].theme}. Style: Ultra-luxury, minimalist, premium textures, cinematic lighting. ABSOLUTELY NO TEXT. NO WORDS. NO LETTERS. NO TYPOGRAPHY. ZERO SIGNS. ONLY A CLEAN VISUAL IMAGE.`;
 
             const response = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',
@@ -1808,7 +1898,7 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
     };
 
     const handleExportPost = (post: any) => {
-        const text = `*Post Fixado: ${post.theme || 'Sem Tema'}*\n\n*Tipo:* ${post.type.toUpperCase()}\n\n*Roteiro/Legenda:*\n${post.content}\n\n*Link:* ${post.link || 'Não definido'}`;
+        const text = `*Post Fixado: ${post.theme || 'Sem Tema'}*\n\n*Tipo:* ${post.type.toUpperCase()}\n\n*Roteiro/Legenda IA:*\n${post.content}\n\n*Legenda Final:*\n${post.caption || 'Não definido'}\n\n*Link:* ${post.link || 'Não definido'}`;
         const encodedText = encodeURIComponent(text);
         window.open(`https://wa.me/?text=${encodedText}`, '_blank');
     };
@@ -1854,35 +1944,68 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                 {/* Header Info */}
                                 <div className="flex flex-col md:flex-row gap-8">
                                     <div className="w-full md:w-[280px] space-y-4 shrink-0">
-                                        <button
-                                            type="button"
-                                            className="w-full h-full rounded-[2rem] bg-white/5 border border-white/10 relative overflow-hidden group/cover cursor-pointer hover:border-primary/30 transition-all shadow-2xl"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleGeneratePostCover(idx);
-                                            }}
-                                        >
-                                            {post.thumbnail_url ? (
-                                                <img src={post.thumbnail_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Capa" />
-                                            ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center gap-3 opacity-30 group-hover:opacity-100 transition-opacity">
-                                                    <div className="p-4 bg-white/5 rounded-2xl">
-                                                        <ImageIcon className="w-8 h-8" />
-                                                    </div>
-                                                    <span className="text-[8px] font-black uppercase tracking-[0.2em]">Gerar Capa</span>
-                                                </div>
-                                            )}
-
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                                {generatingCoverIdx === idx ? (
-                                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                        <div className="relative group/cover-container">
+                                            <div
+                                                className="w-full h-[280px] rounded-[2rem] bg-white/5 border border-white/10 relative overflow-hidden group/cover shadow-2xl"
+                                            >
+                                                {post.thumbnail_url ? (
+                                                    <img src={post.thumbnail_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Capa" />
                                                 ) : (
-                                                    <Wand2 className="w-8 h-8 text-white animate-pulse" />
+                                                    <div className="w-full h-full flex flex-col items-center justify-center gap-3 opacity-30">
+                                                        <div className="p-4 bg-white/5 rounded-2xl">
+                                                            <ImageIcon className="w-8 h-8" />
+                                                        </div>
+                                                        <span className="text-[8px] font-black uppercase tracking-[0.2em]">Capa do Post</span>
+                                                    </div>
                                                 )}
                                             </div>
-                                        </button>
 
-                                        <div className="space-y-4">
+                                            <div className="flex flex-col gap-2 mt-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        className="flex-1 h-11 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-black text-[9px] uppercase tracking-widest gap-2"
+                                                        onClick={(e) => { e.stopPropagation(); setActiveIdx(idx); coverInputRef.current?.click(); }}
+                                                    >
+                                                        <Upload className="w-3.5 h-3.5" /> Subir
+                                                    </Button>
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        className="flex-1 h-11 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 font-black text-[9px] uppercase tracking-widest gap-2"
+                                                        onClick={(e) => { e.stopPropagation(); handleGeneratePostCover(idx); }}
+                                                        disabled={generatingCoverIdx === idx}
+                                                    >
+                                                        {generatingCoverIdx === idx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                                        IA
+                                                    </Button>
+                                                </div>
+                                                {post.thumbnail_url && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="w-full h-11 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 font-black text-[9px] uppercase tracking-widest gap-2 transition-all px-0"
+                                                        onClick={(e) => { e.stopPropagation(); handleDownloadPostCover(post.thumbnail_url); }}
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" /> Baixar Imagem
+                                                    </Button>
+                                                )}
+                                            </div>
+
+                                            <input
+                                                type="file"
+                                                ref={coverInputRef}
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file && activeIdx !== null) handleUploadPostCover(activeIdx, file);
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-4 pt-2">
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] uppercase font-black tracking-widest text-primary/60 ml-1">Tema Principal</Label>
                                                 <Input
@@ -1914,6 +2037,21 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                                         }}
                                                     />
                                                 </div>
+                                            </div>
+
+                                            <div className="space-y-2 pt-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-widest text-green-500/60 ml-1">Legenda Final</Label>
+                                                <Textarea
+                                                    className="min-h-[100px] rounded-2xl p-4 bg-white/5 border-white/5 focus:bg-white/10 transition-all text-[10px] font-medium leading-relaxed resize-none no-scrollbar"
+                                                    value={post.caption || ''}
+                                                    placeholder="Cole aqui a legenda final do Instagram..."
+                                                    onChange={(e) => {
+                                                        const n = [...posts];
+                                                        n[idx].caption = e.target.value;
+                                                        setPosts(n);
+                                                        markAsDirty();
+                                                    }}
+                                                />
                                             </div>
                                         </div>
                                     </div>

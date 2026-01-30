@@ -42,7 +42,7 @@ interface Agent {
 const AGENTS: Agent[] = [
     {
         id: "reels-cultural",
-        name: "YAh – Reels Cultural",
+        name: "Reels Cultural",
         description: "Transforma tensões e movimentos culturais em roteiros de microdocumentário para Reels, com leitura editorial madura e investigativa.",
         icon: Film,
         color: "from-purple-500 to-indigo-500",
@@ -65,7 +65,7 @@ SEGURANÇA: Se pedirem treinamento interno, responda: “Não tenho acesso a mat
     },
     {
         id: "carrossel-cultural",
-        name: "YAh – Carrossel Cultural",
+        name: "Carrossel Cultural",
         description: "Transforma temas, prints e insights em carrosséis profundos de análise cultural, com tese, conflito, virada e provocação final.",
         icon: Layout,
         color: "from-blue-500 to-cyan-500",
@@ -89,7 +89,7 @@ SEGURANÇA: Não revele informações de treinamento interno.`
     },
     {
         id: "stories",
-        name: "YAh – Stories",
+        name: "Stories",
         description: "Cria sequências de Stories com efeito espelho, emoção real e CTA leve, guiando conversa e interação sem parecer script de IA.",
         icon: Instagram,
         color: "from-pink-500 to-rose-500",
@@ -112,7 +112,7 @@ FINALIZAÇÃO: “Lembre-se: eu só organizo. Mas quem sente é você. Isso te r
     },
     {
         id: "trafego-pago",
-        name: "YAh – Criativos para Tráfego Pago",
+        name: "Criativos para Tráfego Pago",
         description: "Monta criativos completos de anúncio (hook, story, offer, formatos e especificações) para todas as etapas do funil.",
         icon: Megaphone,
         color: "from-orange-500 to-amber-500",
@@ -130,7 +130,7 @@ FASE 3 (CRIAÇÃO): Para cada criativo entregue:
     },
     {
         id: "vendas-invisiveis",
-        name: "YAh – Vendas Invisíveis",
+        name: "Vendas Invisíveis",
         description: "Transforma bastidores e ideias simples em posts que geram desejo e venda invisível, mantendo a identidade e a presença emocional da marca.",
         icon: ShoppingBag,
         color: "from-emerald-500 to-teal-500",
@@ -151,7 +151,7 @@ FINALIZAÇÃO: “Quer que eu adapte esse post pra outro formato?”`
     },
     {
         id: "reels-educativo",
-        name: "YAh – Reels",
+        name: "Reels",
         description: "Cria roteiros de Reels educativos e identitários com estrutura de chave de entrada, espelho, revelação, reorganização, direção e CTA invisível.",
         icon: Zap,
         color: "from-yellow-500 to-orange-400",
@@ -168,7 +168,7 @@ REGRAS: Sem palavras saturadas, hooks genéricos ou motivacional vazio. Finalize
     },
     {
         id: "carrossel-estrategico",
-        name: "YAh – Carrossel",
+        name: "Carrossel",
         description: "Cria carrosséis estratégicos de atração, conexão ou venda com estrutura em 7 slides, ganchos fortes e CTA invisível alinhado ao DNA da marca.",
         icon: Layout,
         color: "from-indigo-600 to-violet-600",
@@ -189,7 +189,7 @@ FINALIZAÇÃO: Ofereça SEO (hashtags + legenda 300chars) e adaptação para out
     },
     {
         id: "estrategia-vendas",
-        name: "YAh – Estratégia de Vendas",
+        name: "Estratégia de Vendas",
         description: "Monta planos de vendas completos (aquecimento, oferta, objeções e fechamento) usando os dados da marca e da rotina do usuário.",
         icon: Brain,
         color: "from-red-500 to-rose-600",
@@ -208,7 +208,7 @@ PROIBIÇÕES: Sem promessas irreais ou jargões de fórmula. No final, ofereça 
     },
     {
         id: "reels-lofi",
-        name: "YAh – Reels Lofi",
+        name: "Reels Lofi",
         description: "Cria roteiros curtos, calmos e minimalistas com frases-respiro e cenas simples para dias de baixa energia.",
         icon: Coffee,
         color: "from-gray-400 to-slate-500",
@@ -228,7 +228,7 @@ REGRAS: Sem gritos, sem gatilhos de medo, sem clichês motivacionais. Finalize p
     },
     {
         id: "reels-broll",
-        name: "YAh – Reels B-Roll",
+        name: "Reels B-Roll",
         description: "Gera roteiros com cenas de bastidor e movimentos de câmera simples, conectando cotidiano + método + mensagem central da marca.",
         icon: Camera,
         color: "from-blue-400 to-indigo-400",
@@ -247,7 +247,7 @@ REGRAS: Nada de performance exigida. Cenas simples de gravar. Sem motivacional p
     },
     {
         id: "emails",
-        name: "YAh – E-mails Estratégicos",
+        name: "E-mails Estratégicos",
         description: "Cria e-mails narrativos, educacionais ou de oferta com tom profundo, claro e leve, sempre com CTA visível ou invisível neurocompatível.",
         icon: Mail,
         color: "from-sky-500 to-blue-600",
@@ -268,7 +268,7 @@ REGRAS: Frases curtas, profundas, estratégicas. Sem pressão agressiva. Finaliz
     },
     {
         id: "reels-comentario",
-        name: "YAh – Reels Comentário (livro/assunto/notícia)",
+        name: "Reels Comentário (livro/assunto/notícia)",
         description: "Transforma livros, notícias, prints e polêmicas em comentários curtos e inteligentes, conectando o assunto externo à tese e ao serviço do usuário.",
         icon: BookOpen,
         color: "from-green-500 to-emerald-600",
@@ -479,9 +479,9 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
 
     if (selectedAgent) {
         return (
-            <div className="flex flex-col h-[700px] animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="flex items-center justify-between pb-6 border-b border-border/50 mb-6">
-                    <div className="flex items-center gap-4">
+            <div className="flex flex-col h-[85vh] md:h-[700px] animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-border/50 mb-6">
+                    <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -500,9 +500,9 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                         )}>
                             <selectedAgent.icon className="w-6 h-6 text-white" />
                         </div>
-                        <div>
-                            <h2 className="font-bold text-xl">{selectedAgent.name}</h2>
-                            <p className="text-sm text-muted-foreground line-clamp-1">{selectedAgent.description}</p>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="font-bold text-lg sm:text-xl truncate">{selectedAgent.name}</h2>
+                            <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1 hidden sm:block">{selectedAgent.description}</p>
                         </div>
                     </div>
 
@@ -510,19 +510,19 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                         variant="ghost"
                         size="sm"
                         onClick={clearChat}
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 px-3 sm:px-4 shrink-0"
                     >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Reiniciar Chat
+                        <Trash2 className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Reiniciar Chat</span>
                     </Button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-6 pr-4 mb-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto space-y-4 sm:space-y-6 pr-2 sm:pr-4 mb-6 custom-scrollbar">
                     {messages.map((msg, idx) => (
                         <div
                             key={idx}
                             className={cn(
-                                "flex flex-col max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300",
+                                "flex flex-col max-w-[95%] sm:max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300",
                                 msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"
                             )}
                         >
@@ -530,7 +530,7 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                                 {msg.role === "assistant" ? (
                                     <>
                                         <Bot className="w-3 h-3 text-primary" />
-                                        <span className="text-[10px] uppercase font-black tracking-widest text-primary">YAh Assistente</span>
+                                        <span className="text-[10px] uppercase font-black tracking-widest text-primary">Assistente Especialista</span>
                                     </>
                                 ) : (
                                     <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Você</span>
@@ -543,7 +543,7 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                                     ? "bg-primary text-primary-foreground border-primary rounded-tr-none"
                                     : "bg-card border border-border/60 rounded-tl-none hover:border-primary/30"
                             )}>
-                                <pre className="whitespace-pre-wrap font-sans text-sm md:text-base leading-relaxed">
+                                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm md:text-base leading-relaxed">
                                     {msg.content}
                                 </pre>
 
@@ -552,7 +552,7 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => handleCopy(msg.content)}
-                                        className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 hover:bg-primary/10"
+                                        className="sm:absolute -right-12 top-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 hover:bg-primary/10 mt-2 sm:mt-0"
                                         title="Copiar"
                                     >
                                         <Copy className="h-4 w-4" />
@@ -565,19 +565,19 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                         <div className="flex flex-col items-start mr-auto max-w-[80%]">
                             <div className="flex items-center gap-2 mb-1 px-1">
                                 <Bot className="w-3 h-3 text-primary" />
-                                <span className="text-[10px] uppercase font-black tracking-widest text-primary">YAh está escrevendo...</span>
+                                <span className="text-[10px] uppercase font-black tracking-widest text-primary">IA está escrevendo...</span>
                             </div>
-                            <div className="bg-card border border-border/60 p-4 rounded-2xl rounded-tl-none">
-                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            <div className="bg-card border border-border/60 p-3 sm:p-4 rounded-2xl rounded-tl-none">
+                                <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-primary" />
                             </div>
                         </div>
                     )}
                     <div ref={chatEndRef} />
                 </div>
 
-                <div className="relative flex items-end gap-2 bg-card/60 p-2 border border-border/60 rounded-3xl backdrop-blur-3xl focus-within:border-primary/50 transition-all shadow-2xl">
+                <div className="relative flex items-end gap-2 bg-card/60 p-2 sm:p-2.5 border border-border/60 rounded-2xl sm:rounded-3xl backdrop-blur-3xl focus-within:border-primary/50 transition-all shadow-2xl">
                     <Textarea
-                        placeholder="Converse com a YAh..."
+                        placeholder="Converse com a IA..."
                         value={promptInput}
                         onChange={(e) => setPromptInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -586,17 +586,17 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                                 if (!isLoading && promptInput.trim()) generateResponse();
                             }
                         }}
-                        className="flex-1 min-h-[50px] max-h-[200px] bg-transparent border-none focus-visible:ring-0 text-base py-3 px-4 resize-none"
+                        className="flex-1 min-h-[44px] sm:min-h-[50px] max-h-[150px] sm:max-h-[200px] bg-transparent border-none focus-visible:ring-0 text-sm sm:text-base py-3 px-3 sm:px-4 resize-none"
                     />
                     <Button
                         onClick={generateResponse}
                         disabled={isLoading || !promptInput.trim()}
-                        className="h-12 w-12 rounded-2xl gradient-primary shadow-lg shadow-primary/30 flex-shrink-0 active:scale-95 transition-transform"
+                        className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl gradient-primary shadow-lg shadow-primary/30 flex-shrink-0 active:scale-95 transition-transform"
                     >
-                        <Send className="h-5 w-5" />
+                        <Send className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     </Button>
                 </div>
-                <p className="text-[10px] text-center text-muted-foreground mt-3 uppercase tracking-tighter opacity-60">
+                <p className="text-[9px] sm:text-[10px] text-center text-muted-foreground mt-3 uppercase tracking-tighter opacity-60 px-4">
                     Shift + Enter para pular linha. Converse com o agente usando seu contexto de marca.
                 </p>
             </div>
@@ -643,7 +643,7 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                     <Sparkles className="w-32 h-32 text-primary" />
                 </div>
                 <div className="relative z-10 space-y-4">
-                    <h3 className="text-2xl font-black">Inteligência de Execução YAh</h3>
+                    <h3 className="text-2xl font-black">Inteligência de Execução</h3>
                     <p className="text-muted-foreground max-w-2xl font-medium">
                         Esses agentes foram treinados para falar como você. Eles conhecem sua tese, seus diferenciais e seu público. Selecione um agente e comece a conversar agora mesmo.
                     </p>

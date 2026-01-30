@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -17,7 +18,9 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const { signIn, signUp, user } = useAuth();
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const { signIn, signUp, resetPassword, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,6 +84,32 @@ export default function Auth() {
       }
     } else {
       toast.success("Conta criada com sucesso!");
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetEmail.trim()) {
+      toast.error("Por favor, insira seu email");
+      return;
+    }
+
+    try {
+      emailSchema.parse(resetEmail);
+    } catch (err) {
+      toast.error("Email inválido");
+      return;
+    }
+
+    setIsLoading(true);
+    const { error } = await resetPassword(resetEmail);
+    setIsLoading(false);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Link de recuperação enviado para o seu email!");
+      setShowResetModal(false);
+      setResetEmail("");
     }
   };
 
@@ -151,7 +180,16 @@ export default function Auth() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password-signin" className="text-foreground text-sm font-medium">Senha</Label>
+                  <div className="flex justify-between items-center px-1">
+                    <Label htmlFor="password-signin" className="text-foreground text-sm font-medium">Senha</Label>
+                    <button
+                      type="button"
+                      onClick={() => setShowResetModal(true)}
+                      className="text-[10px] text-primary hover:underline font-bold uppercase tracking-widest"
+                    >
+                      Esqueceu sua senha?
+                    </button>
+                  </div>
                   <div className="relative">
                     <Input
                       id="password-signin"
@@ -241,6 +279,54 @@ export default function Auth() {
           </Tabs>
         </div>
       </div>
+
+      {/* Password Reset Modal */}
+      <Dialog open={showResetModal} onOpenChange={setShowResetModal}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-3xl border-border/50 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Recuperar Senha
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Insira seu email para receber um link de redefinição de senha.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="reset-email" className="text-sm font-medium">Email</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="seu@email.com"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                className="h-12 bg-secondary/30 border-border/50 focus:border-primary rounded-xl"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setShowResetModal(false)}
+              className="h-12 rounded-xl"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={isLoading || !resetEmail.trim()}
+              className="h-12 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 transition-all flex-1"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Enviar link de recuperação"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

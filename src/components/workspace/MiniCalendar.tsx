@@ -8,7 +8,8 @@ import { ptBR } from "date-fns/locale";
 import { isSameDay, format, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { CerebroEvent, CATEGORY_COLORS } from "../calendar/types";
+import { CerebroEvent, CATEGORY_COLORS, EventCategory } from "../calendar/types";
+import { CATEGORIES } from "../calendar/CategoryFilters";
 import { expandRecurringEvents } from "../calendar/utils/recurrenceUtils";
 import { toast } from "sonner";
 
@@ -95,12 +96,16 @@ export function MiniCalendar() {
     addMonths(currentMonthStart, 2)
   );
 
+  const validCategories = CATEGORIES.map(c => c.id);
+
   const selectedDayActivities = expandedActivities.filter(a =>
-    date && isSameDay(new Date(a.data + 'T12:00:00'), date)
+    date && isSameDay(new Date(a.data + 'T12:00:00'), date) && validCategories.includes(a.categoria)
   );
 
   const modifiers = {
-    hasActivity: (day: Date) => expandedActivities.some(a => isSameDay(new Date(a.data + 'T12:00:00'), day))
+    hasActivity: (day: Date) => expandedActivities.some(a =>
+      isSameDay(new Date(a.data + 'T12:00:00'), day) && validCategories.includes(a.categoria)
+    )
   };
 
   return (
@@ -108,7 +113,7 @@ export function MiniCalendar() {
       <CardHeader className="pb-2 border-b border-white/5 bg-white/[0.02]">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => navigate("/calendar")}
+            onClick={() => navigate("/calendar", { state: { selectedDate: date } })}
             className="flex items-center gap-2 transition-all duration-300 hover:translate-x-1"
           >
             <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -123,7 +128,7 @@ export function MiniCalendar() {
             </div>
           </button>
           <button
-            onClick={() => navigate("/calendar")}
+            onClick={() => navigate("/calendar", { state: { selectedDate: date } })}
             className="w-8 h-8 rounded-xl bg-primary shadow-lg shadow-primary/20 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300"
           >
             <Plus className="w-5 h-5 text-primary-foreground" />
@@ -188,7 +193,7 @@ export function MiniCalendar() {
                       <div
                         key={activity.id}
                         className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 cursor-pointer relative overflow-hidden"
-                        onClick={() => navigate("/calendar")}
+                        onClick={() => navigate("/calendar", { state: { selectedDate: date } })}
                       >
                         {/* Interactive hover glow */}
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/[0.02] to-primary/0 opacity-0 group-hover:opacity-100 -translate-x-full group-hover:translate-x-full transition-all duration-1000" />

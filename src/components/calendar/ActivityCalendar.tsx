@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { CalendarHeader } from "./CalendarHeader";
 import { CategoryFilters, CATEGORIES } from "./CategoryFilters";
@@ -21,10 +22,15 @@ import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 
 export function ActivityCalendar() {
   const { user } = useAuth();
+  const location = useLocation();
   const [view, setView] = useState<"day" | "week" | "month" | "year">("month");
   const [displayMode, setDisplayMode] = useState<"calendar" | "list">("calendar");
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+
+  // Initialize from navigation state if available
+  const initialDate = location.state?.selectedDate ? new Date(location.state.selectedDate) : new Date();
+
+  const [currentDate, setCurrentDate] = useState(initialDate);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(initialDate);
   const [events, setEvents] = useState<CerebroEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(CATEGORIES.map(c => c.id));

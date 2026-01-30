@@ -391,12 +391,12 @@ export default function Admin() {
         },
         {
           key: "mercado_pago_public_key",
-          value: mercadoPagoPublicKey,
+          value: mercadoPagoPublicKey.trim(),
           description: "Public Key do Mercado Pago"
         },
         {
           key: "mercado_pago_access_token",
-          value: mercadoPagoAccessToken,
+          value: mercadoPagoAccessToken.trim(),
           description: "Access Token do Mercado Pago"
         }
       ];

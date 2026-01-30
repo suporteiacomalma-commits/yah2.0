@@ -25,9 +25,12 @@ export function useMercadoPago() {
         planId: string;
         cardToken: string;
         paymentMethodId: string;
+        issuerId?: string;
         installments: number;
         email: string;
         fullName?: string;
+        cpf?: string;
+        phone?: string;
     }) => {
         setIsProcessing(true);
         try {

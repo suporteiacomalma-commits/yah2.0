@@ -235,6 +235,8 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                   amount={selectedPlan.amount}
                   email={profile?.email || ""}
                   fullName={profile?.full_name || ""}
+                  cpf={cpf}
+                  phone={phone}
                   onSuccess={() => {
                     setIsPurchaseOpen(false);
                     setSelectedPlan(null);

@@ -12,7 +12,9 @@ serve(async (req) => {
     }
 
     try {
-        const { planId, userId, cardToken, paymentMethodId, installments, email, fullName } = await req.json();
+        const body = await req.json();
+        console.log("Request Body:", body);
+        const { planId, userId, cardToken, paymentMethodId, issuerId, installments, email, fullName, cpf, phone } = body;
 
         const supabaseClient = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
@@ -59,7 +61,7 @@ serve(async (req) => {
         if (txError) throw txError;
 
         // 4. Create Mercado Pago Payment
-        const paymentData = {
+        const paymentData: any = {
             transaction_amount: Number(plan.amount),
             token: cardToken,
             description: `Plano ${plan.name} - YAh`,
@@ -74,21 +76,43 @@ serve(async (req) => {
             notification_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/mercado-pago-webhook`,
         };
 
+        if (issuerId) {
+            paymentData.issuer_id = Number(issuerId);
+        }
+
+        // Add Identification (CPF) if provided
+        if (cpf) {
+            paymentData.payer.identification = {
+                type: "CPF",
+                number: cpf.replace(/\D/g, ""), // Remove non-digits
+            };
+        }
+
+        // Add Phone if provided
+        if (phone) {
+            paymentData.payer.phone = {
+                number: phone.replace(/\D/g, ""),
+            };
+        }
+
+        console.log("Sending to Mercado Pago:", JSON.stringify(paymentData, null, 2));
+
         const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${mpAccessToken}`,
                 "Content-Type": "application/json",
-                "X-Idempotency-Key": transaction.id, // Use transaction ID as idempotency key
+                "X-Idempotency-Key": transaction.id,
             },
             body: JSON.stringify(paymentData),
         });
 
         const mpResult = await mpResponse.json();
-        console.log("Mercado Pago Response:", mpResult);
+        console.log("Mercado Pago Full Response:", JSON.stringify(mpResult, null, 2));
 
         if (!mpResponse.ok) {
             const errorMsg = mpResult.message || mpResult.error || "Erro ao processar pagamento no Mercado Pago";
+            console.error("Mercado Pago API Error:", mpResult);
             throw new Error(errorMsg);
         }
 

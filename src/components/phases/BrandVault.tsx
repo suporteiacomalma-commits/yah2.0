@@ -33,7 +33,8 @@ import {
     HelpCircle,
     Eye,
     Save,
-    Loader2
+    Loader2,
+    MessageCircle
 } from "lucide-react";
 import { useBrand } from "@/hooks/useBrand";
 import { supabase } from "@/integrations/supabase/client";
@@ -278,6 +279,26 @@ export function BrandVault() {
         }
     };
 
+    const handleDeleteCard = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!confirm("Tem certeza que deseja excluir esta área do baú?")) return;
+
+        try {
+            const { error } = await supabase
+                .from("brand_vault_cards")
+                .delete()
+                .eq("id", id);
+
+            if (error) throw error;
+
+            setCards(prev => prev.filter(c => c.id !== id));
+            toast.success("Área removida do baú!");
+        } catch (e) {
+            console.error("Error deleting card:", e);
+            toast.error("Erro ao excluir área.");
+        }
+    };
+
     const handleFileUpload = async (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !brand) return;
@@ -421,7 +442,7 @@ export function BrandVault() {
                                 </div>
 
                                 {/* Actions Internal */}
-                                <div className="flex items-center gap-2 pt-2 border-t border-white/5 opacity-40 group-hover/box:opacity-100 transition-opacity">
+                                <div className="flex items-center flex-wrap gap-2 pt-2 border-t border-white/5 opacity-40 group-hover/box:opacity-100 transition-opacity justify-start">
                                     <label className="flex items-center gap-1.5 px-3 h-8 rounded-lg bg-white/5 hover:bg-white/10 transition-all cursor-pointer">
                                         <FileText className="w-3.5 h-3.5" />
                                         <span className="text-[10px] font-bold uppercase tracking-wider">DOC</span>
@@ -444,20 +465,31 @@ export function BrandVault() {
                                             <div className="space-y-4 pt-4">
                                                 <div className="space-y-2">
                                                     <Label>URL</Label>
-                                                    <Input placeholder="https://..." id="link-url" className="rounded-xl bg-white/5 border-white/10" />
+                                                    <Input placeholder="https://..." id="link-url-modal" className="rounded-xl bg-white/5 border-white/10" />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label>Título (Opcional)</Label>
-                                                    <Input placeholder="Nome do link" id="link-title" className="rounded-xl bg-white/5 border-white/10" />
+                                                    <Input placeholder="Nome do link" id="link-title-modal" className="rounded-xl bg-white/5 border-white/10" />
                                                 </div>
                                                 <Button className="w-full rounded-xl gradient-primary" onClick={() => {
-                                                    const url = (document.getElementById('link-url') as HTMLInputElement).value;
-                                                    const title = (document.getElementById('link-title') as HTMLInputElement).value;
+                                                    const url = (document.getElementById('link-url-modal') as HTMLInputElement).value;
+                                                    const title = (document.getElementById('link-title-modal') as HTMLInputElement).value;
                                                     addLink(item.id, title, url);
                                                 }}>Salvar Link</Button>
                                             </div>
                                         </DialogContent>
                                     </Dialog>
+
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-500 px-3 gap-1.5"
+                                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(item.text)}`, '_blank')}
+                                        disabled={!item.text}
+                                    >
+                                        <MessageCircle className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">ZAP</span>
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
@@ -515,7 +547,7 @@ export function BrandVault() {
                         </Dialog>
                     </div>
                 </div>
-            </div>
+            </div >
         );
     }
 
@@ -556,12 +588,22 @@ export function BrandVault() {
                                 fetchItems(card.id);
                             }}
                         >
-                            <CardContent className="p-6 flex flex-col items-start gap-4">
+                            <CardContent className="p-6 flex flex-col items-start gap-4 relative">
+                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                        onClick={(e) => handleDeleteCard(e, card.id)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
                                 <div className="p-3 rounded-2xl bg-white/5 text-primary group-hover:bg-primary/10 transition-all group-hover:scale-110 duration-500">
                                     {getIcon(card.icon)}
                                 </div>
                                 <div className="space-y-1.5">
-                                    <h3 className="font-black text-lg group-hover:text-primary transition-colors">{card.name}</h3>
+                                    <h3 className="font-black text-lg group-hover:text-primary transition-colors pr-6">{card.name}</h3>
                                     <p className="text-[11px] font-medium text-muted-foreground leading-relaxed">
                                         {card.description}
                                     </p>

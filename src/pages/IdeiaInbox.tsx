@@ -6,7 +6,8 @@ import {
     Loader2, Send, X, MoreHorizontal, Check, Trash2,
     Calendar as CalendarIcon, ListTodo, Brain, ScrollText, Plus, MessageSquare,
     ChevronRight, Clock, Info, Share2, Tag, Instagram, Zap, FileText, Target,
-    Rocket, Eye, Layers, Play, FolderSync, Wrench, Megaphone, BarChart3, Settings2
+    Rocket, Eye, Layers, Play, FolderSync, Wrench, Megaphone, BarChart3, Settings2,
+    PenTool, FolderOpen
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
+import { CerebroEvent } from "@/components/calendar/types";
 
 type InboxState =
     | "initial"
@@ -35,12 +37,12 @@ type InboxState =
     | "insights";
 
 const FOLDERS = [
-    { name: "Conteúdo", icon: "✍️", description: "Ideias de posts e campanhas", color: "#A855F7" },
-    { name: "Metas", icon: "🎯", description: "Objetivos com progresso", color: "#EC4899" },
-    { name: "Insights", icon: "💡", description: "Aprendizados estratégicos", color: "#EAB308" },
-    { name: "Produto / serviço", icon: "🚀", description: "Defina claramente o que você oferece e como entrega.", color: "#22D3EE" },
-    { name: "Projeto", icon: "📂", description: "Iniciativas e eventos", color: "#3B82F6" },
-    { name: "Stand-by", icon: "🕰️", description: "Ideias para o futuro", color: "#8B5CF6" }
+    { name: "Conteúdo", icon: PenTool, description: "Ideias de posts e campanhas", color: "#A855F7" },
+    { name: "Metas", icon: Target, description: "Objetivos com progresso", color: "#EC4899" },
+    { name: "Insights", icon: Lightbulb, description: "Aprendizados estratégicos", color: "#EAB308" },
+    { name: "Produto / serviço", icon: Rocket, description: "Defina claramente o que você oferece e como entrega.", color: "#22D3EE" },
+    { name: "Projeto", icon: FolderOpen, description: "Iniciativas e eventos", color: "#3B82F6" },
+    { name: "Stand-by", icon: Clock, description: "Ideias para o futuro", color: "#8B5CF6" }
 ];
 
 const AutoHeightTextarea = ({ value, onChange, className, placeholder, autoFocus }: any) => {
@@ -70,7 +72,7 @@ const AutoHeightTextarea = ({ value, onChange, className, placeholder, autoFocus
     );
 };
 
-const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' }) => {
+const InboxActivityCalendar = ({ type = 'meta', brandId }: { type?: 'meta' | 'projeto'; brandId?: string }) => {
     const { user } = useAuth();
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [activities, setActivities] = useState<any[]>([]);
@@ -125,11 +127,11 @@ const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' })
         if (!user) return;
         setIsLoading(true);
         try {
-            const { data, error } = await supabase
-                .from("calendar_activities")
+            const { data, error } = await (supabase as any)
+                .from("eventos_do_cerebro")
                 .select("*")
                 .eq("user_id", user.id)
-                .order("date", { ascending: true });
+                .order("data", { ascending: true });
             if (error) throw error;
             setActivities(data || []);
         } catch (error) {
@@ -145,30 +147,26 @@ const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' })
 
     const isActivityOnDay = (activity: any, day: Date) => {
         if (!day) return false;
-        const activityDate = new Date(activity.date);
+        // Handle timezone/date string
+        const activityDate = new Date(activity.data + 'T12:00:00');
 
         // Match exact date
         if (isSameDay(activityDate, day)) return true;
 
         // Pattern matching for recurring tasks
-        try {
-            const meta = JSON.parse(activity.description || "{}");
-            if (meta.isRecurring) {
-                // Ignore if day is before the start date
-                const dayStart = new Date(day);
-                dayStart.setHours(0, 0, 0, 0);
-                const activityStart = new Date(activityDate);
-                activityStart.setHours(0, 0, 0, 0);
+        if (activity.recorrencia && activity.recorrencia !== 'Nenhuma') {
+            // Ignore if day is before the start date
+            const dayStart = new Date(day);
+            dayStart.setHours(0, 0, 0, 0);
+            const activityStart = new Date(activityDate);
+            activityStart.setHours(0, 0, 0, 0);
 
-                if (dayStart < activityStart) return false;
+            if (dayStart < activityStart) return false;
 
-                if (meta.frequency === 'daily') return true;
-                if (meta.frequency === 'weekly') {
-                    return meta.days.includes(day.getDay());
-                }
+            if (activity.recorrencia === 'Diária') return true;
+            if (activity.recorrencia === 'Semanal' && activity.dias_da_semana) {
+                return activity.dias_da_semana.includes(day.getDay());
             }
-        } catch (e) {
-            // Not recurring
         }
         return false;
     };
@@ -188,16 +186,18 @@ const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' })
                 time: startTime
             } : { isRecurring: false, time: startTime };
 
-            const { error } = await supabase
-                .from("calendar_activities")
+            const { error } = await (supabase as any)
+                .from("eventos_do_cerebro")
                 .insert({
                     user_id: user.id,
-                    title: newActivityTitle.trim(),
-                    date: dateWithTime.toISOString(),
-                    description: JSON.stringify(recurrenceData),
-                    category: type === 'meta' ? "task" : "project_action",
-                    status: "pending",
-                    priority: "medium"
+                    titulo: newActivityTitle.trim(),
+                    data: format(dateWithTime, 'yyyy-MM-dd'),
+                    hora: startTime,
+                    categoria: type === 'meta' ? "Trabalho" : "Trabalho", // Default to Trabalho/Work
+                    tipo: "Tarefa",
+                    recorrencia: frequency === 'none' ? 'Nenhuma' : frequency === 'daily' ? 'Diária' : 'Semanal',
+                    dias_da_semana: frequency === 'weekly' ? (selectedDays.length > 0 ? selectedDays : [selectedDate.getDay()]) : [],
+                    status: "Pendente"
                 });
             if (error) throw error;
             toast.success(frequency !== 'none' ? "Rotina recorrente agendada!" : "Atividade agendada!");
@@ -205,7 +205,7 @@ const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' })
             setShowOptions(false);
             fetchActivities();
         } catch (error) {
-            toast.error("Erro ao agendar rotina");
+            toast.error("Erro ao agendar rotina: " + (error as any).message);
         } finally {
             setIsAdding(false);
         }
@@ -233,8 +233,8 @@ const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' })
                 </span>
             </div>
 
-            <div className="flex flex-col xl:flex-row gap-4 bg-white/[0.02] p-4 rounded-3xl border border-white/5">
-                <div className="xl:w-[280px] shrink-0">
+            <div className="flex flex-col xl:flex-row gap-4 bg-white/[0.02] p-2 sm:p-4 rounded-3xl border border-white/5">
+                <div className="w-full xl:w-[280px] shrink-0">
                     <Calendar
                         mode="single"
                         selected={selectedDate}
@@ -244,7 +244,7 @@ const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' })
                         modifiersClassNames={{
                             hasActivity: cn("relative after:absolute after:bottom-[3px] after:left-1/2 after:-translate-x-1/2 after:w-1 after:h-1 after:rounded-full after:bg-current", colors.shadow, colors.text)
                         }}
-                        className="rounded-xl border border-white/5 bg-black/20 p-2"
+                        className="rounded-xl border border-white/5 bg-black/20 p-1 sm:p-2 w-full"
                         classNames={{
                             day_selected: cn(colors.bg, "text-white focus:bg-current rounded-lg", colors.bgHover),
                             day_today: cn("bg-white/5 font-bold border rounded-lg", colors.text, colors.border),
@@ -269,16 +269,11 @@ const InboxActivityCalendar = ({ type = 'meta' }: { type?: 'meta' | 'projeto' })
                     <div className="flex-1 space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar pr-2 min-h-[60px]">
                         {selectedDayActivities.length > 0 ? (
                             selectedDayActivities.map((activity) => {
-                                let timeStr = "";
-                                try {
-                                    const metaData = JSON.parse(activity.description || "{}");
-                                    if (metaData.time) timeStr = metaData.time;
-                                } catch (e) { }
-
+                                const timeStr = activity.hora ? activity.hora.substring(0, 5) : "";
                                 return (
                                     <div key={activity.id} className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-white/5 group hover:bg-white/[0.08] transition-all">
                                         <div className={cn("w-1.5 h-1.5 rounded-full", colors.bg)} />
-                                        <span className="text-xs text-foreground/80 flex-1 truncate">{activity.title}</span>
+                                        <span className="text-xs text-foreground/80 flex-1 truncate">{activity.titulo}</span>
                                         {timeStr && <span className="text-[9px] text-muted-foreground font-mono">{timeStr}</span>}
                                     </div>
                                 );
@@ -407,11 +402,19 @@ export default function IdeiaInbox() {
         type: "feed" | "stories";
         intention: string;
     } | null>(null);
+    const [folderSearchQuery, setFolderSearchQuery] = useState("");
 
     const [isTriageFolderOpen, setIsTriageFolderOpen] = useState(false);
     const [isDetailFolderOpen, setIsDetailFolderOpen] = useState(false);
     const [showSuccessDialog, setShowSuccessDialog] = useState(false);
     const [successData, setSuccessData] = useState<{ week: number; day: string; type: string } | null>(null);
+    const [showFeedback, setShowFeedback] = useState(false);
+
+    const triggerFeedback = () => {
+        if (navigator.vibrate) navigator.vibrate(200);
+        setShowFeedback(true);
+        setTimeout(() => setShowFeedback(false), 2000);
+    };
 
     const getFolderConfig = (folderName: string) => {
         return FOLDERS.find(f => f.name === folderName) || { name: folderName || "Insights", color: "#EAB308" };
@@ -908,8 +911,14 @@ export default function IdeiaInbox() {
             });
 
             if (error) throw error;
-            toast.success("Ideia salva!");
-            setInboxState("initial");
+            if (error) throw error;
+            triggerFeedback();
+            // toast.success("Ideia salva!");
+
+            const targetFolder = analysisResult?.suggested_destination || "Sem Pasta";
+            setSelectedFolder(targetFolder);
+            setInboxState("folder_detail");
+
             fetchIdeas();
         } catch (error: any) {
             toast.error("Erro ao salvar: " + error.message);
@@ -918,7 +927,7 @@ export default function IdeiaInbox() {
         }
     };
 
-    const addToWeeklyPlan = async (targetWeek: number, contentType: "feed" | "stories") => {
+    const addToWeeklyPlan = async (targetWeek: number, contentType: "feed" | "stories", userIntention?: string) => {
         const ideaToUse = (inboxState === 'item_detail') ? (editingIdea || selectedIdea) : analysisResult;
         if (!brand || !ideaToUse || !user) return;
 
@@ -942,8 +951,9 @@ export default function IdeiaInbox() {
                 "domingo": 0, "segunda": 1, "terça": 2, "terca": 2, "quarta": 3, "quinta": 4, "sexta": 5, "sábado": 6, "sabado": 6,
                 "domingo-feira": 0, "segunda-feira": 1, "terça-feira": 2, "terca-feira": 2, "quarta-feira": 3, "quinta-feira": 4, "sexta-feira": 5, "sábado-feira": 6, "sabado-feira": 6
             };
+            // Default to Monday (1) if day is missing or invalid
             const rawDay = (sugg?.dia_ideal || "segunda").toLowerCase();
-            const dayIdx = dayMapping[rawDay] ?? 1;
+            const dayIdx = dayMapping[rawDay] !== undefined ? dayMapping[rawDay] : 1;
 
             if (!currentStructure[weekIdx]) {
                 currentStructure[weekIdx] = {};
@@ -956,9 +966,9 @@ export default function IdeiaInbox() {
             const targetContent = dayContent[contentType] || {};
 
             const newBlock = {
-                headline: sugg?.headline || metadata.title || ideaToUse.content?.substring(0, 50),
+                headline: sugg?.headline || metadata.title || ideaToUse.content?.substring(0, 50) || "Ideia sem título",
                 format: (contentType === "feed" ? sugg?.formato_feed : sugg?.formato_stories) || (contentType === "feed" ? "Reels" : "Sequência"),
-                intention: sugg?.intencao_conteudo || "Conexão",
+                intention: userIntention || sugg?.intencao_conteudo || "Conexão",
                 notes: metadata.summary || ideaToUse.content || "",
                 instruction: sugg?.mini_roteiro || "Transformar esta ideia em um post estratégico.",
                 id: Date.now()
@@ -1000,7 +1010,10 @@ export default function IdeiaInbox() {
         }
     };
 
+    // ... (rest of code)
+
     const handleStartAllocation = () => {
+        // ... (existing handleStartAllocation code)
         const ideaToUse = (inboxState === 'item_detail') ? (editingIdea || selectedIdea) : analysisResult;
         if (!ideaToUse) return;
 
@@ -1020,6 +1033,7 @@ export default function IdeiaInbox() {
 
         return (
             <div className="space-y-4 p-4 bg-background/50 rounded-2xl border border-white/10 animate-in slide-in-from-top-2 duration-300">
+                {/* ... (existing UI code) ... */}
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 text-primary">
                         <Sparkles className="w-3.5 h-3.5" />
@@ -1097,7 +1111,7 @@ export default function IdeiaInbox() {
                     <Button
                         size="sm"
                         className="w-full h-10 rounded-xl gradient-primary text-white font-black uppercase tracking-widest text-[10px] shadow-lg group"
-                        onClick={() => addToWeeklyPlan(allocationDraft.week, allocationDraft.type)}
+                        onClick={() => addToWeeklyPlan(allocationDraft.week, allocationDraft.type, allocationDraft.intention)}
                         disabled={isProcessing}
                     >
                         {isProcessing ? (
@@ -1154,6 +1168,17 @@ export default function IdeiaInbox() {
         }
     };
 
+    const handleShareToWhatsApp = () => {
+        const idea = editingIdea || selectedIdea;
+        if (!idea) return;
+
+        const title = idea.metadata?.title || "Minha Ideia";
+        const content = idea.content || "";
+        const text = `*${title}*\n\n${content}`;
+        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+    };
+
     const filteredSearchIdeas = savedIdeas.filter(i =>
         i.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         i.metadata?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1168,7 +1193,7 @@ export default function IdeiaInbox() {
             </div>
             <div className="space-y-4">
                 <h3 className="text-2xl font-bold">Yah está processando...</h3>
-                <p className="text-muted-foreground italic">"Transformando caos em clareza."</p>
+                <p className="text-yellow-500 italic">Do pensamento → à estrutura.</p>
             </div>
             <div className="flex gap-2">
                 {[1, 2, 3].map(i => (
@@ -1216,8 +1241,8 @@ export default function IdeiaInbox() {
                         <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-4">
                             <Zap className="w-8 h-8 text-amber-500" />
                         </div>
-                        <h2 className="text-4xl font-black tracking-tighter leading-none italic uppercase">Modo Rajada</h2>
-                        <p className="text-muted-foreground text-lg">Processamos {analysisResult.itens.length} ideias simultaneamente.</p>
+                        <h2 className="text-2xl sm:text-3xl font-black tracking-tighter leading-none italic uppercase">Modo Rajada</h2>
+                        <p className="text-muted-foreground text-sm sm:text-base">Processamos {analysisResult.itens.length} ideias simultaneamente.</p>
                     </div>
 
                     <div className="w-full max-w-4xl space-y-4">
@@ -1257,13 +1282,13 @@ export default function IdeiaInbox() {
                     <div className="mx-auto w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                         <Sparkles className="w-8 h-8 text-primary" />
                     </div>
-                    <h2 className="text-4xl font-black tracking-tighter leading-none italic uppercase">Yah Triagem Inteligente</h2>
-                    <p className="text-muted-foreground text-lg">Identificamos o melhor destino para seu insight.</p>
+                    <h2 className="text-2xl sm:text-3xl font-black tracking-tighter leading-none italic uppercase">Yah Triagem Inteligente</h2>
+                    <p className="text-muted-foreground text-sm sm:text-base">Identificamos o melhor destino para seu insight.</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-5xl px-4 sm:px-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full max-w-5xl sm:px-0">
                     {/* Main Summary Card */}
-                    <div className="p-6 sm:p-10 rounded-[32px] sm:rounded-[48px] bg-card/40 border border-white/5 shadow-2xl space-y-6 flex flex-col hover:border-primary/20 transition-all group">
+                    <div className="p-4 sm:p-10 rounded-[32px] sm:rounded-[48px] bg-card/40 border border-white/5 shadow-2xl space-y-6 flex flex-col hover:border-primary/20 transition-all group">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
@@ -1314,11 +1339,11 @@ export default function IdeiaInbox() {
                                                         setIsTriageFolderOpen(false);
                                                     }}
                                                     className={cn(
-                                                        "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10",
+                                                        "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10 flex items-center gap-2",
                                                         analysisResult.suggested_destination === f.name ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
                                                     )}
                                                 >
-                                                    {f.icon} {f.name}
+                                                    <f.icon className="w-3 h-3" style={{ color: f.color }} /> {f.name}
                                                 </button>
                                             ))}
                                         </div>
@@ -1329,10 +1354,10 @@ export default function IdeiaInbox() {
                     </div>
 
                     {/* Dynamic Suggestion Details */}
-                    <div className="space-y-6 px-4 sm:px-0">
+                    <div className="space-y-6 sm:px-0">
                         {/* Original Content Box in Triage */}
                         {analysisResult.category !== 'projeto' && analysisResult.category !== 'produto' && analysisResult.suggested_destination !== 'Produto / serviço' && (
-                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-card/60 border border-white/5 shadow-xl space-y-4">
+                            <div className="p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-card/60 border border-white/5 shadow-xl space-y-4">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <ScrollText className="w-4 h-4" /> Conteúdo Original
                                 </h4>
@@ -1345,7 +1370,7 @@ export default function IdeiaInbox() {
                         )}
 
                         {analysisResult.category !== 'meta' && analysisResult.category !== 'projeto' && analysisResult.category !== 'produto' && analysisResult.suggested_destination !== 'Produto / serviço' && (
-                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-card/60 border border-white/5 shadow-xl space-y-4">
+                            <div className="p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-card/60 border border-white/5 shadow-xl space-y-4">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <Plus className="w-4 h-4" /> Conteúdo Adicional
                                 </h4>
@@ -1360,7 +1385,7 @@ export default function IdeiaInbox() {
 
                         {/* Projeto Planning Details in Triage */}
                         {analysisResult.category === 'projeto' && analysisResult.sugestao_projeto && (
-                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-blue-500/5 border border-blue-500/10 space-y-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                            <div className="p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-blue-500/5 border border-blue-500/10 space-y-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-blue-500 flex items-center gap-2">
                                     <Rocket className="w-4 h-4" /> Planejamento Estratégico do Projeto
                                 </h4>
@@ -1378,8 +1403,8 @@ export default function IdeiaInbox() {
                                         { key: 'metricas', label: 'Métricas', icon: BarChart3 },
                                         { key: 'ajustes', label: 'Ajustes', icon: Settings2 }
                                     ].map((field) => (
-                                        <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm">
-                                            <div className="flex items-center justify-between">
+                                        <div key={field.key} className="space-y-3 p-4 sm:p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                                                 <div className="flex items-center gap-2">
                                                     <field.icon className="w-4 h-4 text-blue-500/70 group-hover:text-blue-500 transition-colors" />
                                                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500 transition-colors">{field.label}</span>
@@ -1411,12 +1436,12 @@ export default function IdeiaInbox() {
                                         </div>
                                     ))}
                                 </div>
-                                <InboxActivityCalendar type="projeto" />
+                                <InboxActivityCalendar type="projeto" brandId={brand?.id} />
                             </div>
                         )}
 
                         {analysisResult.category === 'conteudo' && analysisResult.sugestao_conteudo && (
-                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-primary/5 border border-primary/10 space-y-6">
+                            <div className="p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-primary/5 border border-primary/10 space-y-6">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                         <FileText className="w-4 h-4" /> Plano de Conteúdo
@@ -1467,7 +1492,7 @@ export default function IdeiaInbox() {
                         )}
 
                         {analysisResult.category === 'meta' && analysisResult.sugestao_meta && (
-                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-emerald-500/5 border border-emerald-500/10 space-y-6">
+                            <div className="p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-emerald-500/5 border border-emerald-500/10 space-y-6">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 flex items-center gap-2">
                                     <Target className="w-4 h-4" /> Plano de Meta
                                 </h4>
@@ -1530,7 +1555,68 @@ export default function IdeiaInbox() {
                                             })}
                                         />
                                     </div>
-                                    <InboxActivityCalendar type="meta" />
+
+                                    {/* Custom Fields */}
+                                    {analysisResult.sugestao_meta.custom_fields?.map((field: any, idx: number) => (
+                                        <div key={field.id} className="space-y-1 py-4 border-b border-white/5 relative group">
+                                            <div className="flex items-center justify-between">
+                                                <input
+                                                    className="bg-transparent border-none focus:ring-0 text-[10px] font-black uppercase tracking-widest opacity-50 w-full p-0"
+                                                    placeholder="TÍTULO DO CAMPO"
+                                                    value={field.title}
+                                                    onChange={(e) => {
+                                                        const newFields = [...(analysisResult.sugestao_meta.custom_fields || [])];
+                                                        newFields[idx].title = e.target.value;
+                                                        setAnalysisResult({
+                                                            ...analysisResult,
+                                                            sugestao_meta: { ...analysisResult.sugestao_meta, custom_fields: newFields }
+                                                        });
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const newFields = analysisResult.sugestao_meta.custom_fields.filter((_: any, i: number) => i !== idx);
+                                                        setAnalysisResult({
+                                                            ...analysisResult,
+                                                            sugestao_meta: { ...analysisResult.sugestao_meta, custom_fields: newFields }
+                                                        });
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+                                                >
+                                                    <X className="w-3 h-3 text-muted-foreground" />
+                                                </button>
+                                            </div>
+                                            <AutoHeightTextarea
+                                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-sm leading-relaxed px-0"
+                                                placeholder="Digite o conteúdo..."
+                                                value={field.content}
+                                                onChange={(e: any) => {
+                                                    const newFields = [...(analysisResult.sugestao_meta.custom_fields || [])];
+                                                    newFields[idx].content = e.target.value;
+                                                    setAnalysisResult({
+                                                        ...analysisResult,
+                                                        sugestao_meta: { ...analysisResult.sugestao_meta, custom_fields: newFields }
+                                                    });
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <div className="pt-2">
+                                        <button
+                                            onClick={() => {
+                                                const newFields = [...(analysisResult.sugestao_meta.custom_fields || []), { id: Date.now(), title: "", content: "" }];
+                                                setAnalysisResult({
+                                                    ...analysisResult,
+                                                    sugestao_meta: { ...analysisResult.sugestao_meta, custom_fields: newFields }
+                                                });
+                                            }}
+                                            className="text-xs text-emerald-500 hover:text-emerald-400 font-medium flex items-center gap-1 transition-colors"
+                                        >
+                                            <Plus className="w-3 h-3" /> Adicionar campo extra
+                                        </button>
+                                    </div>
+                                    <InboxActivityCalendar type="meta" brandId={brand?.id} />
                                 </div>
                                 <div className="space-y-3">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Checklist de Execução:</span>
@@ -1558,7 +1644,7 @@ export default function IdeiaInbox() {
                         )}
 
                         {(analysisResult.category === 'produto' || analysisResult.suggested_destination === 'Produto / serviço') && (
-                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-cyan-500/5 border border-cyan-500/10 space-y-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+                            <div className="p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-cyan-500/5 border border-cyan-500/10 space-y-8 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-700">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-cyan-500 flex items-center gap-2">
                                     <Rocket className="w-4 h-4" /> Definição do Produto / Serviço
                                 </h4>
@@ -1576,8 +1662,8 @@ export default function IdeiaInbox() {
                                         { key: 'argumentos_valor', label: '9. Defina 3 argumentos de valor', icon: Sparkles, type: 'list' },
                                         { key: 'promessa', label: '10. Crie a promessa em uma frase', icon: Megaphone }
                                     ].map((field) => (
-                                        <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
-                                            <div className="flex items-center justify-between">
+                                        <div key={field.key} className="space-y-3 p-4 sm:p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                                                 <div className="flex items-center gap-2">
                                                     <field.icon className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors" />
                                                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-cyan-500 transition-colors">{field.label}</span>
@@ -1630,8 +1716,8 @@ export default function IdeiaInbox() {
 
                                     {/* Custom Fields */}
                                     {((analysisResult.sugestao_produto as any)?.custom_fields || []).map((field: any, idx: number) => (
-                                        <div key={`custom-${idx}`} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
-                                            <div className="flex items-center justify-between">
+                                        <div key={`custom-${idx}`} className="space-y-3 p-4 sm:p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                                                 <div className="flex items-center gap-2">
                                                     <Plus className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors" />
                                                     <input
@@ -1687,7 +1773,7 @@ export default function IdeiaInbox() {
                         )}
 
                         {analysisResult.category === 'insight' && analysisResult.sugestao_insight && (
-                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-amber-500/5 border border-amber-500/10 space-y-6">
+                            <div className="p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-amber-500/5 border border-amber-500/10 space-y-6">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-500 flex items-center gap-2">
                                     <Zap className="w-4 h-4" /> Regra do Insight
                                 </h4>
@@ -1726,7 +1812,7 @@ export default function IdeiaInbox() {
 
                         {/* Fallback AI Insight if no specific category suggestion */}
                         {(!analysisResult.sugestao_conteudo && !analysisResult.sugestao_meta && !analysisResult.sugestao_insight && !analysisResult.sugestao_produto) && (
-                            <div className="p-6 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-primary/5 border border-primary/10 space-y-4">
+                            <div className="p-4 sm:p-8 rounded-[32px] sm:rounded-[40px] bg-primary/5 border border-primary/10 space-y-4">
                                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Brain className="w-4 h-4" /> AI Insight
                                 </h4>
@@ -1734,37 +1820,54 @@ export default function IdeiaInbox() {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Button
-                                variant="outline"
-                                onClick={() => setInboxState("initial")}
-                                className="h-14 rounded-2xl font-bold border-white/5 hover:bg-white/5"
-                            >
-                                Descartar
-                            </Button>
-                            {analysisResult.category === 'conteudo' ? (
-                                <div className="col-span-1 space-y-2">
-                                    <Button
-                                        onClick={() => setIsSelectingWeek(!isSelectingWeek)}
-                                        className="w-full h-14 rounded-2xl gradient-primary text-white font-bold shadow-xl flex items-center gap-2"
-                                    >
-                                        <CalendarIcon className="w-4 h-4" />
-                                        {isSelectingWeek ? "Cancelar" : "Enviar p/ semana"}
-                                    </Button>
-                                    {isSelectingWeek && renderWeekSelection()}
-                                </div>
-                            ) : (
+                        <div className="space-y-4 w-full">
+                            <div className="grid grid-cols-2 gap-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setInboxState("initial")}
+                                    className="h-14 rounded-2xl font-bold border-white/5 hover:bg-white/5"
+                                >
+                                    Descartar
+                                </Button>
                                 <Button
                                     onClick={saveIdeaDirectly}
                                     className="h-14 rounded-2xl gradient-primary text-white font-bold shadow-xl"
                                 >
                                     Salvar Ideia
                                 </Button>
+                            </div>
+
+                            {/* Special Action for Content: Send to Week */}
+                            {(analysisResult.category === 'conteudo' || analysisResult.suggested_destination === 'Conteúdo') && (
+                                <div className="pt-4 border-t border-white/5">
+                                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3 pl-1">Ações Rápidas</h4>
+                                    <div className="space-y-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => {
+                                                if (isSelectingWeek) {
+                                                    setIsSelectingWeek(false);
+                                                } else {
+                                                    handleStartAllocation();
+                                                }
+                                            }}
+                                            className="w-full h-14 rounded-2xl border-white/5 hover:bg-white/5 hover:border-primary/20 hover:text-primary transition-all font-bold flex items-center justify-center gap-2 group"
+                                        >
+                                            <CalendarIcon className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
+                                            {isSelectingWeek ? "Cancelar Seleção" : "Enviar para semana"}
+                                        </Button>
+                                        {isSelectingWeek && (
+                                            <div className="animate-in slide-in-from-top-2 fade-in duration-300">
+                                                {renderWeekSelection()}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
         );
     };
 
@@ -1837,15 +1940,15 @@ export default function IdeiaInbox() {
                                 className="h-40 rounded-[32px] flex flex-col items-start p-6 border-white/5 hover:border-primary/40 bg-card/40 hover:bg-card transition-all group shadow-2xl relative overflow-hidden text-left"
                             >
                                 <div className="flex justify-between w-full items-start mb-4">
-                                    <span className="text-3xl filter drop-shadow-md group-hover:scale-110 transition-transform">{f.icon}</span>
+                                    <f.icon className="w-12 h-12 filter drop-shadow-md group-hover:scale-110 transition-transform" style={{ color: f.color }} />
                                     <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-muted-foreground">
                                         {count}
                                     </div>
                                 </div>
 
-                                <div className="space-y-1">
-                                    <h4 className="text-2xl font-black tracking-tight" style={{ color: f.color }}>{f.name}</h4>
-                                    <p className="text-xs text-muted-foreground font-medium leading-tight opacity-70">{f.description}</p>
+                                <div className="space-y-1 w-full">
+                                    <h4 className="text-lg sm:text-2xl font-black tracking-tight leading-none text-wrap break-words" style={{ color: f.color }}>{f.name}</h4>
+                                    <p className="text-[10px] sm:text-xs text-muted-foreground font-medium leading-tight opacity-70 text-wrap break-words pr-2">{f.description}</p>
                                 </div>
 
                                 <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1874,9 +1977,9 @@ export default function IdeiaInbox() {
                             </div>
 
                             <div className="space-y-4 max-w-md text-center">
-                                <h2 className="text-4xl font-black tracking-tighter italic uppercase text-foreground leading-[0.9]">Diga seu insight</h2>
-                                <p className="text-muted-foreground text-base px-6">
-                                    Pressione para capturar ou use a busca abaixo.
+                                <h2 className="text-2xl sm:text-3xl font-black tracking-tighter italic uppercase text-foreground leading-[0.9]">Diga seu insight</h2>
+                                <p className="text-muted-foreground text-sm sm:text-base px-6">
+                                    Pressione para capturar, aqui suas ideias ganham direção
                                 </p>
                             </div>
 
@@ -1885,16 +1988,16 @@ export default function IdeiaInbox() {
                                 <input
                                     type="text"
                                     placeholder="Ou digite sua ideia de produto, post..."
-                                    className="flex-1 bg-transparent border-none focus:ring-0 px-2 text-foreground text-lg placeholder:text-muted-foreground/30"
+                                    className="flex-1 bg-transparent border-none focus:ring-0 px-2 text-foreground text-base sm:text-lg placeholder:text-muted-foreground/30"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') handleTextSubmit(e.currentTarget.value);
                                     }}
                                 />
-                                <Button size="icon" className="rounded-2xl h-12 w-12 gradient-primary shadow-lg" onClick={() => {
+                                <Button size="icon" className="shrink-0 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 gradient-primary shadow-lg" onClick={() => {
                                     const input = document.querySelector('input') as HTMLInputElement;
                                     handleTextSubmit(input.value);
                                 }}>
-                                    <Send className="w-5 h-5 text-white" />
+                                    <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                                 </Button>
                             </div>
                         </>
@@ -1970,7 +2073,13 @@ export default function IdeiaInbox() {
     );
 
     const renderFolderDetail = () => {
-        const filteredIdeas = savedIdeas.filter(i => i.folder === selectedFolder);
+        const filteredIdeas = savedIdeas.filter(i =>
+            i.folder === selectedFolder && (
+                folderSearchQuery === "" ||
+                (i.metadata?.title || "").toLowerCase().includes(folderSearchQuery.toLowerCase()) ||
+                (i.content || "").toLowerCase().includes(folderSearchQuery.toLowerCase())
+            )
+        );
         return (
             <div className="w-full h-full space-y-6 animate-in slide-in-from-right-4 duration-500">
                 <div className="flex items-center justify-between">
@@ -1979,7 +2088,21 @@ export default function IdeiaInbox() {
                         <h2 className="text-2xl font-bold">{selectedFolder}</h2>
                         <span className="text-sm text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full">{filteredIdeas.length} itens</span>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setInboxState("initial")}>Voltar às Pastas</Button>
+                    <Button variant="ghost" size="sm" onClick={() => {
+                        setInboxState("initial");
+                        setFolderSearchQuery("");
+                    }}>Voltar às Pastas</Button>
+                </div>
+
+                <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                        type="text"
+                        placeholder={`Buscar em ${selectedFolder}...`}
+                        value={folderSearchQuery}
+                        onChange={(e) => setFolderSearchQuery(e.target.value)}
+                        className="w-full bg-secondary/30 border border-white/5 rounded-2xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/50"
+                    />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2116,17 +2239,17 @@ export default function IdeiaInbox() {
                                         { key: 'ajustes', label: 'Ajustes', icon: Settings2 }
                                     ].map((field) => (
                                         <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <field.icon className="w-4 h-4 text-blue-500/70 group-hover:text-blue-500 transition-colors" />
-                                                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500/70 transition-colors">{field.label}</span>
+                                            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <div className="flex items-center gap-2 w-full sm:w-auto max-w-full">
+                                                    <field.icon className="w-4 h-4 text-blue-500/70 group-hover:text-blue-500 transition-colors shrink-0" />
+                                                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500/70 transition-colors line-clamp-1">{field.label}</span>
                                                 </div>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     disabled={generatingField === field.key}
                                                     onClick={() => handleGenerateProjectField(field.key, field.label, true)}
-                                                    className="h-8 px-4 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-blue-500/20 shadow-lg shadow-blue-500/5 active:scale-95 translate-y-[-2px]"
+                                                    className="w-full sm:w-auto h-8 px-4 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-blue-500/20 shadow-lg shadow-blue-500/5 active:scale-95 translate-y-[-2px] justify-center"
                                                 >
                                                     {generatingField === field.key ? (
                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -2154,7 +2277,7 @@ export default function IdeiaInbox() {
                                         </div>
                                     ))}
                                 </div>
-                                <InboxActivityCalendar type="projeto" />
+                                <InboxActivityCalendar type="projeto" brandId={brand?.id} />
                             </div>
                         )}
 
@@ -2319,7 +2442,7 @@ export default function IdeiaInbox() {
                                             }}
                                         />
                                     </div>
-                                    <InboxActivityCalendar type="meta" />
+                                    <InboxActivityCalendar type="meta" brandId={brand?.id} />
                                 </div>
                                 <div className="space-y-3">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Checklist Final:</span>
@@ -2370,17 +2493,17 @@ export default function IdeiaInbox() {
                                         { key: 'promessa', label: '10. Crie a promessa em uma frase', icon: Megaphone }
                                     ].map((field) => (
                                         <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <field.icon className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors" />
-                                                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-cyan-500/70 transition-colors">{field.label}</span>
+                                            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <div className="flex items-start gap-2 max-w-full">
+                                                    <field.icon className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors shrink-0 mt-0.5 sm:mt-0" />
+                                                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-cyan-500/70 transition-colors leading-relaxed line-clamp-2 md:line-clamp-1 text-left">{field.label}</span>
                                                 </div>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     disabled={generatingField === field.key}
                                                     onClick={() => handleGenerateProductField(field.key, field.label, true)}
-                                                    className="h-8 px-4 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-cyan-500/20"
+                                                    className="w-full sm:w-auto h-8 px-4 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-cyan-500/20 justify-center"
                                                 >
                                                     {generatingField === field.key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                                                     {generatingField === field.key ? "GERANDO..." : "Sugerir com IA"}
@@ -2432,9 +2555,9 @@ export default function IdeiaInbox() {
                                     {/* Custom Fields */}
                                     {(meta.sugestao_produto?.custom_fields || []).map((field: any, idx: number) => (
                                         <div key={`custom-${idx}`} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 transition-all group shadow-sm">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <Plus className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors" />
+                                            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                                    <Plus className="w-4 h-4 text-cyan-500/70 group-hover:text-cyan-500 transition-colors shrink-0" />
                                                     <input
                                                         className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-cyan-500/70 transition-colors bg-transparent border-none outline-none focus:ring-0 w-full"
                                                         value={field.label}
@@ -2451,16 +2574,36 @@ export default function IdeiaInbox() {
                                                         }}
                                                     />
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    disabled={generatingField === `custom_${idx}`}
-                                                    onClick={() => handleGenerateProductField('custom', field.label, true, idx)}
-                                                    className="h-8 px-4 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-cyan-500/20"
-                                                >
-                                                    {generatingField === `custom_${idx}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                                                    {generatingField === `custom_${idx}` ? "GERANDO..." : "Sugerir com IA"}
-                                                </Button>
+                                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        disabled={generatingField === `custom_${idx}`}
+                                                        onClick={() => handleGenerateProductField('custom', field.label, true, idx)}
+                                                        className="flex-1 sm:flex-none h-8 px-4 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 font-bold transition-all text-[10px] uppercase tracking-widest gap-2 border border-cyan-500/20 justify-center"
+                                                    >
+                                                        {generatingField === `custom_${idx}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                                        {generatingField === `custom_${idx}` ? "GERANDO..." : "Sugerir com IA"}
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => {
+                                                            const newCustom = [...(meta.sugestao_produto?.custom_fields || [])];
+                                                            newCustom.splice(idx, 1);
+                                                            setEditingIdea({
+                                                                ...currentIdea,
+                                                                metadata: {
+                                                                    ...meta,
+                                                                    sugestao_produto: { ...meta.sugestao_produto, custom_fields: newCustom }
+                                                                }
+                                                            });
+                                                        }}
+                                                        className="h-8 w-8 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors border border-red-500/20 shrink-0"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
                                             </div>
 
                                             <AutoHeightTextarea
@@ -2594,7 +2737,11 @@ export default function IdeiaInbox() {
                                 </div>
                             )}
 
-                            <Button variant="outline" className="w-full justify-start gap-3 rounded-xl h-12 border-border/50">
+                            <Button
+                                variant="outline"
+                                className="w-full justify-start gap-3 rounded-xl h-12 border-border/50"
+                                onClick={handleShareToWhatsApp}
+                            >
                                 <Share2 className="w-4 h-4 text-blue-500" /> Compartilhar
                             </Button>
                             <Button
@@ -2630,11 +2777,11 @@ export default function IdeiaInbox() {
                                                         setIsDetailFolderOpen(false);
                                                     }}
                                                     className={cn(
-                                                        "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10",
+                                                        "w-full text-left px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-colors hover:bg-primary/10 flex items-center gap-2",
                                                         currentIdea.folder === f.name ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"
                                                     )}
                                                 >
-                                                    {f.icon} {f.name}
+                                                    <f.icon className="w-3 h-3" style={{ color: f.color }} /> {f.name}
                                                 </button>
                                             ))}
                                         </div>
@@ -2644,7 +2791,7 @@ export default function IdeiaInbox() {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
         );
     };
 

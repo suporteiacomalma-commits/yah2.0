@@ -12,6 +12,7 @@ import { CerebroEvent, CATEGORY_COLORS, EventCategory } from "../calendar/types"
 import { CATEGORIES } from "../calendar/CategoryFilters";
 import { expandRecurringEvents } from "../calendar/utils/recurrenceUtils";
 import { toast } from "sonner";
+import { AddActivityDialog } from "../calendar/AddActivityDialog";
 
 export function MiniCalendar() {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -19,6 +20,8 @@ export function MiniCalendar() {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CerebroEvent | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -193,7 +196,15 @@ export function MiniCalendar() {
                       <div
                         key={activity.id}
                         className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 cursor-pointer relative overflow-hidden"
-                        onClick={() => navigate("/calendar", { state: { selectedDate: date } })}
+                        onClick={() => {
+                          // Find master event if it's a recurrence instance
+                          const realEvent = activity.isVirtual
+                            ? activities.find(master => master.id === activity.id.split("-virtual-")[0]) || activity
+                            : activity;
+
+                          setEditingEvent(realEvent);
+                          setShowAddDialog(true);
+                        }}
                       >
                         {/* Interactive hover glow */}
                         <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/[0.02] to-primary/0 opacity-0 group-hover:opacity-100 -translate-x-full group-hover:translate-x-full transition-all duration-1000" />
@@ -264,6 +275,17 @@ export function MiniCalendar() {
           background: rgba(var(--primary), 0.4);
         }
       `}} />
+
+      <AddActivityDialog
+        open={showAddDialog}
+        onOpenChange={(open) => {
+          setShowAddDialog(open);
+          if (!open) setEditingEvent(null);
+        }}
+        onAdd={fetchActivities}
+        defaultDate={date || new Date()}
+        editingEvent={editingEvent}
+      />
     </Card>
   );
 }

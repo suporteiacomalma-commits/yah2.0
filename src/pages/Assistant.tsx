@@ -406,7 +406,7 @@ Frase do usuário: "${inputText}"`;
                     variant="ghost"
                     size="icon"
                     onClick={() => navigate("/")}
-                    className="fixed top-6 left-6 z-[100] h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md group"
+                    className="fixed top-20 left-6 z-[100] md:top-6 h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md group"
                 >
                     <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-1" />
                 </Button>
@@ -430,9 +430,9 @@ Frase do usuário: "${inputText}"`;
                                 </div>
 
                                 <div className="space-y-4 max-w-md text-center">
-                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tighter italic uppercase text-foreground leading-[0.9]">Diga seu insight</h2>
+                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tighter italic uppercase text-foreground leading-[0.9]">O que você precisa lembrar?</h2>
                                     <p className="text-muted-foreground text-sm sm:text-base px-6">
-                                        Pressione para capturar, aqui suas ideias ganham direção
+                                        Fale, escreva ou envie uma imagem. Eu organizo pra você.
                                     </p>
                                 </div>
 
@@ -615,7 +615,7 @@ Frase do usuário: "${inputText}"`;
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Quando?</Label>
                                                 <Input type="date" value={event.data} onChange={e => updateEvent(index, { data: e.target.value })} className="bg-white/5 border-white/5 h-10 rounded-xl px-4 font-bold text-sm" />

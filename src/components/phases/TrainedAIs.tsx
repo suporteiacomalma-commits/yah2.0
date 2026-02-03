@@ -600,7 +600,7 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                 return parts.map((part, partIdx) => {
                     if (part.startsWith('**') && part.endsWith('**')) {
                         return (
-                            <span key={partIdx} className="font-bold text-green-500">
+                            <span key={partIdx} className="font-bold text-[#B5BB4C]">
                                 {part.slice(2, -2)}
                             </span>
                         );
@@ -613,7 +613,7 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
             if (line.trim().startsWith('###')) {
                 const headerText = line.replace(/^###\s*/, '');
                 return (
-                    <div key={lineIdx} className="font-bold text-green-500 text-lg mt-4 mb-2">
+                    <div key={lineIdx} className="font-bold text-[#B5BB4C] text-lg mt-4 mb-2">
                         {renderLineContent(headerText)}
                     </div>
                 );

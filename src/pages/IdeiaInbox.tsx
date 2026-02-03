@@ -1977,9 +1977,9 @@ export default function IdeiaInbox() {
                             </div>
 
                             <div className="space-y-4 max-w-md text-center">
-                                <h2 className="text-2xl sm:text-3xl font-black tracking-tighter italic uppercase text-foreground leading-[0.9]">Diga seu insight</h2>
+                                <h2 className="text-2xl sm:text-3xl font-black tracking-tighter italic uppercase text-foreground leading-[0.9]">O que você precisa lembrar?</h2>
                                 <p className="text-muted-foreground text-sm sm:text-base px-6">
-                                    Pressione para capturar, aqui suas ideias ganham direção
+                                    Fale, escreva ou envie uma imagem. Eu organizo pra você.
                                 </p>
                             </div>
 

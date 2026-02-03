@@ -131,10 +131,10 @@ export function ActivityReports({ date, events }: ReportsProps) {
 
                         <div className="flex flex-wrap gap-3 mb-8">
                             {Object.entries(categoryStats).map(([cat, count]) => {
-                                const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Outro;
+                                const colors = CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS] || CATEGORY_COLORS.Outro;
                                 return (
                                     <div key={cat} className="px-4 py-2 bg-white/[0.03] rounded-2xl border border-white/5 flex items-center gap-3">
-                                        <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_8px]", colors.dot.replace('bg-', 'bg-'))} />
+                                        <div className={cn("w-2 h-2 rounded-full", colors.bg)} style={{ boxShadow: `0 0 10px ${colors.bg.replace('bg-', 'var(--')}` }} />
                                         <div className="flex flex-col">
                                             <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">{cat}</span>
                                             <span className="text-sm font-black text-white leading-none">{count}x</span>
@@ -165,8 +165,12 @@ export function ActivityReports({ date, events }: ReportsProps) {
                                     <div className="w-full h-24 md:h-32 bg-white/[0.03] rounded-2xl md:rounded-3xl relative overflow-hidden shadow-inner border border-white/5 flex flex-col justify-end">
                                         {/* Stacked Category Segments */}
                                         {dayCategoryEntries.map(([cat, count], idx) => {
-                                            const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Outro;
-                                            const percentage = (count / 5) * 100;
+                                            const colors = CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS] || CATEGORY_COLORS.Outro;
+                                            // Normalize: 5 tasks = 100% height (or max tasks if > 5)
+                                            const maxTasks = Math.max(5, ...Array.from({ length: 7 }).map((_, j) =>
+                                                weekEvents.filter(e => isSameDay(new Date(e.data + 'T12:00:00'), addDays(weekStart, j))).length
+                                            ));
+                                            const percentage = (count / maxTasks) * 100;
 
                                             return (
                                                 <Tooltip key={cat}>
@@ -174,13 +178,16 @@ export function ActivityReports({ date, events }: ReportsProps) {
                                                         <div
                                                             className={cn(
                                                                 "w-full transition-all duration-300 ease-out cursor-pointer hover:brightness-125",
-                                                                colors.dot.replace('bg-', 'bg-')
+                                                                colors.bg
                                                             )}
-                                                            style={{ height: `${Math.max(10, percentage)}%` }}
+                                                            style={{
+                                                                height: `${percentage}%`,
+                                                                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.1)`
+                                                            }}
                                                         />
                                                     </TooltipTrigger>
                                                     <TooltipContent side="top" className="flex items-center gap-2 border-white/10 bg-slate-950 px-3 py-1.5 font-bold">
-                                                        <div className={cn("w-2 h-2 rounded-full", colors.dot)} />
+                                                        <div className={cn("w-2 h-2 rounded-full", colors.bg)} />
                                                         <span className="text-[10px] uppercase text-white/50">{cat}:</span>
                                                         <span className="text-xs text-white">{count} {count === 1 ? 'tarefa' : 'tarefas'}</span>
                                                     </TooltipContent>

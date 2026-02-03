@@ -360,6 +360,17 @@ export function BrandVault() {
         }
     };
 
+    const deleteAttachment = async (itemId: string, attachmentIndex: number) => {
+        if (!confirm("Remover este arquivo?")) return;
+        const item = items.find(i => i.id === itemId);
+        if (item && item.attachments) {
+            const newAttachments = item.attachments.filter((_, idx) => idx !== attachmentIndex);
+            setItems(prev => prev.map(i => i.id === itemId ? { ...i, attachments: newAttachments } : i));
+            await updateItem(itemId, { attachments: newAttachments });
+            toast.success("Arquivo removido.");
+        }
+    };
+
     // --- RENDER HELPERS ---
     const getIcon = (name: string) => {
         const IconComp = ICON_MAP[name] || FolderOpen;
@@ -426,19 +437,60 @@ export function BrandVault() {
                                 {/* Attachments List */}
                                 <div className="flex flex-wrap gap-2">
                                     {item.links?.map((link, lIdx) => (
-                                        <a key={lIdx} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold hover:bg-blue-500/20 transition-all">
-                                            <LinkIcon className="w-3 h-3" />
-                                            <span className="truncate max-w-[150px]">{link.title}</span>
-                                            <ExternalLink className="w-3 h-3 ml-1 opacity-40" />
-                                        </a>
+                                        <div key={lIdx} className="relative group/link">
+                                            <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold hover:bg-blue-500/20 transition-all">
+                                                <LinkIcon className="w-3 h-3" />
+                                                <span className="truncate max-w-[150px]">{link.title}</span>
+                                                <ExternalLink className="w-3 h-3 ml-1 opacity-40" />
+                                            </a>
+                                        </div>
                                     ))}
-                                    {item.attachments?.map((att, aIdx) => (
-                                        <a key={aIdx} href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/20 transition-all">
-                                            {att.type?.includes('image') ? <ImageIcon className="w-3 h-3" /> : <File className="w-3 h-3" />}
-                                            <span className="truncate max-w-[150px]">{att.name}</span>
-                                            <Download className="w-3 h-3 ml-1 opacity-40" />
-                                        </a>
-                                    ))}
+                                    {item.attachments?.map((att, aIdx) => {
+                                        const isImage = att.type?.includes('image');
+                                        return (
+                                            <div key={aIdx} className="relative group/att">
+                                                {isImage ? (
+                                                    <div className="relative w-20 h-20 rounded-xl bg-black/40 border border-white/10 overflow-hidden group-hover/att:border-primary/50 transition-all">
+                                                        <img
+                                                            src={att.url}
+                                                            alt={att.name}
+                                                            className="w-full h-full object-cover transition-transform group-hover/att:scale-110 cursor-pointer"
+                                                            onClick={() => window.open(att.url, '_blank')}
+                                                        />
+                                                        {/* Hover Overlay */}
+                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/att:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); window.open(att.url, '_blank'); }}
+                                                                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                                                            >
+                                                                <Download className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); deleteAttachment(item.id, aIdx); }}
+                                                                className="p-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-1">
+                                                        <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/20 transition-all">
+                                                            <File className="w-3 h-3" />
+                                                            <span className="truncate max-w-[150px]">{att.name}</span>
+                                                            <Download className="w-3 h-3 ml-1 opacity-40" />
+                                                        </a>
+                                                        <button
+                                                            onClick={() => deleteAttachment(item.id, aIdx)}
+                                                            className="p-1 rounded-full text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Actions Internal */}
@@ -553,11 +605,8 @@ export function BrandVault() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
-            {/* Header Home */}
-            <div className="flex flex-col space-y-2">
-                <h1 className="text-3xl font-black tracking-tighter">Baú de Marca</h1>
-                <p className="text-sm font-medium text-muted-foreground">Seu lugar seguro para guardar tudo da sua marca.</p>
-            </div>
+            {/* Header Home (Removed) */}
+            {/* Search */}
 
             {/* Search */}
             <div className="relative group max-w-lg">

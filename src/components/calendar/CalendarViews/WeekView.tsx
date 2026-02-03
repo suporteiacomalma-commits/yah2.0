@@ -12,14 +12,49 @@ interface WeekViewProps {
 
 export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const headerRef = useRef<HTMLDivElement>(null);
     const weekStart = startOfWeek(currentDate, { locale: ptBR });
     const weekDays = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
     const hours = Array.from({ length: 24 }).map((_, i) => i);
 
     useEffect(() => {
+        // Initial scroll to 8 AM
         if (scrollRef.current) {
-            scrollRef.current.scrollTop = 80 * 8; // Scroll to 8 AM
+            scrollRef.current.scrollTop = 80 * 8;
         }
+
+        // Scroll Sync Logic
+        const body = scrollRef.current;
+        const header = headerRef.current;
+
+        if (!body || !header) return;
+
+        let isSyncingHeader = false;
+        let isSyncingBody = false;
+
+        const syncHeader = () => {
+            if (!isSyncingBody) {
+                isSyncingHeader = true;
+                header.scrollLeft = body.scrollLeft;
+            }
+            isSyncingBody = false;
+        };
+
+        const syncBody = () => {
+            if (!isSyncingHeader) {
+                isSyncingBody = true;
+                body.scrollLeft = header.scrollLeft;
+            }
+            isSyncingHeader = false;
+        };
+
+        body.addEventListener("scroll", syncHeader);
+        header.addEventListener("scroll", syncBody);
+
+        return () => {
+            body.removeEventListener("scroll", syncHeader);
+            header.removeEventListener("scroll", syncBody);
+        };
     }, []);
 
     const getEventStyle = (event: CerebroEvent) => {
@@ -33,10 +68,10 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
     };
 
     return (
-        <div className="bg-slate-900/40 border border-white/5 rounded-3xl overflow-hidden h-[600px] flex flex-col shadow-2xl">
+        <div className="bg-slate-900/40 md:border border-white/5 rounded-none md:rounded-3xl overflow-hidden h-[600px] flex flex-col md:shadow-2xl">
             {/* Header with day names */}
-            <div className="overflow-x-auto scrollbar-hide border-b border-white/10 bg-white/10">
-                <div className="grid grid-cols-[60px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] min-w-[800px] md:min-w-full">
+            <div ref={headerRef} className="overflow-x-auto scrollbar-hide border-b border-white/10 bg-white/10">
+                <div className="grid grid-cols-[30px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] min-w-[600px] md:min-w-full">
                     <div className="border-r border-white/5" />
                     {weekDays.map((day) => (
                         <div key={day.toISOString()} className="py-4 text-center border-r border-white/5 last:border-0">
@@ -56,12 +91,12 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
 
             {/* Main timeline grid */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto relative p-0 overflow-x-auto scrollbar-hide">
-                <div className="grid grid-cols-[60px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] min-h-[1920px] min-w-[800px] md:min-w-full">
+                <div className="grid grid-cols-[30px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] min-h-[1920px] min-w-[600px] md:min-w-full">
                     {/* Time Sidebar */}
                     <div className="border-r border-white/5 bg-slate-950/20">
                         {hours.map(h => (
-                            <div key={h} className="h-20 flex items-start justify-center pt-1">
-                                <span className="text-[9px] font-black text-muted-foreground uppercase opacity-40">{String(h).padStart(2, '0')}:00</span>
+                            <div key={h} className="h-20 flex items-start justify-end pr-1 pt-1">
+                                <span className="text-[9px] font-black text-muted-foreground uppercase opacity-40">{String(h).padStart(2, '0')}</span>
                             </div>
                         ))}
                     </div>

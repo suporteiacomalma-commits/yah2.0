@@ -77,7 +77,7 @@ export function DayView({ date, events, onEdit }: DayViewProps) {
     }, [events, date]);
 
     return (
-        <div className="bg-slate-900/40 border border-white/5 rounded-3xl overflow-hidden h-[600px] flex flex-col shadow-2xl">
+        <div className="bg-slate-900/40 md:border border-white/5 rounded-none md:rounded-3xl overflow-hidden h-[600px] flex flex-col md:shadow-2xl">
             <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center shrink-0">
                 <h3 className="font-black text-sm uppercase tracking-widest text-white/70">
                     {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
@@ -87,7 +87,7 @@ export function DayView({ date, events, onEdit }: DayViewProps) {
                 </div>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto relative p-4 scrollbar-hide">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto relative p-0 md:p-4 scrollbar-hide">
                 {/* Hour markers */}
                 {hours.map((h) => (
                     <div key={h} className="h-20 border-t border-white/[0.03] flex items-start -ml-2">

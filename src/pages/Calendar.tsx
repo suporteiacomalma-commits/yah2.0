@@ -11,7 +11,7 @@ export default function CalendarPage() {
 
     return (
         <MinimalLayout brandName={brand?.name}>
-            <div className="flex-1 p-6 md:p-8">
+            <div className="flex-1 p-4 md:p-8">
                 <div className="max-w-6xl mx-auto space-y-6">
                     <div className="flex items-center gap-4">
                         <Button
@@ -28,7 +28,7 @@ export default function CalendarPage() {
                         </div>
                     </div>
 
-                    <div className="bg-card border border-border rounded-2xl p-6 shadow-xl">
+                    <div className="bg-card md:border border-border md:rounded-2xl p-0 md:p-6 shadow-none md:shadow-xl">
                         <ActivityCalendar />
                     </div>
                 </div>

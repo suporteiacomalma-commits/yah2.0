@@ -35,6 +35,7 @@ interface EventoConfirmacao {
     data: string;
     hora: string | null;
     recorrencia: string;
+    prioridade: "Baixa" | "Média" | "Alta";
 }
 
 export default function Assistant() {
@@ -244,7 +245,8 @@ Retorne um JSON com uma lista de eventos:
       "tipo": "Tarefa|Compromisso",
       "data": "YYYY-MM-DD",
       "hora": "HH:MM",
-      "recorrencia": "Nenhuma|Diária|Semanal|Mensal|Anual"
+      "recorrencia": "Nenhuma|Diária|Semanal|Mensal|Anual",
+      "prioridade": "Baixa|Média|Alta"
     }
   ]
 }
@@ -286,7 +288,8 @@ Frase do usuário: "${inputText}"`;
                 tipo: e.tipo || "Tarefa",
                 data: e.data || format(new Date(), "yyyy-MM-dd"),
                 hora: e.hora || (e.tipo === "Compromisso" ? "09:00" : null),
-                recorrencia: e.recorrencia || "Nenhuma"
+                recorrencia: e.recorrencia || "Nenhuma",
+                prioridade: e.prioridade || "Média"
             })));
             setShowModal(true);
         } catch (error) {
@@ -297,12 +300,32 @@ Frase do usuário: "${inputText}"`;
         }
     };
 
-    const speakMessage = (text: string) => {
-        if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'pt-BR';
-            utterance.rate = 1.1; // Slightly faster for a more natural flow
-            window.speechSynthesis.speak(utterance);
+    const speakMessage = async (text: string) => {
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) return;
+
+            const response = await fetch('https://api.openai.com/v1/audio/speech', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'tts-1',
+                    input: text,
+                    voice: 'nova',
+                })
+            });
+
+            if (!response.ok) throw new Error('TTS error');
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            await audio.play();
+        } catch (error) {
+            console.error('TTS error:', error);
         }
     };
 
@@ -320,6 +343,7 @@ Frase do usuário: "${inputText}"`;
                     hora: event.hora,
                     recorrencia: event.recorrencia,
                     status: "Pendente",
+                    prioridade: event.prioridade,
                     duracao: 60, // Default duration for AI extracted events
                     user_id: user.id
                 });
@@ -602,18 +626,34 @@ Frase do usuário: "${inputText}"`;
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Repetir?</Label>
-                                            <Select value={event.recorrencia} onValueChange={v => updateEvent(index, { recorrencia: v })}>
-                                                <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
-                                                    {["Nenhuma", "Diária", "Semanal", "Mensal", "Anual"].map(rep => (
-                                                        <SelectItem key={rep} value={rep} className="focus:bg-white/10 py-2.5">{rep}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Qual a prioridade?</Label>
+                                                <Select value={event.prioridade} onValueChange={v => updateEvent(index, { prioridade: v as any })}>
+                                                    <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
+                                                        {["Baixa", "Média", "Alta"].map(p => (
+                                                            <SelectItem key={p} value={p} className="focus:bg-white/10 py-2.5">{p}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Repetir?</Label>
+                                                <Select value={event.recorrencia} onValueChange={v => updateEvent(index, { recorrencia: v })}>
+                                                    <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
+                                                        {["Nenhuma", "Diária", "Semanal", "Mensal", "Anual"].map(rep => (
+                                                            <SelectItem key={rep} value={rep} className="focus:bg-white/10 py-2.5">{rep}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -146,6 +146,29 @@ export function AICarousels() {
     const [isExporting, setIsExporting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [showGenModal, setShowGenModal] = useState(false);
+
+    // Preview Scaling Logic
+    const [previewScale, setPreviewScale] = useState(1);
+    const previewContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const updateScale = () => {
+            if (previewContainerRef.current) {
+                const { width } = previewContainerRef.current.getBoundingClientRect();
+                // Base width is 1080px (Export Resolution)
+                // We scale the 1080px container down to fit the available width (max 360px)
+                const scale = width / 1080;
+                setPreviewScale(scale);
+            }
+        };
+
+        const resizeObserver = new ResizeObserver(updateScale);
+        if (previewContainerRef.current) {
+            resizeObserver.observe(previewContainerRef.current);
+        }
+
+        return () => resizeObserver.disconnect();
+    }, []);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [history, setHistory] = useState<AICarousel[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -1170,33 +1193,34 @@ SEMPRE:
             const initialSlides: CarouselSlide[] = result.slides.map((s: any) => ({
                 text: s.bloco1 || s.text, // Support new "bloco1" format and fallback to legacy "text"
                 secondaryText: s.bloco2 || s.secondaryText || "", // Support new "bloco2" and fallback
-                useOnlyMain: !s.secondaryText,
-                font: "'Playfair Display', serif",
-                fontSize: 42, // Default size
-                alignment: "center",
                 isBold: true,
                 isItalic: false,
                 textColor: "#ffffff",
                 secondaryTextColor: "#cccccc",
-                lineHeight: "1.2",
-                textPosition: "center",
                 secondaryPosition: "bottom",
                 boxBgColor: "#000000",
                 boxOpacity: 0,
-                boxPadding: 40,
                 overlayColor: "#000000",
                 overlayOpacity: 0.5,
                 overlayShadow: 1,
                 bgZoom: 100,
                 bgImage: brand?.graphic_elements || "",
                 bgColor: brand?.primary_color || "#000000",
-                secondaryFont: "'Inter', sans-serif",
-                secondaryFontSize: 16, // Default subtitle size
-                secondaryLineHeight: "1.5",
                 secondaryIsBold: false,
                 secondaryIsItalic: false,
                 secondaryUppercase: false,
-                ...s
+                ...s,
+                // FORCE SAFE DEFAULTS (Override AI hallucinations)
+                font: "'Playfair Display', serif",
+                fontSize: 66, // Optimized for 1080px width
+                useOnlyMain: false,
+                alignment: "center",
+                textPosition: "center",
+                secondaryFontSize: 30, // Optimized for 1080px width
+                boxPadding: 40,
+                lineHeight: "1.2",
+                secondaryLineHeight: "1.5",
+                secondaryFont: "'Inter', sans-serif"
             }));
 
             // Auto-save the generated carousel
@@ -1489,10 +1513,16 @@ SEMPRE:
                                 <div className="flex flex-col items-center justify-center space-y-2 lg:space-y-6 w-full px-4 h-full">
 
                                     {/* SCALE PREVIEW FOR UI */}
-                                    <div className="h-[80%] w-auto aspect-[4/5] lg:w-full lg:max-w-[360px] lg:h-auto rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl border border-white/5 relative bg-slate-900 ring-1 ring-white/10 mx-auto">
+                                    <div
+                                        ref={previewContainerRef}
+                                        className="h-auto w-auto aspect-[4/5] lg:w-full lg:max-w-[360px] lg:h-auto rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl border border-white/5 relative bg-slate-900 ring-1 ring-white/10 mx-auto flex items-center justify-center"
+                                    >
                                         <div
-                                            className={cn("w-full h-full flex flex-col px-5 py-6 transition-all duration-500 overflow-hidden")}
+                                            className={cn("flex flex-col px-[60px] py-[72px] transition-all duration-500 overflow-hidden origin-center shrink-0")}
                                             style={{
+                                                width: '1080px',
+                                                height: '1350px',
+                                                transform: `scale(${previewScale})`,
                                                 fontFamily: carousel.slides[currentSlide].font,
                                                 backgroundColor: carousel.slides[currentSlide].bgColor,
                                                 backgroundImage: carousel.slides[currentSlide].bgImage ? `url(${carousel.slides[currentSlide].bgImage})` : 'none',
@@ -1516,15 +1546,13 @@ SEMPRE:
                                                                 "justify-center items-end text-right"
                                             )}>
                                                 <div
-                                                    className="w-full mx-auto transition-all duration-300 box-border px-2"
+                                                    className="w-full mx-auto transition-all duration-300 box-border"
                                                     style={{
                                                         backgroundColor: hexToRgba(carousel.slides[currentSlide].boxBgColor || "#000000", carousel.slides[currentSlide].boxOpacity ?? 0.8),
-                                                        padding: `${(carousel.slides[currentSlide].boxPadding || 40) / 3}px`,
-                                                        borderRadius: '8px',
+                                                        padding: `${carousel.slides[currentSlide].boxPadding || 40}px`,
+                                                        borderRadius: '24px',
                                                         display: 'flex',
                                                         flexDirection: 'column',
-                                                        maxHeight: '90%', // Increased for more text
-                                                        overflow: 'hidden', // Cutoff if still too large, but padding helps
                                                         justifyContent: 'center',
                                                         alignItems: carousel.slides[currentSlide].textPosition === 'left' ? 'flex-start' :
                                                             carousel.slides[currentSlide].textPosition === 'right' ? 'flex-end' : 'center'
@@ -1537,7 +1565,7 @@ SEMPRE:
                                                         style={{
                                                             color: carousel.slides[currentSlide].textColor,
                                                             fontFamily: carousel.slides[currentSlide].font,
-                                                            fontSize: `${carousel.slides[currentSlide].fontSize}px`, // Dynamic size
+                                                            fontSize: `${carousel.slides[currentSlide].fontSize}px`, // Raw export size (1080p base)
                                                             fontWeight: (carousel.slides[currentSlide].font?.includes("Bold") || ["Montserrat Bold", "Poppins Bold", "Open Sans ExtraBold"].includes(TITLE_FONTS.find(f => f.value === carousel.slides[currentSlide].font)?.name || "")) ? "bold" : "normal",
                                                             lineHeight: carousel.slides[currentSlide].lineHeight
                                                         }}
@@ -1980,6 +2008,15 @@ SEMPRE:
                                             </div>
                                         </div>
                                     </div>
+
+                                    <Button
+                                        className="gradient-primary w-full h-14 md:h-16 px-6 md:px-10 rounded-[24px] text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 md:gap-4 hover:scale-105 active:scale-95 transition-all mt-4"
+                                        onClick={handleExport}
+                                        disabled={isExporting}
+                                    >
+                                        {isExporting ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : <Download className="w-5 h-5 md:w-6 md:h-6" />}
+                                        Exportar Carrossel
+                                    </Button>
                                 </div>
                             </div>
                         </div>
@@ -2124,7 +2161,7 @@ SEMPRE:
                                                     // Hydrate slides with defaults to prevent crashes on old data
                                                     const hydratedSlides = (item.slides || []).map((s: any) => ({
                                                         font: "'Playfair Display', serif",
-                                                        fontSize: "md",
+                                                        fontSize: 66,
                                                         textColor: "#ffffff",
                                                         boxBgColor: "#000000",
                                                         boxPadding: 40,
@@ -2134,7 +2171,7 @@ SEMPRE:
                                                         lineHeight: "1.2",
                                                         useOnlyMain: false,
                                                         secondaryFont: "'Inter', sans-serif",
-                                                        secondaryFontSize: "sm",
+                                                        secondaryFontSize: 30,
                                                         secondaryTextColor: "#cccccc",
                                                         secondaryLineHeight: "1.5",
                                                         secondaryIsBold: false,
@@ -2239,23 +2276,21 @@ SEMPRE:
                                                 backgroundColor: hexToRgba(slide.boxBgColor || "#000000", slide.boxOpacity ?? 0.8),
                                                 padding: `${slide.boxPadding}px`,
                                                 borderRadius: '24px',
-                                                maxHeight: '90%',
-                                                overflow: 'hidden',
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 justifyContent: 'center'
                                             }}
-                                            className="max-w-[90%]"
+                                            className="w-full box-border"
                                         >
                                             <h1 className={cn(
-                                                "font-black tracking-tight leading-tight break-normal w-full hyphens-none",
+                                                "font-black tracking-tighter break-normal w-full box-border hyphens-none",
                                                 slide.isItalic && "italic"
                                             )}
                                                 style={{
                                                     color: slide.textColor,
                                                     fontFamily: slide.font,
                                                     lineHeight: slide.lineHeight,
-                                                    fontSize: `${slide.fontSize * 3}px`,
+                                                    fontSize: `${slide.fontSize}px`,
                                                     fontWeight: (slide.font?.includes("Bold") || ["Montserrat Bold", "Poppins Bold", "Open Sans ExtraBold"].includes(TITLE_FONTS.find(f => f.value === slide.font)?.name || "")) ? "bold" : "normal"
                                                 }}
                                             >
@@ -2273,7 +2308,7 @@ SEMPRE:
                                                         color: slide.secondaryTextColor,
                                                         fontFamily: slide.secondaryFont,
                                                         lineHeight: slide.secondaryLineHeight,
-                                                        fontSize: `${slide.secondaryFontSize * 3}px`
+                                                        fontSize: `${slide.secondaryFontSize}px`
                                                     }}
                                                 >
                                                     {slide.secondaryText}
@@ -2294,14 +2329,14 @@ SEMPRE:
                             <div className="max-w-6xl w-full flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
                                 <div className="flex items-center gap-3 w-full md:w-auto justify-center">
                                     <Button
-                                        variant="outline" className="flex-1 md:flex-none h-12 md:h-14 px-4 md:px-6 border-white/10 bg-white/5 text-white rounded-2xl font-bold gap-2 hover:bg-white/10 text-xs md:text-sm"
+                                        variant="outline" className="flex-1 md:flex-none h-10 md:h-12 px-4 md:px-6 border-white/10 bg-white/5 text-white rounded-2xl font-bold gap-2 hover:bg-white/10 text-xs md:text-sm"
                                         onClick={handleApplyStyleToAll}
                                     >
                                         <Copy className="w-4 h-4" />
                                         <span className="md:inline uppercase tracking-widest text-[10px] md:text-xs">Aplicar Tudo</span>
                                     </Button>
                                     <Button
-                                        variant="outline" className="flex-1 md:flex-none h-12 md:h-14 px-4 md:px-6 border-white/10 bg-white/5 text-white rounded-2xl font-bold gap-2 hover:bg-white/10 text-xs md:text-sm"
+                                        variant="outline" className="flex-1 md:flex-none h-10 md:h-12 px-4 md:px-6 border-white/10 bg-white/5 text-white rounded-2xl font-bold gap-2 hover:bg-white/10 text-xs md:text-sm"
                                         onClick={handleSave}
                                         disabled={isSaving}
                                     >
@@ -2310,14 +2345,7 @@ SEMPRE:
                                     </Button>
                                 </div>
 
-                                <Button
-                                    className="gradient-primary w-full md:w-auto h-14 md:h-16 px-6 md:px-10 rounded-[24px] text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 md:gap-4 hover:scale-105 active:scale-95 transition-all"
-                                    onClick={handleExport}
-                                    disabled={isExporting}
-                                >
-                                    {isExporting ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : <Download className="w-5 h-5 md:w-6 md:h-6" />}
-                                    Exportar Carrossel
-                                </Button>
+
                             </div>
                         </footer>
                     )

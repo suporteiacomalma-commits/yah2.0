@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MinimalLayout } from "@/components/layout/MinimalLayout";
+import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useBrand } from "@/hooks/useBrand";
@@ -23,7 +24,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, User, Building, Target, Mail, ArrowLeft, Lock, ShieldCheck } from "lucide-react";
+import { Loader2, User, Building, Target, Mail, ArrowLeft, Lock, ShieldCheck, CreditCard, History, ExternalLink, MessageCircle, AlertCircle, Info } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Profile() {
     const { profile, isLoading: profileLoading, updateProfile } = useProfile();
@@ -319,10 +323,215 @@ export default function Profile() {
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            <SubscriptionSection />
                         </div>
                     </div>
                 </div>
             </div>
         </MinimalLayout>
+    );
+}
+
+function SubscriptionSection() {
+    const { subscription, isLoading: subLoading } = useSubscription();
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+    useEffect(() => {
+        const fetchTransactions = async () => {
+            setLoadingTransactions(true);
+            try {
+                const { data, error } = await (supabase as any)
+                    .from("payment_transactions")
+                    .select("*")
+                    .order("created_at", { ascending: false })
+                    .limit(5);
+
+                if (error) throw error;
+                setTransactions(data || []);
+            } catch (error) {
+                console.error("Error fetching transactions:", error);
+            } finally {
+                setLoadingTransactions(false);
+            }
+        };
+
+        fetchTransactions();
+    }, []);
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'paid':
+            case 'completed':
+            case 'approved':
+                return 'text-green-500 bg-green-500/10 border-green-500/20';
+            case 'pending':
+                return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20';
+            case 'failed':
+            case 'cancelled':
+                return 'text-red-500 bg-red-500/10 border-red-500/20';
+            default:
+                return 'text-slate-500 bg-slate-500/10 border-slate-500/20';
+        }
+    };
+
+    const getStatusLabel = (status: string) => {
+        const map: Record<string, string> = {
+            paid: 'Pago',
+            completed: 'Concluído',
+            approved: 'Aprovado',
+            pending: 'Pendente',
+            failed: 'Falhou',
+            cancelled: 'Cancelado'
+        };
+        return map[status] || status;
+    };
+
+    const handleContactSupport = () => {
+        // WhatsApp link - using a placeholder or generic link
+        const message = encodeURIComponent("Olá! Preciso de ajuda com minha assinatura/pagamento na YAh.");
+        window.open(`https://wa.me/5511999999999?text=${message}`, "_blank");
+    };
+
+    const renewalDate = subscription?.plan === 'trial' ? subscription?.trialEndsAt : subscription?.currentPeriodEnd;
+
+    return (
+        <Card className="bg-card/50 border-white/10 backdrop-blur-sm shadow-xl mt-8">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                    Assinatura e Pagamentos
+                </CardTitle>
+                <CardDescription>
+                    Gerencie seu plano e visualize seu histórico.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {/* Current Plan Info */}
+                <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-accent/5 border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                                {subLoading ? (
+                                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                ) : (
+                                    <Target className="w-5 h-5 text-primary" />
+                                )}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-lg capitalize">
+                                    {subLoading ? (
+                                        <span className="animate-pulse bg-white/10 h-6 w-32 block rounded" />
+                                    ) : (
+                                        (!subscription || subscription.plan === 'trial') ? 'Período de Teste' :
+                                            subscription.plan === 'premium' ? 'Plano Premium' :
+                                                `Plano ${subscription.plan}`
+                                    )}
+                                </h4>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <span>Status:</span>
+                                        {subLoading ? (
+                                            <span className="animate-pulse bg-white/10 h-4 w-16 block rounded" />
+                                        ) : (
+                                            <span className={cn(
+                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                                                subscription?.status === 'active' ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
+                                            )}>
+                                                {subscription?.status === 'active' ? 'Ativo' : subscription?.status === 'expired' ? 'Expirado' : 'Inativo'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                        {subLoading ? (
+                                            <span className="animate-pulse bg-white/10 h-3 w-40 block rounded mt-1" />
+                                        ) : (
+                                            <>
+                                                {subscription?.plan === 'premium' ? 'Renova em:' : 'Expira em:'}
+                                                <span className="text-foreground font-medium">
+                                                    {renewalDate ? format(new Date(renewalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Vitalício / Indefinido'}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            className="gap-2 border-primary/20 hover:bg-primary/5 text-primary"
+                            onClick={handleContactSupport}
+                        >
+                            <MessageCircle className="w-4 h-4" />
+                            Suporte Financeiro
+                        </Button>
+                    </div>
+
+                    {subscription?.plan === 'premium' && subscription?.status === 'active' && (
+                        <div className="flex items-start gap-3 text-xs text-muted-foreground bg-blue-500/5 p-4 rounded-xl border border-blue-500/10">
+                            <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                            <p className="leading-relaxed">
+                                <span className="text-blue-400 font-bold block mb-1">Renovação Automática</span>
+                                Sua assinatura será renovada automaticamente no dia {renewalDate ? format(new Date(renewalDate), "dd/MM/yyyy") : ''}.
+                                Caso não deseje continuar, você pode cancelar a qualquer momento antes dessa data para evitar cobranças futuras.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* History */}
+                <div className="space-y-3">
+                    <h4 className="text-sm font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+                        <History className="w-3 h-3" />
+                        Histórico Recente
+                    </h4>
+
+                    {loadingTransactions ? (
+                        <div className="flex justify-center p-4">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : transactions.length > 0 ? (
+                        <div className="space-y-2">
+                            {transactions.map((tx) => (
+                                <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-sm">
+                                                R$ {tx.amount?.toFixed(2) || '0.00'}
+                                            </span>
+                                            {tx.coins > 0 && (
+                                                <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1.5 py-0.5 rounded">
+                                                    +{tx.coins} moedas
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-muted-foreground capitalize">
+                                            {tx.created_at ? format(new Date(tx.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn("px-2 py-1 rounded-md text-[10px] font-bold uppercase border", getStatusColor(tx.status))}>
+                                            {getStatusLabel(tx.status)}
+                                        </div>
+                                        {tx.pix_url && tx.status === 'pending' && (
+                                            <a href={tx.pix_url} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80" title="Pagar Pix">
+                                                <ExternalLink className="w-4 h-4" />
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center p-6 border border-dashed border-white/10 rounded-xl">
+                            <AlertCircle className="w-6 h-6 text-muted-foreground/50 mx-auto mb-2" />
+                            <p className="text-sm text-muted-foreground">Nenhum pagamento registrado encontrado.</p>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     );
 }

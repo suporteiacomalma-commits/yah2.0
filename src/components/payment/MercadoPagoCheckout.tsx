@@ -56,9 +56,8 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                 },
                 customization: {
                     paymentMethods: {
+                        minInstallments: 1,
                         maxInstallments: 12,
-                        // Be explicit about allowed types in cardPayment
-                        creditCard: 'all',
                     },
                     visual: {
                         style: {
@@ -69,6 +68,9 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                 callbacks: {
                     onReady: () => {
                         console.log("Card Payment Brick is ready");
+                    },
+                    onBinChange: (bin: string) => {
+                        console.log("BIN changed:", bin);
                     },
                     onSubmit: async (formData: any) => {
                         console.log("Card Payment Submit:", formData);

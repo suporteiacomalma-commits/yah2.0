@@ -69,7 +69,7 @@ export default function PhasePage() {
           </Button>
 
           {/* Phase Header */}
-          {phaseNumber !== 3 && (
+          {phaseNumber !== 3 && phaseNumber !== 7 && (
             <div className="flex items-start gap-4 mb-8 animate-fade-in">
               <div className={cn(
                 "w-10 h-10 md:w-14 md:h-14 rounded-2xl flex items-center justify-center",

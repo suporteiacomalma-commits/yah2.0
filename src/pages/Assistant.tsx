@@ -57,6 +57,10 @@ export default function Assistant() {
     const [showModal, setShowModal] = useState(false);
     const [confirmEvents, setConfirmEvents] = useState<EventoConfirmacao[]>([]);
 
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     const deleteEvent = (index: number) => {
         setConfirmEvents(prev => prev.filter((_, i) => i !== index));
         if (confirmEvents.length <= 1) setShowModal(false);

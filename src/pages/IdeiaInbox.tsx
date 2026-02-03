@@ -427,6 +427,10 @@ export default function IdeiaInbox() {
     const recognitionRef = useRef<any>(null);
 
     useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
+    useEffect(() => {
         fetchIdeas();
     }, [user]);
 

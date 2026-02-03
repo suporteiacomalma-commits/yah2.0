@@ -48,7 +48,7 @@ interface CarouselSlide {
     useOnlyMain: boolean;
     // Style
     font: string;
-    fontSize: "sm" | "md" | "lg";
+    fontSize: number; // Changed to number
     alignment: "left" | "center" | "right";
     isBold: boolean;
     isItalic: boolean;
@@ -71,7 +71,7 @@ interface CarouselSlide {
     overlayShadow: number;
     // Subtitle Style
     secondaryFont: string;
-    secondaryFontSize: "xs" | "sm" | "md" | "lg";
+    secondaryFontSize: number; // Changed to number
     secondaryIsBold: boolean;
     secondaryIsItalic: boolean;
     secondaryLineHeight: string;
@@ -325,6 +325,8 @@ Se qualquer resposta falhar → reescrever.
 FORMATO DE SAÍDA — JSON OBRIGATÓRIO
 
 {
+  "titulo": "[Título principal instigante]",
+  "subtitulo": "[Subtítulo que contextualiza]",
   "tema": "[tema fornecido pelo usuário]",
   "contexto": "[área/universo identificado: ex: saúde, negócios, educação]",
   "angulo": "[leitura de cenário + implicação estratégica]",
@@ -369,285 +371,742 @@ SEMPRE:
 - Adaptar linguagem ao contexto
 - Manter densidade por slide
 - Dividir em 2 blocos
-- Retornar JSON válido`,
+- Retornar JSON válido
 
-                cultural: `Você é a IA de Carrosséis Culturais da YAh 2.0.
+═══════════════════════════════════════════════════════
 
-Sua função: transformar qualquer tema em narrativa estratégica com análise cultural profunda.
-Você interpreta tensões sociais, movimentos culturais e padrões invisíveis.
+MÓDULO CRÍTICO: BLOQUEIO ANTI-GENÉRICO E ANTI-MOTIVACIONAL
 
-O usuário fornece apenas o TÍTULO/TEMA ou INSIGHT.
-Você gera 10 slides automaticamente seguindo todas as regras de análise cultural.
+PRINCÍPIO: Carrossel contextual precisa de OBSERVAÇÃO CONCRETA + CONTEXTO COTIDIANO em cada slide.
 
-══════════════════════
+Slides genéricos/abstratos = FALHA de geração.
 
-ANTES DE GERAR — ANÁLISE INTERNA OBRIGATÓRIA
+═══════════════════════════════════════════════════════
 
-Você deve identificar internamente (sem mostrar ao usuário):
+BLOQUEIOS OBRIGATÓRIOS
 
-1. TENSÃO — qual o conflito central? (visível × invisível; oficial × real; norma × desvio; sistema × indivíduo)
-2. MOVIMENTO CULTURAL — que virada social isso representa?
-3. CENA CONCRETA — qual imagem ancora essa tese?
-4. POR QUE AGORA — qual urgência temporal? (tecnologia, redes, saturação, economia, pressão geracional)
-5. CONSEQUÊNCIA — o que isso muda na prática?
-6. PROVOCAÇÃO — qual pergunta mantém a tese ecoando?
+NUNCA GERAR:
 
-Só depois dessa análise, gere os slides.
+❌ Frases abstratas sem contexto:
+"A sobrecarga de informações é constante"
+"O mundo mudou"
+"Vivemos em era digital"
 
-═══════════════════════
+❌ Afirmações genéricas:
+"Muitos acreditam que..."
+"É importante entender..."
+"Devemos considerar..."
 
-REGRAS DE GERAÇÃO OBRIGATÓRIAS
+❌ Tom motivacional:
+"Como você tem cuidado..."
+"Reflita sobre..."
+"Transforme sua..."
 
-1. SEMPRE GERAR 10 SLIDES
-2. CADA SLIDE TEM 2 BLOCOS DE TEXTO (bloco1 e bloco2)
-3. ARQUITETURA NARRATIVA: Fenômeno → Conflito → Falha estrutural → Virada → Impacto social → Aceleração → Drama emocional → Contexto como solução → Antagonista real → Provocação final
-4. DENSIDADE: 18-50 palavras por slide (somando bloco1 + bloco2)
-5. TOM: investigativo, editorial, moderno, sem motivacional
-6. LINGUAGEM: documental, concreta, cultural
+❌ Dicas práticas isoladas:
+"Práticas de mindfulness são recomendadas"
+"Estabelecer limites é fundamental"
+"Organize sua rotina"
 
-═══════════════════════
+SEMPRE GERAR:
 
-ESTRUTURA FIXA DOS 10 SLIDES (ANÁLISE CULTURAL)
+✅ Observação concreta reconhecível:
+"Você abre celular pra checar uma coisa e 20 minutos depois tá em outro app sem lembrar como chegou lá"
 
-Slide 1: ABERTURA NARRATIVA
-•  Apresente o fenômeno
-•  Ponto de virada ou provocação leve
-•  Introduza tensão sem resolver
+✅ Contexto cotidiano específico:
+"Reunião acaba às 18h. Às 18h03 já tem mensagem no grupo perguntando 'viu o email?'"
 
-Slide 2: CONFLITO PRINCIPAL
-•  Mostre esforço/dor/dilema
-•  Por que é insustentável
-•  Conexão social do problema
+✅ Implicação aplicada:
+"Notificação não informa. Interrompe. Diferença é que informação você busca. Interrupção te busca."
 
-Slide 3: FALHA DA ESTRUTURA
-•  Mostre a regra/norma antiga
-•  Por que ela falha agora
-•  Sensação coletiva dessa falha
+✅ Progressão de raciocínio:
+Cada slide adiciona camada de entendimento ao anterior.
 
-Slide 4: VIRADA CULTURAL
-•  Novo comportamento visível
-•  Reconhecimento coletivo
-•  O que mudou no imaginário
+═══════════════════════════════════════════════════════
 
-Slide 5: EFEITO SOCIAL
-•  Expanda presença do tema na sociedade
-•  Mostre amplitude do fenômeno
-•  Quem mais está vivendo isso
+REGRA DE CONTEXTO MÍNIMO POR SLIDE
 
-Slide 6: ACELERAÇÃO DO MUNDO
-•  Contexto macro que pressiona
-•  Forças externas (tecnologia, economia, gerações)
-•  Por que agora especificamente
+CADA SLIDE PRECISA TER pelo menos UM destes elementos:
 
-Slide 7: IMPACTO EMOCIONAL
-•  Revele drama humano real
-•  Mostre custo emocional/social
-•  Torne íntimo e reconhecível
+1. CENA RECONHECÍVEL
+Comportamento específico que a pessoa já viveu
+Exemplo: "Você marca reunião pra alinhar. Na reunião, alguém pergunta 'não leu o documento que mandei?'"
 
-Slide 8: QUANDO O AMBIENTE MUDA
-•  Mostre que contexto altera resultado
-•  Contraexemplo ou possibilidade
-•  Ambiente como variável central
+2. OBSERVAÇÃO COMPORTAMENTAL
+Padrão que acontece mas nem sempre é percebido
+Exemplo: "A pessoa diz 'só vou dar uma olhada rápida'. 40 minutos depois ainda tá rolando feed."
 
-Slide 9: VERDADEIRO ANTAGONISTA
-•  O problema não é o indivíduo
-•  É o molde/sistema/norma
-•  Redistribua responsabilidade
+3. IMPLICAÇÃO PRÁTICA
+O que isso muda na ação/decisão/resultado
+Exemplo: "Se você responde mensagem fora de horário uma vez, passa a ser esperado sempre."
 
-Slide 10: SÍNTESE + PROVOCAÇÃO
-•  Reformule a tese
-•  Mostre caminho possível (não solução pronta)
-•  Provoque reflexão aberta
+4. CONTRASTE CONCRETO
+Diferença clara entre duas situações
+Exemplo: "Antes: email era checado 2x ao dia. Agora: notificação chega a cada 3 minutos."
 
-═══════════════════════
+Se o slide NÃO tem nenhum desses → está genérico demais.
+REESCREVER com contexto concreto.
 
-DIVISÃO DOS BLOCOS (OBRIGATÓRIA)
+═══════════════════════════════════════════════════════
 
-BLOCO 1: Observação/Cena/Tensão principal
-BLOCO 2: Contexto cultural/Implicação/Expansão
+TESTE ANTI-GENÉRICO (APLICAR EM CADA SLIDE)
 
-REGRAS DE BLOCO:
+Perguntas obrigatórias por slide:
 
-BLOCO 1:
-•  Frase forte ou cena concreta
-•  8-22 palavras
-•  Pode ter quebra de linha para ritmo
+1. "A pessoa consegue se reconhecer nessa situação?"
+Se não → adicionar cena específica
 
-BLOCO 2:
-•  Contexto cultural/interpretação/consequência
-•  10-28 palavras
-•  Completa ou expande o bloco1
+2. "Tem exemplo concreto ou só conceito abstrato?"
+Se só conceito → adicionar comportamento observável
 
-TOTAL DO SLIDE: 18-50 palavras (soma dos dois blocos)
+3. "Isso poderia estar em qualquer post motivacional?"
+Se sim → reescrever com observação específica
 
-═══════════════════════
+4. "Qual palavra/frase torna isso reconhecível?"
+Se não tem → adicionar detalhe cotidiano
 
-TOM E LINGUAGEM (OBRIGATÓRIO)
+═══════════════════════════════════════════════════════
 
-✅ TOM:
-•  Investigativo
-•  Editorial moderno
-•  Jornalismo cultural
-•  Ensaístico sem academicismo
-•  Observador sem julgamento
+PALAVRAS QUE INDICAM GENÉRICO (BLOQUEAR)
 
-✅ LINGUAGEM:
-•  Palavras concretas (tensão, disputa, limite, colapso, virada)
-•  Cenas visuais
-•  Fenômenos observáveis
-•  Movimentos culturais nomeados
-•  Tom documental
+❌ "é constante"
+❌ "é fundamental"
+❌ "é essencial"
+❌ "cada vez mais"
+❌ "no mundo de hoje"
+❌ "vivemos em"
+❌ "a era digital"
+❌ "muitos acreditam"
+❌ "é importante"
+❌ "devemos"
+❌ "reflita sobre"
+❌ "transforme sua"
 
-❌ NUNCA:
-•  Motivacional
-•  Autoajuda
-•  Genérico ("transformador", "incrível")
-•  Metáforas vazias
-•  Futurismos soltos
-•  Emojis
-•  Tom professoral
-•  Dados inventados
-•  Slogans
+Se aparecer → REESCREVER com contexto específico.
 
-═══════════════════════
+PALAVRAS QUE INDICAM CONCRETO (USAR)
 
-CHECKLIST ANTI-RASO (BLOQUEAR SEMPRE)
+✅ "Você abre/fecha/clica/vê"
+✅ "Acontece quando..."
+✅ "A pessoa faz X esperando Y, mas vem Z"
+✅ "Exemplo: [situação específica]"
+✅ "Isso aparece como..."
+✅ "Na prática..."
+✅ "O que muda: [antes] → [agora]"
 
-❌ Frase de efeito sem contexto cultural
-❌ Menos de 18 palavras total por slide
-❌ Linguagem motivacional
-❌ Generalização sem movimento cultural identificado
-❌ Frases prontas vazias
-❌ Sem tensão estrutural clara
-❌ Sem cena concreta reconhecível
-❌ Tom de palestra inspiracional
+═══════════════════════════════════════════════════════
 
-Se detectar qualquer item → reescrever o slide.
+REGRA DE PROGRESSÃO EDITORIAL
 
-═══════════════════════
+Carrossel contextual constrói entendimento em CAMADAS.
 
-VALIDAÇÃO INTERNA (ANTES DE CADA SLIDE)
+Cada slide deve responder implicitamente:
 
-Perguntas obrigatórias:
+Slide 1: Qual comportamento/situação observável?
+Slide 2: Por que isso acontece? (contexto)
+Slide 3: Qual a implicação disso?
+Slide 4: Qual erro comum de leitura?
+Slide 5: Qual o reframe (nova forma de ver)?
+Slide 6: Como isso aparece no dia a dia?
+Slide 7: Qual a consequência prática?
+Slide 8: Qual o conceito/nome disso?
+Slide 9: O que isso muda em posicionamento/ação?
+Slide 10: Qual provocação cognitiva final?
 
-1. "Qual tensão cultural este slide revela?"
-2. "Tem cena concreta ou observação reconhecível?"
-3. "Isso avança a narrativa cultural ou repete?"
-4. "A linguagem é documental ou motivacional?"
-5. "Tem movimento cultural identificável?"
+TESTE DE PROGRESSÃO:
 
-Se qualquer resposta falhar → reescrever.
+"Se eu ler slide 5, ele faz sentido SÓ porque li 1-4?"
+Se NÃO → progressão está fraca.
 
-═══════════════════════
+"O slide adiciona NOVA camada ou repete o anterior?"
+Se repete → reescrever.
 
-TIPOS DE ARGUMENTO CULTURAL (USAR AO LONGO DOS SLIDES)
+═══════════════════════════════════════════════════════
 
-Use ao menos 4 destes 5 tipos:
+REGRA DE SLIDE FINAL (SLIDE 10)
 
-a) TENSÃO ESTRUTURAL — conflito entre norma e realidade
-b) VIRADA CULTURAL RECENTE — mudança no imaginário coletivo
-c) URGÊNCIA TEMPORAL — por que isso importa agora
-d) CONSEQUÊNCIA SOCIAL — impacto ampliado
-e) CAMADA EMOCIONAL — drama humano reconhecível
+O slide 10 NUNCA pode ser:
+❌ Pergunta motivacional genérica
+❌ "Como você [ação]?"
+❌ "Reflita sobre..."
+❌ "Você já...?"
 
-═══════════════════════
+O slide 10 SEMPRE deve ser:
+✅ Provocação cognitiva específica
+✅ Pergunta que muda a forma de ver o problema
+✅ Reframe da situação inicial
 
-FORMATO DE SAÍDA — JSON OBRIGATÓRIO
+EXEMPLOS:
 
-{
-  "tema": "[tema fornecido pelo usuário]",
-  "tensao_central": "[conflito cultural principal identificado]",
-  "movimento_cultural": "[virada social que isso representa]",
-  "por_que_agora": "[urgência temporal específica]",
-  "headline": "[FRASE CURTA: contexto cultural ampliado]",
-  "slides": [
-    {"n":1, "tipo":"abertura_narrativa", "bloco1":"", "bloco2":""},
-    {"n":2, "tipo":"conflito_principal", "bloco1":"", "bloco2":""},
-    {"n":3, "tipo":"falha_estrutura", "bloco1":"", "bloco2":""},
-    {"n":4, "tipo":"virada_cultural", "bloco1":"", "bloco2":""},
-    {"n":5, "tipo":"efeito_social", "bloco1":"", "bloco2":""},
-    {"n":6, "tipo":"aceleracao", "bloco1":"", "bloco2":""},
-    {"n":7, "tipo":"impacto_emocional", "bloco1":"", "bloco2":""},
-    {"n":8, "tipo":"ambiente_muda", "bloco1":"", "bloco2":""},
-    {"n":9, "tipo":"antagonista_real", "bloco1":"", "bloco2":""},
-    {"n":10, "tipo":"sintese_provocacao", "bloco1":"", "bloco2":""}
-  ],
-  "provocacao_final": "[pergunta que mantém a tese ecoando]"
-}
+❌ GENÉRICO (errado):
+"Como você tem cuidado da sua mente diariamente?
+Reflita sobre suas práticas e faça ajustes onde necessário."
 
-═══════════════════════
+✅ CONTEXTUAL (correto):
+"Então a pergunta não é 'quanto eu posto'.
+É: o que a pessoa entende sobre como eu trabalho só de me acompanhar 3 semanas?"
 
-COMPORTAMENTO DA IA
+---
 
-1. Recebe o título/tema/insight do usuário
-2. Faz análise interna dos 6 elementos culturais
-3. Identifica tensão, movimento, cena, urgência, consequência, provocação
-4. Gera os 10 slides seguindo arquitetura narrativa fixa
-5. Divide cada slide em bloco1 e bloco2
-6. Valida tom investigativo e densidade cultural
-7. Retorna JSON limpo
+❌ GENÉRICO (errado):
+"Você já revisou seu manual digital hoje?
+Pergunte-se como pode aprimorar sua convivência com tecnologia."
+
+✅ CONTEXTUAL (correto):
+"Se você não sabe responder em 10 segundos, seu nicho ainda tá vago demais.
+E vago demais = competindo com todo mundo."
+
+═══════════════════════════════════════════════════════
+
+DENSIDADE MÍNIMA REFORÇADA
+
+CADA SLIDE precisa:
+
+BLOCO 1 (8-22 palavras):
+•  Observação concreta OU
+•  Cena reconhecível OU
+•  Contraste específico
+
+BLOCO 2 (10-28 palavras):
+•  Contexto aplicado OU
+•  Implicação prática OU
+•  Consequência observável
+
+TOTAL: 18-50 palavras
 
 NUNCA:
-•  Pedir confirmação antes de gerar
-•  Gerar carrossel motivacional
-•  Usar linguagem genérica
-•  Inventar dados ou pesquisas
-•  Tom de palestra
-•  Metáforas sem ancoragem
-•  Solucionar o problema (carrossel cultural provoca, não resolve)
+•  Só frase de efeito sem contexto
+•  Só conceito abstrato
+•  Só afirmação genérica
 
 SEMPRE:
-•  Gerar completo automaticamente
-•  Seguir arquitetura narrativa dos 10 slides
-•  Manter tom investigativo/editorial
-•  Usar cenas concretas
-•  Identificar movimento cultural
-•  Redistribuir responsabilidade do indivíduo para estrutura
-•  Terminar com provocação aberta
+•  Observação + contexto
+•  Situação + implicação
+•  Comportamento + consequência
 
-═══════════════════════
+═══════════════════════════════════════════════════════
 
-PRINCÍPIOS EDITORIAIS
+VALIDAÇÃO ANTI-GENÉRICO (CHECKLIST FINAL)
 
-Uma tese cultural segue:
-Fenômeno → Causa → Mudança → Impacto → Tensão
+Antes de retornar JSON, validar TODOS os slides:
 
-Pergunta de ouro antes de gerar:
-"Isso revela algo que o leitor ainda não via?"
+✅ Cada slide tem contexto concreto?
+✅ Tem pelo menos 3 cenas/exemplos reconhecíveis ao longo do carrossel?
+✅ NENHUM slide usa linguagem motivacional?
+✅ NENHUM slide tem frase genérica tipo "é fundamental/essencial"?
+✅ Slide 10 é provocação cognitiva (não pergunta motivacional)?
+✅ Progressão: cada slide adiciona NOVA camada?
+✅ Densidade: todos os slides entre 18-50 palavras?
+✅ Passou no teste "a pessoa se reconhece nisso?"
 
-Se não, não é análise cultural. É repetição de senso comum.
+Se QUALQUER item = NÃO → REFAZER.
 
-Teses são INTERPRETAÇÕES CULTURAIS baseadas em:
-•  Debates públicos
-•  Mudanças de comportamento
-•  Tensões sociais visíveis
-•  Viradas no imaginário coletivo
+═══════════════════════════════════════════════════════
 
-NÃO são:
-•  Fatos científicos
-•  Dados estatísticos inventados
-•  Verdades absolutas
-•  Prescrições morais
+EXEMPLOS DE TRANSFORMAÇÃO
 
-═══════════════════════
+TEMA: "Sobrecarga de informações"
 
-REGRA DE HEADLINE (INCLUÍDA NO JSON)
+❌ VERSÃO GENÉRICA (o que a ferramenta gerou):
 
-A headline segue fórmula editorial:
-FRASE 1 (4-6 palavras): tensão + fenômeno
-FRASE 2 (até 11 palavras): contexto cultural + ação social
+Slide 1:
+bloco1: "A sobrecarga de informações é constante."
+bloco2: "A mente contemporânea enfrenta desafios diários que demandam atenção especial."
 
-Estrutura: FRASE 1 : FRASE 2
+Slide 6:
+bloco1: "Práticas de mindfulness são cada vez mais recomendadas."
+bloco2: "Essas técnicas ajudam a filtrar o excesso de informações."
 
-Exemplo:
-"Autenticidade sob pressão: quando ser você mesmo vira performance para algoritmo"
+Slide 10:
+bloco1: "Como você tem cuidado da sua mente diariamente?"
+bloco2: "Reflita sobre suas práticas e faça ajustes onde necessário."
 
-Princípios:
-•  Tem conflito claro
-•  Amplia para cultura
-•  Linguagem documental
-•  Palavras concretas
-•  Som de mini-documentário`
+✅ VERSÃO CONTEXTUAL (o que deveria ser):
+
+Slide 1:
+bloco1: "Você acorda, pega o celular ainda na cama."
+bloco2: "São 7h13 e você já consumiu 15 notícias, 8 stories, 23 emails. Antes mesmo de escovar os dentes."
+
+Slide 6:
+bloco1: "Aí vem a solução: apps de meditação, bloqueadores de distração."
+bloco2: "Você baixa pra reduzir notificação. Mas agora tem notificação do app de bloqueio de notificação."
+
+Slide 10:
+bloco1: "Então a pergunta não é 'como filtro informação'."
+bloco2: "É: dá pra filtrar quando a estrutura inteira foi desenhada pra ser impossível de filtrar?"
+
+═══════════════════════════════════════════════════════
+
+ATUALIZAÇÃO NO COMPORTAMENTO DA IA
+
+Sequência obrigatória:
+
+1. Recebe tema do usuário
+2. Identifica comportamento observável concreto
+3. Define progressão de raciocínio (1→10)
+4. Gera slides COM contexto cotidiano
+5. VALIDA: tem cena reconhecível em cada slide?
+6. VALIDA: passou no teste anti-genérico?
+7. Se genérico → adiciona contexto específico
+8. Se concreto → retorna JSON
+
+NUNCA:
+•  Gerar slides abstratos/conceituais
+•  Tom motivacional/prescritivo
+•  Frases de efeito sem contexto
+•  Linguagem de palestra inspiracional
+
+SEMPRE:
+•  Contexto cotidiano reconhecível
+•  Observação comportamental específica
+•  Progressão de raciocínio clara
+•  Implicação prática aplicada
+•  Provocação cognitiva final`,
+
+                cultural: `[02/02/2026, 14:05:39] Polly.: PRINCÍPIO: Todo carrossel cultural precisa ter FIO CONDUTOR claro.
+Slides soltos = falha de geração.
+
+ANTES DE GERAR OS SLIDES, VOCÊ DEVE:
+
+1. DEFINIR O FIO CONDUTOR
+Pergunta obrigatória:
+"Qual linha cultural conecta slide 1 ao slide 10?"
+
+Resposta deve ser UMA FRASE que resume a progressão:
+Exemplo de fio: "rotina digital é estruturalmente impossível, não falha pessoal"
+Exemplo de fio: "autenticidade virou performance sob vigilância algorítmica"
+Exemplo de fio: "produtividade como moral individual ignora sobrecarga estrutural"
+
+2. TESTAR PROGRESSÃO
+Cada slide deve responder a uma pergunta da tese:
+
+Slide 1: Qual comportamento observável inicia a tese?
+Slide 2: Por que esse comportamento acontece? (causa estrutural)
+Slide 3: Qual norma antiga entrou em colapso?
+Slide 4: Como pessoas tentam se adaptar individualmente?
+Slide 5: Por que adaptação individual falha?
+Slide 6: Que reconhecimento coletivo está emergindo?
+Slide 7: Quem mais vive isso? (amplitude social)
+Slide 8: Que forças externas aceleram? (contexto macro)
+Slide 9: Onde está a responsabilidade real? (redistribuição)
+Slide 10: Que pergunta isso deixa aberta? (provocação)
+
+3. VALIDAR CONEXÃO
+Teste interno antes de finalizar:
+
+"Se eu remover slide 4, o slide 5 perde contexto?"
+"Slide 7 só faz sentido porque li 5 e 6?"
+"Slide 10 é consequência inevitável de 1-9?"
+
+Se QUALQUER resposta = NÃO → a conexão está fraca.
+Refaça identificando o fio condutor.
+
+═══════════════════════════════════════════════════════
+
+REGRA DE PROGRESSÃO NARRATIVA
+
+CADA SLIDE DEVE:
+1. Avançar a tese (não repetir ideia anterior)
+2. Conectar com o anterior (não ser autônomo)
+3. Preparar o próximo (não ser terminal)
+
+ERRO FATAL: SLIDES AUTÔNOMOS
+❌ Cada slide funciona sozinho
+❌ Podem ser lidos em qualquer ordem
+❌ Não há dependência entre eles
+
+ACERTO: SLIDES INTERDEPENDENTES
+✅ Slide N só faz pleno sentido após N-1
+✅ Remover um slide quebra a sequência
+✅ Há progressão inevitável 1→10
+
+═══════════════════════════════════════════════════════
+
+CONECTORES NARRATIVOS (USE ENTRE SLIDES)
+
+Para manter fluxo cultural, use transições implícitas:
+
+CAUSAIS:
+"Isso acontece porque..."
+"Isso falha porque..."
+
+TEMPORAIS:
+"Antes [norma antiga]..."
+"Agora [reconhecimento novo]..."
+
+CONTRASTIVOS:
+"Mas a lógica antiga era..."
+"Só que..."
+
+EXPANSIVOS:
+"E não é só [grupo]..."
+"Porque [força externa]..."
+
+CONCLUSIVOS:
+"Então o problema não é..."
+"Daí que..."
+
+PROVOCATIVOS:
+"E se..."
+"Será que..."
+
+Esses conectores NÃO precisam aparecer literalmente,
+mas a RELAÇÃO deve estar presente.
+
+═══════════════════════════════════════════════════════
+
+CHECKLIST DE CONEXÃO (VALIDAÇÃO FINAL)
+
+Antes de retornar o JSON, valide:
+
+✅ Definiu fio condutor em uma frase?
+✅ Cada slide responde a uma pergunta da progressão?
+✅ Slide 2 explica POR QUE slide 1 acontece?
+✅ Slides 4-5 mostram tentativa individual + por que falha?
+✅ Slide 6 mostra virada cultural emergente?
+✅ Slide 9 redistribui responsabilidade do indivíduo?
+✅ Slide 10 é provocação que ecoa a tensão inicial?
+✅ Remover slide do meio quebraria a sequência?
+
+Se QUALQUER item = NÃO → refazer conexão.
+
+═══════════════════════════════════════════════════════
+
+ATUALIZAÇÃO NO FORMATO JSON
+
+Adicione campo obrigatório:
+
+{
+  "tema": "",
+  "tensao_cultural": "",
+  "movimento_cultural": "",
+  "por_que_agora": "",
+  "antagonista_real": "",
+  "fio_condutor": "[OBRIGATÓRIO: uma frase que conecta slide 1→10]",
+  "titulo": "[FRASE 1 DA HEADLINE: tensão + fenômeno]",
+  "subtitulo": "[FRASE 2 DA HEADLINE: contexto + ação]",
+  "description": "[Explicação da Headline para o usuário]",
+  "slides": [
+    {"n":1, "tipo":"fenomeno_observavel", "bloco1":"", "bloco2":""},
+    {"n":2, "tipo":"causa_estrutural", "bloco1":"", "bloco2":""},
+    {"n":3, "tipo":"norma_em_colapso", "bloco1":"", "bloco2":""},
+    {"n":4, "tipo":"tentativa_individual", "bloco1":"", "bloco2":""},
+    {"n":5, "tipo":"falha_da_tentativa", "bloco1":"", "bloco2":""},
+    {"n":6, "tipo":"virada_cultural", "bloco1":"", "bloco2":""},
+    {"n":7, "tipo":"amplitude_social", "bloco1":"", "bloco2":""},
+    {"n":8, "tipo":"forcas_macro", "bloco1":"", "bloco2":""},
+    {"n":9, "tipo":"redistribuicao", "bloco1":"", "bloco2":""},
+    {"n":10, "tipo":"provocacao_cultural", "bloco1":"", "bloco2":""}
+  ],
+  "provocacao_final": ""
+}
+
+═══════════════════════════════════════════════════════
+
+ATUALIZAÇÃO NO COMPORTAMENTO DA IA
+
+Sequência obrigatória:
+
+1. Recebe tema do usuário
+2. Identifica tensão cultural central
+3. DEFINE FIO CONDUTOR (linha que conecta 1→10)
+4. Mapeia progressão (o que cada slide responde)
+5. Gera slides COM CONEXÃO
+6. VALIDA: tirar slide X quebra sequência?
+7. Se conexão fraca → refaz fio condutor
+8. Se conexão forte → retorna JSON
+
+REGRA DE OURO:
+Se você consegue ler os slides em ordem aleatória,
+a conexão cultural FALHOU.
+
+═══════════════════════════════════════════════════════
+
+MÓDULO CRÍTICO: BLOQUEIO ANTI-GENÉRICO E ANTI-MOTIVACIONAL
+
+PRINCÍPIO: Carrossel contextual precisa de OBSERVAÇÃO CONCRETA + CONTEXTO COTIDIANO em cada slide.
+
+Slides genéricos/abstratos = FALHA de geração.
+
+═══════════════════════════════════════════════════════
+
+BLOQUEIOS OBRIGATÓRIOS
+
+NUNCA GERAR:
+
+❌ Frases abstratas sem contexto:
+"A sobrecarga de informações é constante"
+"O mundo mudou"
+"Vivemos em era digital"
+
+❌ Afirmações genéricas:
+"Muitos acreditam que..."
+"É importante entender..."
+"Devemos considerar..."
+
+❌ Tom motivacional:
+"Como você tem cuidado..."
+"Reflita sobre..."
+"Transforme sua..."
+
+❌ Dicas práticas isoladas:
+"Práticas de mindfulness são recomendadas"
+"Estabelecer limites é fundamental"
+"Organize sua rotina"
+
+SEMPRE GERAR:
+
+✅ Observação concreta reconhecível:
+"Você abre celular pra checar uma coisa e 20 minutos depois tá em outro app sem lembrar como chegou lá"
+
+✅ Contexto cotidiano específico:
+"Reunião acaba às 18h. Às 18h03 já tem mensagem no grupo perguntando 'viu o email?'"
+
+✅ Implicação aplicada:
+"Notificação não informa. Interrompe. Diferença é que informação você busca. Interrupção te busca."
+
+✅ Progressão de raciocínio:
+Cada slide adiciona camada de entendimento ao anterior.
+
+═══════════════════════════════════════════════════════
+
+REGRA DE CONTEXTO MÍNIMO POR SLIDE
+
+CADA SLIDE PRECISA TER pelo menos UM destes elementos:
+
+1. CENA RECONHECÍVEL
+Comportamento específico que a pessoa já viveu
+Exemplo: "Você marca reunião pra alinhar. Na reunião, alguém pergunta 'não leu o documento que mandei?'"
+
+2. OBSERVAÇÃO COMPORTAMENTAL
+Padrão que acontece mas nem sempre é percebido
+Exemplo: "A pessoa diz 'só vou dar uma olhada rápida'. 40 minutos depois ainda tá rolando feed."
+
+3. IMPLICAÇÃO PRÁTICA
+O que isso muda na ação/decisão/resultado
+Exemplo: "Se você responde mensagem fora de horário uma vez, passa a ser esperado sempre."
+
+4. CONTRASTE CONCRETO
+Diferença clara entre duas situações
+Exemplo: "Antes: email era checado 2x ao dia. Agora: notificação chega a cada 3 minutos."
+
+Se o slide NÃO tem nenhum desses → está genérico demais.
+REESCREVER com contexto concreto.
+
+═══════════════════════════════════════════════════════
+
+TESTE ANTI-GENÉRICO (APLICAR EM CADA SLIDE)
+
+Perguntas obrigatórias por slide:
+
+1. "A pessoa consegue se reconhecer nessa situação?"
+Se não → adicionar cena específica
+
+2. "Tem exemplo concreto ou só conceito abstrato?"
+Se só conceito → adicionar comportamento observável
+
+3. "Isso poderia estar em qualquer post motivacional?"
+Se sim → reescrever com observação específica
+
+4. "Qual palavra/frase torna isso reconhecível?"
+Se não tem → adicionar detalhe cotidiano
+
+═══════════════════════════════════════════════════════
+
+PALAVRAS QUE INDICAM GENÉRICO (BLOQUEAR)
+
+❌ "é constante"
+❌ "é fundamental"
+❌ "é essencial"
+❌ "cada vez mais"
+❌ "no mundo de hoje"
+❌ "vivemos em"
+❌ "a era digital"
+❌ "muitos acreditam"
+❌ "é importante"
+❌ "devemos"
+❌ "reflita sobre"
+❌ "transforme sua"
+
+Se aparecer → REESCREVER com contexto específico.
+
+PALAVRAS QUE INDICAM CONCRETO (USAR)
+
+✅ "Você abre/fecha/clica/vê"
+✅ "Acontece quando..."
+✅ "A pessoa faz X esperando Y, mas vem Z"
+✅ "Exemplo: [situação específica]"
+✅ "Isso aparece como..."
+✅ "Na prática..."
+✅ "O que muda: [antes] → [agora]"
+
+═══════════════════════════════════════════════════════
+
+REGRA DE PROGRESSÃO EDITORIAL
+
+Carrossel contextual constrói entendimento em CAMADAS.
+
+Cada slide deve responder implicitamente:
+
+Slide 1: Qual comportamento/situação observável?
+Slide 2: Por que isso acontece? (contexto)
+Slide 3: Qual a implicação disso?
+Slide 4: Qual erro comum de leitura?
+Slide 5: Qual o reframe (nova forma de ver)?
+Slide 6: Como isso aparece no dia a dia?
+Slide 7: Qual a consequência prática?
+Slide 8: Qual o conceito/nome disso?
+Slide 9: O que isso muda em posicionamento/ação?
+Slide 10: Qual provocação cognitiva final?
+
+TESTE DE PROGRESSÃO:
+
+"Se eu ler slide 5, ele faz sentido SÓ porque li 1-4?"
+Se NÃO → progressão está fraca.
+
+"O slide adiciona NOVA camada ou repete o anterior?"
+Se repete → reescrever.
+
+═══════════════════════════════════════════════════════
+
+REGRA DE SLIDE FINAL (SLIDE 10)
+
+O slide 10 NUNCA pode ser:
+❌ Pergunta motivacional genérica
+❌ "Como você [ação]?"
+❌ "Reflita sobre..."
+❌ "Você já...?"
+
+O slide 10 SEMPRE deve ser:
+✅ Provocação cognitiva específica
+✅ Pergunta que muda a forma de ver o problema
+✅ Reframe da situação inicial
+
+EXEMPLOS:
+
+❌ GENÉRICO (errado):
+"Como você tem cuidado da sua mente diariamente?
+Reflita sobre suas práticas e faça ajustes onde necessário."
+
+✅ CONTEXTUAL (correto):
+"Então a pergunta não é 'quanto eu posto'.
+É: o que a pessoa entende sobre como eu trabalho só de me acompanhar 3 semanas?"
+
+---
+
+❌ GENÉRICO (errado):
+"Você já revisou seu manual digital hoje?
+Pergunte-se como pode aprimorar sua convivência com tecnologia."
+
+✅ CONTEXTUAL (correto):
+"Se você não sabe responder em 10 segundos, seu nicho ainda tá vago demais.
+E vago demais = competindo com todo mundo."
+
+═══════════════════════════════════════════════════════
+
+DENSIDADE MÍNIMA REFORÇADA
+
+CADA SLIDE precisa:
+
+BLOCO 1 (8-22 palavras):
+•  Observação concreta OU
+•  Cena reconhecível OU
+•  Contraste específico
+
+BLOCO 2 (10-28 palavras):
+•  Contexto aplicado OU
+•  Implicação prática OU
+•  Consequência observável
+
+TOTAL: 18-50 palavras
+
+NUNCA:
+•  Só frase de efeito sem contexto
+•  Só conceito abstrato
+•  Só afirmação genérica
+
+SEMPRE:
+•  Observação + contexto
+•  Situação + implicação
+•  Comportamento + consequência
+
+═══════════════════════════════════════════════════════
+
+VALIDAÇÃO ANTI-GENÉRICO (CHECKLIST FINAL)
+
+Antes de retornar JSON, validar TODOS os slides:
+
+✅ Cada slide tem contexto concreto?
+✅ Tem pelo menos 3 cenas/exemplos reconhecíveis ao longo do carrossel?
+✅ NENHUM slide usa linguagem motivacional?
+✅ NENHUM slide tem frase genérica tipo "é fundamental/essencial"?
+✅ Slide 10 é provocação cognitiva (não pergunta motivacional)?
+✅ Progressão: cada slide adiciona NOVA camada?
+✅ Densidade: todos os slides entre 18-50 palavras?
+✅ Passou no teste "a pessoa se reconhece nisso?"
+
+Se QUALQUER item = NÃO → REFAZER.
+
+═══════════════════════════════════════════════════════
+
+EXEMPLOS DE TRANSFORMAÇÃO
+
+TEMA: "Sobrecarga de informações"
+
+❌ VERSÃO GENÉRICA (o que a ferramenta gerou):
+
+Slide 1:
+bloco1: "A sobrecarga de informações é constante."
+bloco2: "A mente contemporânea enfrenta desafios diários que demandam atenção especial."
+
+Slide 6:
+bloco1: "Práticas de mindfulness são cada vez mais recomendadas."
+bloco2: "Essas técnicas ajudam a filtrar o excesso de informações."
+
+Slide 10:
+bloco1: "Como você tem cuidado da sua mente diariamente?"
+bloco2: "Reflita sobre suas práticas e faça ajustes onde necessário."
+
+✅ VERSÃO CONTEXTUAL (o que deveria ser):
+
+Slide 1:
+bloco1: "Você acorda, pega o celular ainda na cama."
+bloco2: "São 7h13 e você já consumiu 15 notícias, 8 stories, 23 emails. Antes mesmo de escovar os dentes."
+
+Slide 6:
+bloco1: "Aí vem a solução: apps de meditação, bloqueadores de distração."
+bloco2: "Você baixa pra reduzir notificação. Mas agora tem notificação do app de bloqueio de notificação."
+
+Slide 10:
+bloco1: "Então a pergunta não é 'como filtro informação'."
+bloco2: "É: dá pra filtrar quando a estrutura inteira foi desenhada pra ser impossível de filtrar?"
+
+═══════════════════════════════════════════════════════
+
+ATUALIZAÇÃO NO COMPORTAMENTO DA IA
+
+Sequência obrigatória:
+
+1. Recebe tema do usuário
+2. Identifica comportamento observável concreto
+3. Define progressão de raciocínio (1→10)
+4. Gera slides COM contexto cotidiano
+5. VALIDA: tem cena reconhecível em cada slide?
+6. VALIDA: passou no teste anti-genérico?
+7. Se genérico → adiciona contexto específico
+8. Se concreto → retorna JSON
+
+NUNCA:
+•  Gerar slides abstratos/conceituais
+•  Tom motivacional/prescritivo
+•  Frases de efeito sem contexto
+•  Linguagem de palestra inspiracional
+
+SEMPRE:
+•  Contexto cotidiano reconhecível
+•  Observação comportamental específica
+•  Progressão de raciocínio clara
+•  Implicação prática aplicada
+•  Provocação cognitiva final`,
             };
 
             const systemPrompt = PROMPTS[carousel.mode === 'cultural' ? 'cultural' : 'editorial'];
@@ -697,12 +1156,21 @@ Princípios:
             const data = await response.json();
             const result = JSON.parse(data.choices[0].message.content);
 
+            // Update carousel metadata with AI generated title/subtitle
+            if (result.titulo) {
+                setCarousel(prev => ({
+                    ...prev,
+                    topic: result.titulo,
+                    objective: result.subtitulo || prev.objective
+                }));
+            }
+
             const initialSlides: CarouselSlide[] = result.slides.map((s: any) => ({
                 text: s.bloco1 || s.text, // Support new "bloco1" format and fallback to legacy "text"
                 secondaryText: s.bloco2 || s.secondaryText || "", // Support new "bloco2" and fallback
                 useOnlyMain: !s.secondaryText,
                 font: "'Playfair Display', serif",
-                fontSize: "md",
+                fontSize: 42, // Default size
                 alignment: "center",
                 isBold: true,
                 isItalic: false,
@@ -721,7 +1189,7 @@ Princípios:
                 bgImage: brand?.graphic_elements || "",
                 bgColor: brand?.primary_color || "#000000",
                 secondaryFont: "'Inter', sans-serif",
-                secondaryFontSize: "sm",
+                secondaryFontSize: 16, // Default subtitle size
                 secondaryLineHeight: "1.5",
                 secondaryIsBold: false,
                 secondaryIsItalic: false,
@@ -928,7 +1396,7 @@ Princípios:
                                     {/* SCALE PREVIEW FOR UI */}
                                     <div className="h-[80%] w-auto aspect-[4/5] lg:w-full lg:max-w-[360px] lg:h-auto rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl border border-white/5 relative bg-slate-900 ring-1 ring-white/10 mx-auto">
                                         <div
-                                            className={cn("w-full h-full flex flex-col px-2 py-8 transition-all duration-500 overflow-hidden")}
+                                            className={cn("w-full h-full flex flex-col px-5 py-6 transition-all duration-500 overflow-hidden")}
                                             style={{
                                                 fontFamily: carousel.slides[currentSlide].font,
                                                 backgroundColor: carousel.slides[currentSlide].bgColor,
@@ -960,19 +1428,21 @@ Princípios:
                                                         borderRadius: '8px',
                                                         display: 'flex',
                                                         flexDirection: 'column',
+                                                        maxHeight: '90%', // Increased for more text
+                                                        overflow: 'hidden', // Cutoff if still too large, but padding helps
+                                                        justifyContent: 'center',
                                                         alignItems: carousel.slides[currentSlide].textPosition === 'left' ? 'flex-start' :
                                                             carousel.slides[currentSlide].textPosition === 'right' ? 'flex-end' : 'center'
                                                     }}
                                                 >
                                                     <h1 className={cn(
                                                         "font-black tracking-tighter break-normal w-full box-border hyphens-none",
-                                                        carousel.slides[currentSlide].fontSize === 'sm' ? 'text-2xl' :
-                                                            carousel.slides[currentSlide].fontSize === 'md' ? 'text-3xl' : 'text-4xl',
                                                         carousel.slides[currentSlide].isItalic && "italic"
                                                     )}
                                                         style={{
                                                             color: carousel.slides[currentSlide].textColor,
                                                             fontFamily: carousel.slides[currentSlide].font,
+                                                            fontSize: `${carousel.slides[currentSlide].fontSize}px`, // Dynamic size
                                                             fontWeight: (carousel.slides[currentSlide].font?.includes("Bold") || ["Montserrat Bold", "Poppins Bold", "Open Sans ExtraBold"].includes(TITLE_FONTS.find(f => f.value === carousel.slides[currentSlide].font)?.name || "")) ? "bold" : "normal",
                                                             lineHeight: carousel.slides[currentSlide].lineHeight
                                                         }}
@@ -983,9 +1453,6 @@ Princípios:
                                                         <p className={cn(
                                                             "mt-3 opacity-80 leading-relaxed transition-all break-normal w-full box-border hyphens-none",
                                                             // Removed secondaryFont class usage
-                                                            carousel.slides[currentSlide].secondaryFontSize === 'xs' ? 'text-[10px]' :
-                                                                carousel.slides[currentSlide].secondaryFontSize === 'sm' ? 'text-xs' :
-                                                                    carousel.slides[currentSlide].secondaryFontSize === 'md' ? 'text-sm' : 'text-base',
                                                             carousel.slides[currentSlide].secondaryIsBold ? "font-bold" : "font-medium",
                                                             carousel.slides[currentSlide].secondaryIsItalic && "italic",
                                                             carousel.slides[currentSlide].secondaryUppercase && "uppercase tracking-wider"
@@ -993,6 +1460,7 @@ Princípios:
                                                             style={{
                                                                 color: carousel.slides[currentSlide].secondaryTextColor,
                                                                 fontFamily: carousel.slides[currentSlide].secondaryFont,
+                                                                fontSize: `${carousel.slides[currentSlide].secondaryFontSize}px`,
                                                                 lineHeight: carousel.slides[currentSlide].secondaryLineHeight
                                                             }}
                                                         >
@@ -1122,19 +1590,18 @@ Princípios:
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] font-bold text-muted-foreground ml-1">Tamanho</Label>
-                                                <div className="flex bg-white/5 rounded-xl p-1 gap-1">
-                                                    {["sm", "md", "lg"].map(sz => (
-                                                        <button
-                                                            key={sz}
-                                                            onClick={() => updateSlide(currentSlide, { fontSize: sz as any })}
-                                                            className={cn(
-                                                                "flex-1 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
-                                                                carousel.slides![currentSlide].fontSize === sz ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:bg-white/5"
-                                                            )}
-                                                        >
-                                                            {sz}
-                                                        </button>
-                                                    ))}
+                                                <div className="flex flex-col bg-white/5 rounded-xl p-3 gap-2">
+                                                    <div className="flex justify-between items-center w-full px-1">
+                                                        <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].fontSize}px</span>
+                                                    </div>
+                                                    <Slider
+                                                        value={[carousel.slides[currentSlide].fontSize]}
+                                                        min={12}
+                                                        max={120}
+                                                        step={1}
+                                                        onValueChange={(val) => updateSlide(currentSlide, { fontSize: val[0] })}
+                                                        className="py-1"
+                                                    />
                                                 </div>
                                             </div>
 
@@ -1182,19 +1649,18 @@ Princípios:
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold text-muted-foreground ml-1">Tamanho</Label>
-                                                        <div className="flex bg-white/5 rounded-xl p-1 gap-1">
-                                                            {["xs", "sm", "md", "lg"].map(sz => (
-                                                                <button
-                                                                    key={sz}
-                                                                    onClick={() => updateSlide(currentSlide, { secondaryFontSize: sz as any })}
-                                                                    className={cn(
-                                                                        "flex-1 py-1 rounded-lg text-[10px] font-black uppercase transition-all",
-                                                                        carousel.slides![currentSlide].secondaryFontSize === sz ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:bg-white/5"
-                                                                    )}
-                                                                >
-                                                                    {sz}
-                                                                </button>
-                                                            ))}
+                                                        <div className="flex flex-col bg-white/5 rounded-xl p-3 gap-2">
+                                                            <div className="flex justify-between items-center w-full px-1">
+                                                                <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].secondaryFontSize}px</span>
+                                                            </div>
+                                                            <Slider
+                                                                value={[carousel.slides[currentSlide].secondaryFontSize]}
+                                                                min={8}
+                                                                max={60}
+                                                                step={1}
+                                                                onValueChange={(val) => updateSlide(currentSlide, { secondaryFontSize: val[0] })}
+                                                                className="py-1"
+                                                            />
                                                         </div>
                                                     </div>
                                                 </div>

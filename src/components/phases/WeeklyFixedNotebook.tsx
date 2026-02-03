@@ -88,6 +88,44 @@ const INTENTION_OPTIONS = [
 const FEED_FORMATS = ["Carrossel", "Reels", "Foto", "Alternar"];
 const STORIES_FORMATS = ["Caixa", "Diário", "Sequência", "Conversa"];
 
+const DAILY_AI_TIPS: Record<number, { title: string; topic: string; format: string }> = {
+    1: { // Segunda
+        title: "Segunda — Conexão",
+        topic: "algo que faça a pessoa se reconhecer.\nMostre um pensamento, situação ou sentimento comum do seu público.",
+        format: "story, frase, cena real, bastidor."
+    },
+    2: { // Terça
+        title: "Terça — Educação",
+        topic: "algo que ensine de forma simples.\nExplique um conceito, erro comum ou ajuste prático.",
+        format: "dica curta, carrossel simples, mini-aula."
+    },
+    3: { // Quarta
+        title: "Quarta — Autoridade",
+        topic: "sua forma de fazer, analisar ou resolver.\nMostre como você pensa — não só o que você faz.",
+        format: "explicação guiada, comparação, análise."
+    },
+    4: { // Quinta
+        title: "Quinta — Método / Ferramenta",
+        topic: "um processo, passo ou ferramenta que ajuda.\nMostre o caminho, não só o resultado.",
+        format: "passo a passo, checklist, tela, modelo."
+    },
+    5: { // Sexta
+        title: "Sexta — Prova / Resultado",
+        topic: "transformação possível.\nPode ser caso, exemplo, antes/depois de cenário, evolução.",
+        format: "estudo de caso, história curta, cenário real."
+    },
+    6: { // Sábado
+        title: "Sábado — Visão / Bastidores Humanos",
+        topic: "o que ninguém vê.\nMostre bastidor, reflexão, processo interno, valores.",
+        format: "relato, bastidor leve, pensamento em voz alta."
+    },
+    0: { // Domingo
+        title: "Domingo — Direção / Consciência",
+        topic: "direção e clareza.\nAjude a pessoa a enxergar o próximo passo.",
+        format: "pergunta guiada, reflexão estratégica, norte."
+    }
+};
+
 export function WeeklyFixedNotebook() {
     const { user } = useAuth();
     const { brand, updateBrand } = useBrand();
@@ -1420,6 +1458,35 @@ ${block.caption || 'Sem legenda.'}`;
                             </CardHeader>
                             <CardContent className="p-4 space-y-4">
                                 <div className="space-y-4">
+                                    {(bIdx === 0) && (
+                                        <div className="p-4 rounded-xl bg-[#0F172A] border border-white/5 relative overflow-hidden group">
+                                            <div className="absolute top-0 left-0 w-1 h-full bg-accent/50" />
+
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Sparkles className="w-3.5 h-3.5 text-accent animate-pulse" />
+                                                <span className="text-[10px] font-black tracking-widest text-accent uppercase">
+                                                    DICA IA • {DAILY_AI_TIPS[selectedDayIndex]?.title}
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="space-y-1">
+                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground/60">Hoje você vai falar sobre:</p>
+                                                    <p className="text-xs text-white/90 leading-relaxed font-medium whitespace-pre-line">
+                                                        {DAILY_AI_TIPS[selectedDayIndex]?.topic}
+                                                    </p>
+                                                </div>
+
+                                                <div className="pt-2 border-t border-white/5">
+                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground/60 mb-1">Sugestão de formato:</p>
+                                                    <p className="text-xs text-accent/90 italic">
+                                                        {DAILY_AI_TIPS[selectedDayIndex]?.format}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Título / Tema</Label>
                                         <Input
@@ -1474,16 +1541,7 @@ ${block.caption || 'Sem legenda.'}`;
                                         </div>
                                     </div>
 
-                                    {(block.instruction || bIdx === 0) && (
-                                        <div className="p-3 rounded-xl bg-accent/5 border border-accent/20">
-                                            <Label className="text-[10px] font-bold text-accent uppercase flex items-center gap-1.5">
-                                                <Sparkles className="w-3 h-3" /> DICA IA
-                                            </Label>
-                                            <p className="text-xs mt-1.5 leading-relaxed text-foreground/80">
-                                                {block.instruction || "Gere para ver a estratégia detalhada."}
-                                            </p>
-                                        </div>
-                                    )}
+
 
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between">
@@ -1498,29 +1556,31 @@ ${block.caption || 'Sem legenda.'}`;
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Legenda do Post</Label>
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleWriteCaption(detailTab, bIdx)}
-                                                    disabled={isWritingCaption}
-                                                    className="h-6 px-2 text-[10px] text-accent hover:text-accent hover:bg-accent/10"
-                                                >
-                                                    {isWritingCaption ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
-                                                    {isWritingCaption ? "Gerando..." : "Sugerir Legenda"}
-                                                </Button>
+                                    {detailTab === 'feed' && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Legenda do Post</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleWriteCaption(detailTab, bIdx)}
+                                                        disabled={isWritingCaption}
+                                                        className="h-6 px-2 text-[10px] text-accent hover:text-accent hover:bg-accent/10"
+                                                    >
+                                                        {isWritingCaption ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                                                        {isWritingCaption ? "Gerando..." : "Sugerir Legenda"}
+                                                    </Button>
+                                                </div>
                                             </div>
+                                            <Textarea
+                                                placeholder="Escreva ou gere a legenda aqui..."
+                                                className="min-h-[100px] bg-background/40 resize-none text-sm leading-relaxed"
+                                                value={block.caption || ""}
+                                                onChange={(e) => handleDataChange(detailTab, "caption", e.target.value, bIdx)}
+                                            />
                                         </div>
-                                        <Textarea
-                                            placeholder="Escreva ou gere a legenda aqui..."
-                                            className="min-h-[100px] bg-background/40 resize-none text-sm leading-relaxed"
-                                            value={block.caption || ""}
-                                            onChange={(e) => handleDataChange(detailTab, "caption", e.target.value, bIdx)}
-                                        />
-                                    </div>
+                                    )}
 
                                     <div className="space-y-3 pt-2">
                                         {block.notes && adjustingBlock?.index === bIdx && adjustingBlock?.tab === detailTab ? (

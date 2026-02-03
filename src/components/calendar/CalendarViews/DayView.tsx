@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -7,14 +7,13 @@ import { CerebroEvent, CATEGORY_COLORS } from "../types";
 interface DayViewProps {
     date: Date;
     events: CerebroEvent[];
+    onEdit: (event: CerebroEvent) => void;
 }
 
-export function DayView({ date, events }: DayViewProps) {
+export function DayView({ date, events, onEdit }: DayViewProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const now = new Date();
     const isSelectedToday = isSameDay(date, now);
-
-    const dayEvents = events.filter((e) => isSameDay(new Date(e.data + 'T12:00:00'), date));
 
     const hours = Array.from({ length: 24 }).map((_, i) => i);
 
@@ -25,15 +24,57 @@ export function DayView({ date, events }: DayViewProps) {
         }
     }, []);
 
-    const getEventStyle = (event: CerebroEvent) => {
-        if (!event.hora) return { top: 0, height: 60 };
-        const [h, m] = event.hora.split(':').map(Number);
-        const duration = event.duracao || 60;
-        return {
-            top: `${(h * 80) + (m / 60 * 80)}px`,
-            height: `${(duration / 60) * 80}px`
-        };
-    };
+    const positionedEvents = useMemo(() => {
+        // 1. Filter and prepare events
+        const dayEvents = events
+            .filter((e) => isSameDay(new Date(e.data + 'T12:00:00'), date))
+            .map(e => {
+                const [h, m] = (e.hora || "00:00").split(':').map(Number);
+                const start = h * 60 + m;
+                const duration = e.duracao || 60;
+                return { ...e, start, end: start + duration };
+            })
+            .sort((a, b) => a.start - b.start || (b.duracao || 60) - (a.duracao || 60));
+
+        // 2. Compute columns (packing)
+        const columns: number[] = [];
+        const withColIndex = dayEvents.map(event => {
+            let colIndex = columns.findIndex(colEnd => colEnd <= event.start);
+            if (colIndex === -1) {
+                colIndex = columns.length;
+                columns.push(event.end);
+            } else {
+                columns[colIndex] = event.end;
+            }
+            return { ...event, colIndex };
+        });
+
+        // 3. Compute final layout (Stacked Deck Effect)
+        return withColIndex.map(event => {
+            // Find concurrent events
+            const concurrent = withColIndex.filter(e =>
+                Math.max(e.start, event.start) < Math.min(e.end, event.end)
+            );
+            const maxColIndex = Math.max(...concurrent.map(e => e.colIndex));
+
+            // Stack offset calculation
+            // We limit the offset so it doesn't push cards off-screen if there are too many
+            const offsetStep = 18; // px
+            const leftOffset = Math.min(event.colIndex * offsetStep, 100);
+
+            return {
+                ...event,
+                style: {
+                    top: `${(event.start / 60) * 80}px`,
+                    height: `${((event.duracao || 60) / 60) * 80}px`,
+                    // Deck layout: overlapping cards with slight indentation
+                    left: `calc(12px + ${event.colIndex * 8}%)`,
+                    width: `calc(90% - ${event.colIndex * 4}%)`, // Slight width reduction for depth effect
+                    zIndex: event.colIndex + 10,
+                }
+            };
+        });
+    }, [events, date]);
 
     return (
         <div className="bg-slate-900/40 border border-white/5 rounded-3xl overflow-hidden h-[600px] flex flex-col shadow-2xl">
@@ -42,7 +83,7 @@ export function DayView({ date, events }: DayViewProps) {
                     {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
                 </h3>
                 <div className="px-3 py-1 bg-primary/10 rounded-full text-[10px] font-black text-primary uppercase tracking-widest">
-                    {dayEvents.length} Eventos
+                    {positionedEvents.length} Eventos
                 </div>
             </div>
 
@@ -71,34 +112,28 @@ export function DayView({ date, events }: DayViewProps) {
 
                 {/* Events */}
                 <div className="absolute inset-x-4 top-4 bottom-4">
-                    {dayEvents.map((event) => {
+                    {positionedEvents.map((event) => {
                         const colors = CATEGORY_COLORS[event.categoria] || CATEGORY_COLORS.Outro;
-                        const style = getEventStyle(event);
                         return (
                             <div
                                 key={event.id}
                                 className={cn(
-                                    "absolute left-16 right-4 rounded-2xl p-4 border transition-all hover:scale-[1.02] cursor-pointer group shadow-xl",
+                                    "absolute rounded-2xl p-3 border transition-all duration-200 cursor-pointer group shadow-lg hover:shadow-2xl hover:scale-[1.02] hover:!z-[100]",
                                     colors.bg,
                                     colors.text,
-                                    "border-white/5"
+                                    "border-white/10"
                                 )}
-                                style={style}
+                                style={event.style}
+                                onClick={() => onEdit(event)}
                             >
-                                <div className="flex flex-col h-full">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className={cn("w-2 h-2 rounded-full", colors.dot)} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">{event.categoria}</span>
+                                <div className="flex flex-col h-full overflow-hidden">
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                        <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", colors.dot)} />
+                                        <span className="text-[9px] font-black uppercase tracking-widest opacity-80 truncate">{event.categoria}</span>
                                     </div>
-                                    <h4 className="font-bold text-sm leading-tight group-hover:text-white transition-colors truncate">{event.titulo}</h4>
-                                    <div className="mt-auto flex items-center justify-between opacity-60 text-[10px] font-bold">
-                                        <span>{event.hora?.substring(0, 5)} {event.duracao ? `(${event.duracao}min)` : ''}</span>
-                                        <span className={cn(
-                                            "px-2 py-0.5 rounded-full text-[8px] border",
-                                            event.status === 'Concluído' ? "bg-green-500/20 text-green-400 border-green-500/20" : "bg-white/5 text-muted-foreground border-white/10"
-                                        )}>
-                                            {event.status}
-                                        </span>
+                                    <h4 className="font-bold text-xs leading-tight group-hover:text-white transition-colors truncate">{event.titulo}</h4>
+                                    <div className="mt-auto flex items-center justify-between opacity-60 text-[9px] font-bold">
+                                        <span>{event.hora?.substring(0, 5)}</span>
                                     </div>
                                 </div>
                             </div>

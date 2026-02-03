@@ -7,9 +7,10 @@ import { CerebroEvent, CATEGORY_COLORS } from "../types";
 interface WeekViewProps {
     currentDate: Date;
     events: CerebroEvent[];
+    onEdit: (event: CerebroEvent) => void;
 }
 
-export function WeekView({ currentDate, events }: WeekViewProps) {
+export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const weekStart = startOfWeek(currentDate, { locale: ptBR });
     const weekDays = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
@@ -66,46 +67,78 @@ export function WeekView({ currentDate, events }: WeekViewProps) {
                     </div>
 
                     {/* Day columns */}
-                    {weekDays.map((day) => (
-                        <div key={day.toISOString()} className="relative border-r border-white/[0.03] last:border-0 h-full">
-                            {hours.map(h => (
-                                <div key={h} className="h-20 border-b border-white/[0.02]" />
-                            ))}
+                    {weekDays.map((day) => {
+                        // 1. Filter and prepare events for this day
+                        const dayEvents = events
+                            .filter(e => isSameDay(new Date(e.data + 'T12:00:00'), day))
+                            .map(e => {
+                                const [h, m] = (e.hora || "00:00").split(':').map(Number);
+                                const start = h * 60 + m;
+                                const duration = e.duracao || 60;
+                                return { ...e, start, end: start + duration };
+                            })
+                            .sort((a, b) => a.start - b.start || (b.duracao || 60) - (a.duracao || 60));
 
-                            {/* Events for this day */}
-                            <div className="absolute inset-0 p-1">
-                                {events
-                                    .filter(e => isSameDay(new Date(e.data + 'T12:00:00'), day))
-                                    .map(event => {
+                        // 2. Compute columns (packing)
+                        const columns: number[] = [];
+                        const withColIndex = dayEvents.map(event => {
+                            let colIndex = columns.findIndex(colEnd => colEnd <= event.start);
+                            if (colIndex === -1) {
+                                colIndex = columns.length;
+                                columns.push(event.end);
+                            } else {
+                                columns[colIndex] = event.end;
+                            }
+                            return { ...event, colIndex };
+                        });
+
+                        // 3. Render events with layout styles
+                        return (
+                            <div key={day.toISOString()} className="relative border-r border-white/[0.03] last:border-0 h-full">
+                                {hours.map(h => (
+                                    <div key={h} className="h-20 border-b border-white/[0.02]" />
+                                ))}
+
+                                {/* Events for this day */}
+                                <div className="absolute inset-0 p-1">
+                                    {withColIndex.map(event => {
+                                        // Deck layout logic for Week View
                                         const colors = CATEGORY_COLORS[event.categoria] || CATEGORY_COLORS.Outro;
-                                        const style = getEventStyle(event);
                                         return (
                                             <div
                                                 key={event.id}
                                                 className={cn(
-                                                    "absolute inset-x-1.5 rounded-xl border flex flex-col p-2 overflow-hidden shadow-lg transition-all hover:scale-[1.05] cursor-pointer group",
+                                                    "absolute rounded-xl border flex flex-col p-1.5 overflow-hidden shadow-lg transition-all duration-200 hover:scale-[1.05] cursor-pointer group hover:shadow-2xl hover:!z-[100]",
                                                     colors.bg,
                                                     colors.text,
-                                                    "border-white/5"
+                                                    "border-white/10"
                                                 )}
-                                                style={style}
+                                                style={{
+                                                    top: `${(event.start / 60) * 80}px`,
+                                                    height: `${((event.duracao || 60) / 60) * 80}px`,
+                                                    // Stacked layout for columns
+                                                    left: `calc(2px + ${event.colIndex * 15}%)`,
+                                                    width: `calc(95% - ${event.colIndex * 10}%)`,
+                                                    zIndex: event.colIndex + 10
+                                                }}
+                                                onClick={() => onEdit(event)}
                                             >
                                                 <div className="flex items-center gap-1 mb-0.5 shrink-0">
                                                     <div className={cn("w-1 h-1 rounded-full", colors.dot)} />
                                                     <span className="text-[7px] font-black uppercase tracking-widest opacity-70 truncate">{event.categoria}</span>
                                                 </div>
                                                 <h4 className={cn(
-                                                    "font-extrabold text-[10px] leading-tight truncate group-hover:text-white transition-colors",
+                                                    "font-extrabold text-[9px] leading-tight truncate group-hover:text-white transition-colors",
                                                     event.status === "Concluído" && "line-through opacity-50"
                                                 )}>{event.titulo}</h4>
-                                                <span className="text-[8px] font-bold mt-auto opacity-60">{event.hora?.substring(0, 5)}</span>
+                                                <span className="text-[7px] font-bold mt-auto opacity-60">{event.hora?.substring(0, 5)}</span>
                                             </div>
                                         );
-                                    })
-                                }
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>

@@ -3,11 +3,14 @@ export type EventType = "Tarefa" | "Compromisso";
 export type EventStatus = "Pendente" | "Concluído";
 export type RecurrenceType = "Nenhuma" | "Diária" | "Semanal" | "Mensal" | "Anual";
 
+export type EventPriority = "Baixa" | "Média" | "Alta";
+
 export interface CerebroEvent {
     id: string;
     titulo: string;
     categoria: EventCategory;
     tipo: EventType;
+    prioridade?: EventPriority; // Optional in case existing records don't have it
     data: string; // ISO date
     hora: string | null;
     duracao: number | null;
@@ -24,13 +27,13 @@ export interface CerebroEvent {
 }
 
 export const CATEGORY_COLORS: Record<EventCategory, { bg: string; text: string; dot: string }> = {
-    Vida: { bg: "bg-purple-500/10", text: "text-purple-400", dot: "bg-purple-500" },
-    Família: { bg: "bg-pink-500/10", text: "text-pink-400", dot: "bg-pink-500" },
-    Trabalho: { bg: "bg-blue-500/10", text: "text-blue-400", dot: "bg-blue-500" },
-    Conteúdo: { bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-500" },
-    Saúde: { bg: "bg-green-500/10", text: "text-green-400", dot: "bg-green-500" },
-    Casa: { bg: "bg-cyan-500/10", text: "text-cyan-400", dot: "bg-cyan-500" },
-    Contas: { bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-500" },
-    Estudos: { bg: "bg-indigo-500/10", text: "text-indigo-400", dot: "bg-indigo-500" },
-    Outro: { bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-500" },
+    Vida: { bg: "bg-purple-600", text: "text-white", dot: "bg-white" },
+    Família: { bg: "bg-pink-600", text: "text-white", dot: "bg-white" },
+    Trabalho: { bg: "bg-blue-600", text: "text-white", dot: "bg-white" },
+    Conteúdo: { bg: "bg-amber-600", text: "text-white", dot: "bg-white" },
+    Saúde: { bg: "bg-green-600", text: "text-white", dot: "bg-white" },
+    Casa: { bg: "bg-cyan-600", text: "text-white", dot: "bg-white" },
+    Contas: { bg: "bg-red-600", text: "text-white", dot: "bg-white" },
+    Estudos: { bg: "bg-indigo-600", text: "text-white", dot: "bg-white" },
+    Outro: { bg: "bg-slate-700", text: "text-white", dot: "bg-white" },
 };

@@ -1,5 +1,5 @@
 import React from "react";
-import { format, isSameDay, startOfMonth, startOfWeek, endOfWeek, endOfMonth, endOfYear, startOfYear, eachDayOfInterval } from "date-fns";
+import { format, isSameDay, startOfMonth, startOfWeek, endOfWeek, endOfMonth, endOfYear, startOfYear, eachDayOfInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CerebroEvent, CATEGORY_COLORS } from "../types";
@@ -20,8 +20,8 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
     const getRange = () => {
         let start, end;
         if (view === "day") {
-            start = date;
-            end = date;
+            start = startOfDay(date);
+            end = endOfDay(date);
         } else if (view === "week") {
             start = startOfWeek(date, { locale: ptBR });
             end = endOfWeek(date, { locale: ptBR });
@@ -99,24 +99,24 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
                                 <div
                                     key={event.id}
                                     className={cn(
-                                        "group relative flex items-center gap-4 p-4 rounded-3xl border transition-all duration-300",
+                                        "group relative flex items-center gap-3 p-3 sm:gap-4 sm:p-4 rounded-2xl sm:rounded-3xl border transition-all duration-300 w-full max-w-full overflow-hidden",
                                         "bg-slate-900/40 border-white/5 hover:border-white/10 hover:bg-white/[0.03] shadow-lg",
                                         isCompleted && "opacity-50"
                                     )}
                                 >
                                     {/* Category Indicator */}
-                                    <div className={cn("w-1 h-10 rounded-full", colors.dot.replace('bg-', 'bg-'))} />
+                                    <div className={cn("w-1 h-8 sm:h-10 rounded-full shrink-0", colors.dot.replace('bg-', 'bg-'))} />
 
                                     {/* Time */}
-                                    <div className="flex flex-col min-w-[60px]">
-                                        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{event.hora?.substring(0, 5) || "--:--"}</span>
-                                        <span className="text-[8px] font-bold text-primary/60 uppercase">{event.tipo}</span>
+                                    <div className="flex flex-col min-w-[50px] sm:min-w-[60px] shrink-0">
+                                        <span className="text-[9px] sm:text-[10px] font-black text-white/40 uppercase tracking-widest">{event.hora?.substring(0, 5) || "--:--"}</span>
+                                        <span className="text-[7px] sm:text-[8px] font-bold text-primary/60 uppercase">{event.tipo}</span>
                                     </div>
 
                                     {/* Content */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-0.5">
-                                            <span className={cn("text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md border border-white/5", colors.bg, colors.text)}>
+                                            <span className={cn("text-[7px] sm:text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md border border-white/5", colors.bg, colors.text)}>
                                                 {event.categoria}
                                             </span>
                                         </div>
@@ -129,34 +129,41 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
                                     </div>
 
                                     {/* Actions */}
-                                    <div className="flex items-center gap-2 sm:gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => onToggleStatus(event.id)}
                                             className={cn(
-                                                "w-10 h-10 rounded-2xl transition-all",
+                                                "w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl transition-all",
                                                 isCompleted ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/40 hover:text-white"
                                             )}
                                         >
-                                            <Check className="w-4 h-4" />
+                                            <Check className="w-3 h-3 sm:w-4 sm:h-4" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => onEdit(event)}
-                                            className="w-10 h-10 rounded-2xl bg-white/5 text-white/40 hover:text-white"
+                                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white/5 text-white/40 hover:text-white hidden sm:flex"
                                         >
-                                            <Edit2 className="w-4 h-4" />
+                                            <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => onDelete(event.id)}
-                                            className="w-10 h-10 rounded-2xl bg-white/5 text-red-400/40 hover:text-red-400"
+                                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white/5 text-red-400/40 hover:text-red-400 hidden sm:flex"
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                                         </Button>
+                                        {/* Mobile Edit Trigger (invisible full card click is handled or separate?) 
+                                            Wait, earlier I added onClick to DayView/WeekView for editing. 
+                                            ListView also needs onClick for editing on mobile!
+                                            But wait, ListView has action buttons.
+                                            On mobile, having small buttons might be hard.
+                                            Maybe I should make the whole card clickable for edit, except the check button.
+                                         */}
                                     </div>
                                 </div>
                             );

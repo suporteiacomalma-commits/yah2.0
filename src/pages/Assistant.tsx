@@ -44,6 +44,8 @@ export default function Assistant() {
 
     // UI States
     const [inputText, setInputText] = useState("");
+    const [recordingTime, setRecordingTime] = useState(0);
+    const [transcript, setTranscript] = useState("");
     const [isListening, setIsListening] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isProcessingImage, setIsProcessingImage] = useState(false);
@@ -71,7 +73,10 @@ export default function Assistant() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+    const timerRef = useRef<any>(null);
+    const recognitionRef = useRef<any>(null);
 
+    // --- AUDIO HANDLING ---
     // --- AUDIO HANDLING ---
     const startRecording = async () => {
         try {
@@ -79,26 +84,59 @@ export default function Assistant() {
             const recorder = new MediaRecorder(stream);
             audioChunksRef.current = [];
 
-            recorder.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
             recorder.onstop = async () => {
                 const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                await transcribeAudio(blob);
-                stream.getTracks().forEach(t => t.stop());
+                if (blob.size > 0) {
+                    await transcribeAudio(blob);
+                }
+                stream.getTracks().forEach(track => track.stop());
             };
 
             recorder.start();
             mediaRecorderRef.current = recorder;
             setIsListening(true);
-            toast.info("Ouvindo...");
+            setRecordingTime(0);
+
+            timerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                const rec = new SpeechRecognition();
+                rec.continuous = true;
+                rec.interimResults = true;
+                rec.lang = "pt-BR";
+                rec.onresult = (event: any) => {
+                    let interim = "";
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        interim += event.results[i][0].transcript;
+                    }
+                    setTranscript(interim);
+                };
+                rec.start();
+                recognitionRef.current = rec;
+            }
+
         } catch (error) {
-            console.error(error);
+            console.error("Mic error:", error);
             toast.error("Erro ao acessar microfone.");
         }
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current?.state !== "inactive") {
-            mediaRecorderRef.current?.stop();
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            mediaRecorderRef.current.stop();
+        }
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
         }
         setIsListening(false);
     };
@@ -291,6 +329,36 @@ Frase do usuário: "${inputText}"`;
         }
     };
 
+    const renderRecording = () => (
+        <div className="flex flex-col items-center justify-center text-center space-y-10 animate-in zoom-in-95 duration-300 w-full">
+            <div className="relative">
+                <div className="w-32 h-32 rounded-full bg-destructive flex items-center justify-center glow-destructive animate-pulse" onClick={stopRecording}>
+                    <Mic className="w-12 h-12 text-white" />
+                </div>
+                <div className="absolute -inset-4 border-2 border-destructive/20 rounded-full animate-ping opacity-50" />
+            </div>
+
+            <div className="space-y-6">
+                <div className="text-4xl font-mono font-black text-destructive tracking-widest">
+                    {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}
+                </div>
+                <div className="min-h-[40px] px-8">
+                    <p className="text-lg font-bold italic text-foreground/80 tracking-tight line-clamp-1">
+                        {transcript || "YAh ouvindo você..."}
+                    </p>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-destructive font-black animate-pulse text-[10px] uppercase tracking-[0.3em]">
+                    <div className="w-1 h-1 rounded-full bg-destructive" />
+                    Capturando Fluxo
+                </div>
+            </div>
+
+            <Button onClick={stopRecording} className="rounded-full h-14 px-10 bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-widest shadow-xl shadow-destructive/20 active:scale-95">
+                Concluir
+            </Button>
+        </div>
+    );
+
     return (
         <MinimalLayout>
             <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center md:justify-center py-10 px-4 font-sans selection:bg-primary/30 relative overflow-y-auto">
@@ -306,151 +374,112 @@ Frase do usuário: "${inputText}"`;
                 </Button>
 
                 {/* Visual Background Glow (Subtle) */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.08)_0%,transparent_70%)] pointer-events-none" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(circle_at_center,rgba(132,204,22,0.15)_0%,transparent_70%)] pointer-events-none" />
 
                 <div className="w-full max-w-2xl flex flex-col items-center z-10 animate-in fade-in duration-1000">
 
-                    {/* Compact Microphone */}
-                    <div className="relative group/mic mb-8">
-                        {/* Rotating Glow Ring */}
-                        {!isListening && !isProcessing && (
-                            <div className="absolute inset-[-6px] bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 rounded-full blur-lg animate-spin-slow opacity-0 group-hover/mic:opacity-100 transition-opacity duration-700" />
-                        )}
-
-                        {isListening && (
+                    {/* Massive Animated Voice/Text Area */}
+                    <div className="flex flex-col items-center space-y-10 w-full max-w-2xl py-8">
+                        {isListening ? (
+                            renderRecording()
+                        ) : (
                             <>
-                                <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
-                                <div className="absolute inset-[-15px] bg-pink-500/10 rounded-full animate-ping" />
-                            </>
-                        )}
-                        <button
-                            onClick={isListening ? stopRecording : startRecording}
-                            disabled={isProcessing}
-                            className={cn(
-                                "relative w-32 h-32 rounded-full p-[2.5px] transition-all duration-700 active:scale-90 shadow-[0_0_40px_rgba(168,85,247,0.15)] hover:shadow-[0_0_60px_rgba(168,85,247,0.3)]",
-                                isListening
-                                    ? "bg-red-500 shadow-[0_0_60px_rgba(239,68,68,0.3)]"
-                                    : "bg-gradient-to-br from-[#A855F7] via-[#D946EF] to-[#EC4899] hover:animate-pulse"
-                            )}
-                        >
-                            <div className="w-full h-full rounded-full flex items-center justify-center bg-black/20 backdrop-blur-md transition-colors group-hover/mic:bg-black/10">
-                                {isProcessing ? (
-                                    <Loader2 className="w-12 h-12 animate-spin text-white opacity-80" />
-                                ) : (
-                                    <Mic className={cn(
-                                        "w-20 h-20 text-white transition-all duration-700 drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]",
-                                        isListening ? "animate-bounce" : "group-hover/mic:scale-105 group-hover/mic:rotate-2 animate-float"
-                                    )} />
-                                )}
-                            </div>
-                        </button>
-                    </div>
-
-                    {/* Compact Headline */}
-                    <div className="text-center space-y-3 mb-6 md:mb-10 max-w-lg">
-                        <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white animate-in slide-in-from-bottom-4 duration-700 leading-tight">
-                            Diga tudo que precisa lembrar, <br className="hidden md:block" />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">que eu organizo para você.</span>
-                        </h1>
-                        <p className="text-white/20 font-medium text-base md:text-lg tracking-tight max-w-xs mx-auto">
-                            Pressione acima ou capture abaixo.
-                        </p>
-                    </div>
-
-                    {/* Captured Insight Card - VISIBILITY FOCUS */}
-                    {showCapturedCard && inputText.length > 0 && (
-                        <div className="w-full mb-8 animate-in zoom-in-95 slide-in-from-top-4 duration-500">
-                            <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[32px] p-8 shadow-2xl relative">
-                                <button
-                                    onClick={() => setShowCapturedCard(false)}
-                                    className="absolute top-6 right-6 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-all"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
-
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                                        <MessageSquareText className="w-5 h-5 text-purple-500" />
+                                <div className="relative group cursor-pointer" onClick={startRecording}>
+                                    <div className="w-32 h-32 rounded-full gradient-primary flex items-center justify-center glow-primary hover:scale-105 transition-transform duration-500 active:scale-95">
+                                        <Mic className="w-12 h-12 text-white" />
                                     </div>
-                                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">O que eu entendi:</span>
+                                    <div className="absolute -inset-4 border border-primary/20 rounded-full animate-pulse group-hover:animate-ping" />
                                 </div>
 
-                                <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-4">
-                                    <p className="text-2xl font-bold text-white/90 leading-relaxed italic">
-                                        "{inputText}"
+                                <div className="space-y-4 max-w-md text-center">
+                                    <h2 className="text-2xl sm:text-3xl font-black tracking-tighter italic uppercase text-foreground leading-[0.9]">Diga seu insight</h2>
+                                    <p className="text-muted-foreground text-sm sm:text-base px-6">
+                                        Pressione para capturar, aqui suas ideias ganham direção
                                     </p>
                                 </div>
 
-                                <div className="mt-8 flex justify-end">
-                                    <Button
-                                        onClick={handleOrganize}
-                                        disabled={isProcessing}
-                                        className="h-14 px-8 rounded-2xl bg-white text-black hover:bg-white/90 font-black text-lg transition-all flex items-center gap-3"
-                                    >
-                                        {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                                            <>
-                                                <span>Organizar Agora</span>
-                                                <Sparkles className="w-5 h-5" />
-                                            </>
-                                        )}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                                {/* Captured Insight Card - VISIBILITY FOCUS */}
+                                {showCapturedCard && inputText.length > 0 && (
+                                    <div className="w-full mb-8 animate-in zoom-in-95 slide-in-from-top-4 duration-500">
+                                        <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[32px] p-8 shadow-2xl relative">
+                                            <button
+                                                onClick={() => setShowCapturedCard(false)}
+                                                className="absolute top-6 right-6 p-2 rounded-full bg-white/5 text-white/20 hover:text-white transition-all"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
 
-                    {/* Prominent Search-style Pill Input Bar */}
-                    <div className="w-full max-w-xl relative group h-16 md:h-20 mb-8 md:mb-16 transition-all duration-500">
-                        {/* More distinct outer glow when focused */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-pink-500/30 rounded-full blur-3xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-700" />
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="p-2 rounded-xl bg-lime-500/10 border border-lime-500/20">
+                                                    <MessageSquareText className="w-5 h-5 text-lime-500" />
+                                                </div>
+                                                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">O que eu entendi:</span>
+                                            </div>
 
-                        <div className="relative h-full flex items-center bg-[#0F0F0F] border-2 border-white/[0.08] hover:border-white/[0.15] group-focus-within:border-purple-500/50 rounded-full px-4 md:px-8 shadow-[0_32px_64px_rgba(0,0,0,0.6)] group-focus-within:bg-[#121212] transition-all duration-300">
-                            <Search className="w-5 h-5 md:w-7 md:h-7 text-white/10 group-focus-within:text-purple-500 transition-colors" />
-                            <input
-                                type="text"
-                                value={inputText}
-                                onChange={(e) => {
-                                    setInputText(e.target.value);
-                                    if (e.target.value.length === 0) setShowCapturedCard(false);
-                                }}
-                                placeholder="Ou digite sua ideia..."
-                                className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 text-base md:text-xl px-3 md:px-6 placeholder:text-white/5 text-white/90 font-semibold"
-                                onKeyDown={(e) => e.key === 'Enter' && handleOrganize()}
-                            />
+                                            <div className="max-h-[200px] overflow-y-auto custom-scrollbar pr-4">
+                                                <p className="text-2xl font-bold text-white/90 leading-relaxed italic">
+                                                    "{inputText}"
+                                                </p>
+                                            </div>
 
-                            <div className="flex items-center gap-2 md:gap-4 shrink-0">
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="p-2.5 md:p-3.5 rounded-xl md:rounded-2xl bg-white/5 hover:bg-white/10 text-white/20 hover:text-white transition-all shadow-inner"
-                                    title="Capturar foto"
-                                >
-                                    <ImageIcon className="w-5 h-5 md:w-6 md:h-6" />
-                                </button>
-
-                                {inputText.length > 0 ? (
-                                    <button
-                                        onClick={handleOrganize}
-                                        disabled={isProcessing}
-                                        className="w-10 h-10 md:w-12 md:h-12 rounded-[14px] md:rounded-[18px] bg-gradient-to-br from-[#A855F7] to-[#EC4899] flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-xl shadow-purple-500/40"
-                                    >
-                                        {isProcessing ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : <Send className="w-5 h-5 md:w-6 md:h-6 text-white" />}
-                                    </button>
-                                ) : (
-                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-[14px] md:rounded-[18px] bg-white/5 flex items-center justify-center border border-white/[0.03]">
-                                        <Keyboard className="w-5 h-5 md:w-6 md:h-6 text-white/5 opacity-40" />
+                                            <div className="mt-8 flex justify-end">
+                                                <Button
+                                                    onClick={handleOrganize}
+                                                    disabled={isProcessing}
+                                                    className="h-14 px-8 rounded-2xl bg-white text-black hover:bg-white/90 font-black text-lg transition-all flex items-center gap-3"
+                                                >
+                                                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                                        <>
+                                                            <span>Organizar Agora</span>
+                                                            <Sparkles className="w-5 h-5" />
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
-                            </div>
-                        </div>
-                        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+
+                                <div className="w-full flex gap-3 p-3 bg-background/50 rounded-[24px] border border-white/10 shadow-inner focus-within:border-primary/50 transition-all">
+                                    <Search className="w-5 h-5 text-muted-foreground/50 ml-3 mt-3" />
+                                    <input
+                                        type="text"
+                                        value={inputText}
+                                        onChange={(e) => {
+                                            setInputText(e.target.value);
+                                            if (e.target.value.length === 0) setShowCapturedCard(false);
+                                        }}
+                                        placeholder="Ou digite sua ideia..."
+                                        className="flex-1 bg-transparent border-none focus:ring-0 px-2 text-foreground text-base sm:text-lg placeholder:text-muted-foreground/30"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleOrganize();
+                                        }}
+                                    />
+                                    <Button size="icon" className="shrink-0 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 gradient-primary shadow-lg" onClick={handleOrganize}>
+                                        <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                                    </Button>
+                                </div>
+                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
+                                {/* Hidden but accessible image upload for now if we want to restore button later or trigger via other means */}
+                                <div className="flex justify-center mt-4 opacity-50 hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="text-xs text-muted-foreground hover:text-white flex items-center gap-2"
+                                    >
+                                        <ImageIcon className="w-3 h-3" />
+                                        Ou envie uma imagem
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     {/* Compact Category Badges */}
-                    <div className="w-full flex flex-wrap justify-center gap-3 opacity-40 hover:opacity-80 transition-opacity duration-700">
+                    <div className="w-full flex flex-wrap justify-center gap-3 opacity-90 transition-opacity duration-700">
                         {LIFE_BLOCKS.map(b => (
-                            <div key={b.name} className="flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/[0.02] border border-white/[0.03] transition-all hover:bg-white/[0.06] hover:-translate-y-0.5 cursor-default group">
-                                <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentcolor] group-hover:scale-110 transition-transform", b.color.replace('bg-', 'text-'))} />
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 group-hover:text-white/50 transition-colors">{b.name}</span>
+                            <div key={b.name} className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 transition-all hover:bg-white/10 hover:border-white/20 hover:-translate-y-0.5 cursor-default group backdrop-blur-sm">
+                                <div className={cn("w-2 h-2 rounded-full shadow-[0_0_8px_currentcolor] group-hover:scale-110 transition-transform", b.color.replace('bg-', 'text-'))} />
+                                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/60 group-hover:text-white/90 transition-colors">{b.name}</span>
                             </div>
                         ))}
                     </div>
@@ -460,10 +489,10 @@ Frase do usuário: "${inputText}"`;
                 {isProcessingImage && (
                     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
                         <div className="relative">
-                            <div className="w-24 h-24 rounded-full border-2 border-purple-500/20 flex items-center justify-center">
-                                <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+                            <div className="w-24 h-24 rounded-full border-2 border-lime-500/20 flex items-center justify-center">
+                                <Loader2 className="w-12 h-12 text-lime-500 animate-spin" />
                             </div>
-                            <div className="absolute inset-0 rounded-full border-t-2 border-purple-500 animate-spin" />
+                            <div className="absolute inset-0 rounded-full border-t-2 border-lime-500 animate-spin" />
                         </div>
                         <div className="mt-8 text-center space-y-2">
                             <h3 className="text-xl font-bold tracking-tight text-white uppercase italic">Analisando imagem...</h3>
@@ -475,13 +504,13 @@ Frase do usuário: "${inputText}"`;
                 {/* MODAL CONFIRMACAO (Consistent glass styling) */}
                 <Dialog open={showModal} onOpenChange={setShowModal}>
                     <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] bg-[#0D0D0D]/95 backdrop-blur-[40px] border border-white/10 p-0 rounded-[32px] md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col">
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-lime-500/5 to-yellow-500/5 pointer-events-none" />
 
                         <div className="p-6 md:p-8 border-b border-white/5 relative z-10 flex items-center justify-between bg-black/20">
                             <DialogHeader>
                                 <DialogTitle className="flex items-center gap-4 text-2xl md:text-3xl font-black italic uppercase tracking-tighter">
-                                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                                        <Sparkles className="w-5 h-5 text-purple-500" />
+                                    <div className="w-10 h-10 rounded-xl bg-lime-500/10 flex items-center justify-center border border-lime-500/20">
+                                        <Sparkles className="w-5 h-5 text-lime-500" />
                                     </div>
                                     Revisar Itens ({confirmEvents.length})
                                 </DialogTitle>
@@ -515,7 +544,7 @@ Frase do usuário: "${inputText}"`;
                                             <Input
                                                 value={event.titulo}
                                                 onChange={e => updateEvent(index, { titulo: e.target.value })}
-                                                className="bg-white/5 border-white/5 h-12 text-base font-bold rounded-xl focus:border-purple-500/50 transition-all px-6 shadow-inner"
+                                                className="bg-white/5 border-white/5 h-12 text-base font-bold rounded-xl focus:border-lime-500/50 transition-all px-6 shadow-inner"
                                                 placeholder="Ex: Reunião com equipe..."
                                             />
                                         </div>
@@ -581,7 +610,7 @@ Frase do usuário: "${inputText}"`;
                             <Button
                                 onClick={handleSave}
                                 disabled={isProcessing}
-                                className="w-full h-14 md:h-16 rounded-[20px] bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-lg md:text-xl shadow-2xl shadow-purple-500/30 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-3"
+                                className="w-full h-14 md:h-16 rounded-[20px] bg-gradient-to-r from-lime-600 to-yellow-600 hover:from-lime-500 hover:to-yellow-500 text-white font-black text-lg md:text-xl shadow-2xl shadow-lime-500/30 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-3"
                             >
                                 {isProcessing ? <Loader2 className="w-6 h-6 animate-spin" /> : (
                                     <>
@@ -594,6 +623,6 @@ Frase do usuário: "${inputText}"`;
                     </DialogContent>
                 </Dialog>
             </div>
-        </MinimalLayout>
+        </MinimalLayout >
     );
 }

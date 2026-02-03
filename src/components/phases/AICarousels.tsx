@@ -40,7 +40,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
 import { TrainedAIs } from "./TrainedAIs";
+import { getFontEmbedCSS, preloadFonts } from "../../utils/fontHelper";
 
+const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=Cormorant:ital,wght@0,300..700;1,300..700&family=DM+Serif+Display:ital@0;1&family=Bodoni+Moda:ital,wght@0,400..900;1,400..900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100..900;1,100..900&family=Architects+Daughter&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Inter:ital,wght@0,100..900;1,100..900&family=Manrope:wght@200..800&family=Lato:ital,wght@0,100..900;1,100..900&family=Nunito+Sans:ital,wght@0,200..1000;1,200..1000&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&family=Karla:ital,wght@0,200..800;1,200..800&display=swap";
 // --- Types ---
 interface CarouselSlide {
     text: string;
@@ -1301,66 +1303,159 @@ SEMPRE:
         }
     };
 
+    const handleDownloadSlide = async () => {
+        if (!carousel.slides?.[currentSlide]) return;
+        const toastId = toast.loading("Preparando download do slide...");
+
+        try {
+            // 1. Preload Fonts
+            const fontsToLoad = [
+                carousel.slides[currentSlide].font,
+                carousel.slides[currentSlide].secondaryFont
+            ].filter(Boolean);
+            await preloadFonts(fontsToLoad);
+
+            // 2. Get Font Embed CSS
+            const fontEmbedCSS = await getFontEmbedCSS(GOOGLE_FONTS_URL);
+
+            // 3. Capture Reference (Hidden Export Node)
+            const el = slideRefs.current[currentSlide];
+            if (!el) throw new Error("Elemento de exportação não encontrado");
+
+            const dataUrl = await toPng(el, {
+                width: 1080,
+                height: 1350,
+                pixelRatio: 1, // Already 1080px in DOM
+                fontEmbedCSS,
+                style: {
+                    transform: 'none',
+                    transformOrigin: 'top left',
+                    fontFeatureSettings: '"liga" 1',
+                    textRendering: 'geometricPrecision',
+                    WebkitFontSmoothing: 'antialiased'
+                } as any
+            });
+
+            // 4. Download
+            const link = document.createElement("a");
+            link.href = dataUrl;
+            link.download = `slide_${currentSlide + 1}_${carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah'}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast.success("Download concluído!", { id: toastId });
+
+        } catch (error) {
+            console.error("Erro ao baixar slide:", error);
+            toast.error("Erro ao baixar slide", { id: toastId });
+        }
+    };
+
     const handleExport = async () => {
         if (!carousel.slides?.length) return;
         setIsExporting(true);
         const toastId = toast.loading("Preparando imagens para exportação...");
 
         try {
-            const files: File[] = [];
-            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            const canShare = navigator.share && navigator.canShare && isMobile;
+            const blobs: { name: string, blob: Blob }[] = [];
 
+            // 1. Capture all slides
             for (let i = 0; i < carousel.slides.length; i++) {
                 const el = slideRefs.current[i];
                 if (el) {
-                    toast.loading(`Capturando slide ${i + 1} de ${carousel.slides.length}...`, { id: toastId });
+                    toast.loading(`Gerando slide ${i + 1} de ${carousel.slides.length}...`, { id: toastId });
+
+                    // Add a small delay for rendering stability
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    // Calculate Pixel Ratio to ensure 1080px width output
+                    const clientWidth = el.clientWidth;
+                    const clientHeight = el.clientHeight;
+                    const targetWidth = 1080;
+                    const ratio = targetWidth / clientWidth;
+
+                    // Embed fonts manually for robustness
+                    const fontEmbedCss = await getFontEmbedCSS(GOOGLE_FONTS_URL);
+                    await preloadFonts(["Playfair Display", "Inter", "Montserrat", "Poppins"]); // Preload common fonts
 
                     const dataUrl = await toPng(el, {
-                        width: 1080,
-                        height: 1350,
-                        pixelRatio: 1
+                        width: clientWidth,
+                        height: clientHeight,
+                        pixelRatio: ratio,
+                        fontEmbedCSS: fontEmbedCss,
+                        cacheBust: true,
+                        style: {
+                            transform: 'none',
+                            transformOrigin: 'top left',
+                            fontFeatureSettings: '"liga" 1',
+                            textRendering: 'geometricPrecision',
+                            WebkitFontSmoothing: 'antialiased'
+                        } as any
                     });
 
-                    const filename = `slide_${String(i + 1).padStart(2, '0')}_${carousel.topic?.slice(0, 10).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah'}.png`;
+                    const res = await fetch(dataUrl);
+                    const blob = await res.blob();
+                    const cleanTopic = carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah';
+                    const filename = `slide_${String(i + 1).padStart(2, '0')}_${cleanTopic}.png`;
 
-                    if (canShare) {
-                        // For mobile sharing: collect files
-                        const res = await fetch(dataUrl);
-                        const blob = await res.blob();
-                        files.push(new File([blob], filename, { type: "image/png" }));
-                    } else {
-                        // For desktop: direct download
-                        const link = document.createElement("a");
-                        link.href = dataUrl;
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        // Small delay to prevent browser throttling
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                    }
+                    blobs.push({ name: filename, blob });
                 }
             }
 
-            if (canShare && files.length > 0) {
-                toast.loading("Abrindo menu de compartilhamento...", { id: toastId });
+            if (blobs.length === 0) throw new Error("Nenhum slide gerado.");
+
+            // 2. Try native sharing (Mobile "Save to Gallery")
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            let shareSuccess = false;
+
+            if (isMobile && navigator.share) {
                 try {
-                    await navigator.share({
-                        files: files,
-                        title: `Carrossel: ${carousel.topic || 'Yah 2.0'}`,
-                        text: 'Confira as imagens do meu carrossel!'
-                    });
-                    toast.success("Abra as opções de compartilhamento e selecione 'Salvar Imagens'!", { id: toastId });
-                } catch (shareError: any) {
-                    if (shareError.name !== 'AbortError') {
-                        throw shareError;
+                    toast.loading("Abrindo opções de compartilhamento...", { id: toastId });
+
+                    const files = blobs.map(b => new File([b.blob], b.name, { type: "image/png" }));
+
+                    if (navigator.canShare && navigator.canShare({ files })) {
+                        await navigator.share({
+                            files: files,
+                            title: carousel.topic || 'Carrossel Yah 2.0',
+                            text: 'Meu carrossel criado com Yah 2.0'
+                        });
+                        shareSuccess = true;
+                        toast.success("Salvo! Verifique sua galeria.", { id: toastId });
                     }
-                    toast.dismiss(toastId);
+                } catch (error: any) {
+                    // Ignore AbortError (user cancelled share), throw others
+                    if (error.name !== 'AbortError') {
+                        console.warn("Share failed, falling back to ZIP", error);
+                    } else {
+                        // User cancelled, but technically the flow worked. 
+                        shareSuccess = true;
+                        toast.dismiss(toastId);
+                    }
                 }
-            } else {
-                toast.success("Download concluído! Verifique sua pasta de arquivos.", { id: toastId });
             }
+
+            // 3. Fallback to ZIP download (Desktop or if Share failed/unsupported)
+            if (!shareSuccess) {
+                toast.loading("Gerando arquivo ZIP...", { id: toastId });
+                const zip = new JSZip();
+                blobs.forEach(b => zip.file(b.name, b.blob));
+
+                const zipContent = await zip.generateAsync({ type: "blob" });
+                const zipUrl = URL.createObjectURL(zipContent);
+
+                const link = document.createElement("a");
+                link.href = zipUrl;
+                link.download = `carrossel_${carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah'}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(zipUrl);
+
+                toast.success("Download ZIP iniciado!", { id: toastId });
+            }
+
         } catch (error: any) {
             console.error(error);
             toast.error("Erro ao exportar: " + error.message, { id: toastId });
@@ -1471,7 +1566,19 @@ SEMPRE:
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">Visualização 4:5</span>
+                                    <div className="flex items-center justify-between w-full max-w-[360px] mt-4 px-2">
+                                        <span className="text-[10px] text-muted-foreground/50 font-bold tracking-widest uppercase">Visualização 4:5</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 text-[10px] uppercase font-bold tracking-wider text-white/50 hover:text-white hover:bg-white/5 gap-2"
+                                            onClick={handleDownloadSlide}
+                                            disabled={isSaving || isExporting}
+                                        >
+                                            <Download className="w-3 h-3" />
+                                            Baixar Slide
+                                        </Button>
+                                    </div>
 
                                     {/* Slide Navigation for Mobile or Just nice to have near preview */}
                                     <div className="flex items-center gap-6 mt-6">
@@ -2110,7 +2217,7 @@ SEMPRE:
                                         display: 'flex',
                                         flexDirection: 'column',
                                     }}
-                                    className={cn("export-node", slide.font)}
+                                    className="export-node"
                                 >
                                     <div
                                         className="absolute inset-0"
@@ -2120,10 +2227,10 @@ SEMPRE:
                                         }}
                                     />
                                     <div className={cn(
-                                        "relative z-10 w-full h-full flex flex-col px-10 py-20 overflow-hidden",
+                                        "relative z-10 w-full h-full flex flex-col px-[60px] py-[72px] overflow-hidden",
                                         slide.textPosition === 'center' ? "justify-center items-center text-center" :
-                                            slide.textPosition === 'top' ? "justify-start text-center" :
-                                                slide.textPosition === 'bottom' ? "justify-end text-center" :
+                                            slide.textPosition === 'top' ? "justify-start text-center py-[48px]" :
+                                                slide.textPosition === 'bottom' ? "justify-end text-center py-[48px]" :
                                                     slide.textPosition === 'left' ? "justify-center items-start text-left" :
                                                         "justify-center items-end text-right"
                                     )}>
@@ -2131,17 +2238,26 @@ SEMPRE:
                                             style={{
                                                 backgroundColor: hexToRgba(slide.boxBgColor || "#000000", slide.boxOpacity ?? 0.8),
                                                 padding: `${slide.boxPadding}px`,
-                                                borderRadius: '24px'
+                                                borderRadius: '24px',
+                                                maxHeight: '90%',
+                                                overflow: 'hidden',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'center'
                                             }}
                                             className="max-w-[90%]"
                                         >
                                             <h1 className={cn(
                                                 "font-black tracking-tight leading-tight break-normal w-full hyphens-none",
-                                                slide.fontSize === 'sm' ? 'text-6xl' :
-                                                    slide.fontSize === 'md' ? 'text-8xl' : 'text-[120px]',
                                                 slide.isItalic && "italic"
                                             )}
-                                                style={{ color: slide.textColor, lineHeight: slide.lineHeight }}
+                                                style={{
+                                                    color: slide.textColor,
+                                                    fontFamily: slide.font,
+                                                    lineHeight: slide.lineHeight,
+                                                    fontSize: `${slide.fontSize * 3}px`,
+                                                    fontWeight: (slide.font?.includes("Bold") || ["Montserrat Bold", "Poppins Bold", "Open Sans ExtraBold"].includes(TITLE_FONTS.find(f => f.value === slide.font)?.name || "")) ? "bold" : "normal"
+                                                }}
                                             >
                                                 {slide.text}
                                             </h1>
@@ -2149,16 +2265,15 @@ SEMPRE:
                                                 <p className={cn(
                                                     "mt-10 opacity-80 transition-all break-normal w-full hyphens-none",
                                                     slide.secondaryFont,
-                                                    slide.secondaryFontSize === 'xs' ? 'text-2xl' :
-                                                        slide.secondaryFontSize === 'sm' ? 'text-4xl' :
-                                                            slide.secondaryFontSize === 'md' ? 'text-5xl' : 'text-6xl',
                                                     slide.secondaryIsBold ? "font-bold" : "font-medium",
                                                     slide.secondaryIsItalic && "italic",
                                                     slide.secondaryUppercase && "uppercase tracking-wider"
                                                 )}
                                                     style={{
                                                         color: slide.secondaryTextColor,
-                                                        lineHeight: slide.secondaryLineHeight
+                                                        fontFamily: slide.secondaryFont,
+                                                        lineHeight: slide.secondaryLineHeight,
+                                                        fontSize: `${slide.secondaryFontSize * 3}px`
                                                     }}
                                                 >
                                                     {slide.secondaryText}
@@ -2207,7 +2322,7 @@ SEMPRE:
                         </footer>
                     )
                 }
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }

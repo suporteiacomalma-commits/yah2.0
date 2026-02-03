@@ -220,6 +220,15 @@ export function ActivityCalendar() {
     }
   };
 
+  const handleEditEvent = (event: CerebroEvent) => {
+    const realEvent = event.isVirtual
+      ? events.find(master => master.id === event.id.split("-virtual-")[0]) || event
+      : event;
+    setEditingEvent(realEvent);
+    setShowAddDialog(true);
+    if (showDayDrawer) setShowDayDrawer(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -255,11 +264,7 @@ export function ActivityCalendar() {
             events={filteredEvents}
             onToggleStatus={handleToggleStatus}
             onDelete={handleDeleteEvent}
-            onEdit={(e) => {
-              const realEvent = e.isVirtual ? events.find(master => master.id === e.id.split("-virtual-")[0]) || e : e;
-              setEditingEvent(realEvent);
-              setShowAddDialog(true);
-            }}
+            onEdit={handleEditEvent}
           />
         ) : (
           <>
@@ -275,10 +280,18 @@ export function ActivityCalendar() {
               />
             )}
             {view === "week" && (
-              <WeekView currentDate={currentDate} events={filteredEvents} />
+              <WeekView
+                currentDate={currentDate}
+                events={filteredEvents}
+                onEdit={handleEditEvent}
+              />
             )}
             {view === "day" && (
-              <DayView date={selectedDate || new Date()} events={filteredEvents} />
+              <DayView
+                date={currentDate}
+                events={filteredEvents}
+                onEdit={handleEditEvent}
+              />
             )}
             {view === "year" && (
               <YearView
@@ -303,7 +316,7 @@ export function ActivityCalendar() {
 
       <div className="order-4">
         <ActivityReports
-          date={selectedDate || new Date()}
+          date={view === 'day' ? currentDate : (selectedDate || currentDate)}
           events={filteredEvents}
         />
       </div>
@@ -315,12 +328,7 @@ export function ActivityCalendar() {
         events={selectedDateEvents}
         onToggleStatus={handleToggleStatus}
         onDelete={handleDeleteEvent}
-        onEdit={(e) => {
-          const realEvent = e.isVirtual ? events.find(master => master.id === e.id.split("-virtual-")[0]) || e : e;
-          setEditingEvent(realEvent);
-          setShowAddDialog(true);
-          setShowDayDrawer(false);
-        }}
+        onEdit={handleEditEvent}
       />
 
       <AddActivityDialog

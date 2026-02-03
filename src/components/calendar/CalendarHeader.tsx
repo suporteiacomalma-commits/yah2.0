@@ -34,24 +34,7 @@ export function CalendarHeader({
 
     return (
         <div className="flex flex-col gap-6 mb-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="space-y-1">
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground text-left">
-                        Calendário – <span className="text-primary">Visão Completa</span>
-                    </h1>
-                    <p className="text-muted-foreground text-sm md:text-base font-medium text-left">
-                        Veja sua vida organizada por dia, semana, mês ou ano.
-                    </p>
-                </div>
 
-                <Button
-                    onClick={onAddEvent}
-                    className="gradient-primary h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all font-bold gap-2"
-                >
-                    <Plus className="w-5 h-5" />
-                    <span>Criar Evento</span>
-                </Button>
-            </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-4">
@@ -103,6 +86,14 @@ export function CalendarHeader({
                             <List className="w-4 h-4 md:w-5 md:h-5" />
                         </button>
                     </div>
+
+                    <Button
+                        onClick={onAddEvent}
+                        className="gradient-primary h-10 px-6 rounded-[16px] shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all font-bold gap-2 text-xs"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Criar Evento</span>
+                    </Button>
                 </div>
 
                 {/* Navigation Controls */}

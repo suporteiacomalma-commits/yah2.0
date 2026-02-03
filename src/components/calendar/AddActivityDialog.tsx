@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Timer, Repeat } from "lucide-react";
+import { CalendarIcon, Clock, Timer, Repeat, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +24,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { CerebroEvent, EventCategory, EventType, RecurrenceType, EventStatus } from "./types";
+import { CerebroEvent, EventCategory, EventType, RecurrenceType, EventStatus, EventPriority } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ export function AddActivityDialog({
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<EventStatus>("Pendente");
+  const [priority, setPriority] = useState<EventPriority>("Média");
   const [isSaving, setIsSaving] = useState(false);
 
   const WEEK_DAYS = [
@@ -79,6 +80,7 @@ export function AddActivityDialog({
       setSelectedDays(editingEvent.dias_da_semana || []);
       setDescription(editingEvent.descricao || "");
       setStatus(editingEvent.status);
+      setPriority(editingEvent.prioridade || "Média");
     } else {
       setTitle("");
       setCategory("Outro");
@@ -90,6 +92,7 @@ export function AddActivityDialog({
       setSelectedDays([]);
       setDescription("");
       setStatus("Pendente");
+      setPriority("Média");
     }
   }, [editingEvent, open, defaultDate]);
 
@@ -116,6 +119,7 @@ export function AddActivityDialog({
         dias_da_semana: recurrence !== "Nenhuma" ? selectedDays : [],
         descricao: description.trim(),
         status: status,
+        prioridade: priority,
         user_id: user.id
       };
 
@@ -295,6 +299,29 @@ export function AddActivityDialog({
                   )}
                 >
                   {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Prioridade</label>
+            <div className="flex gap-2">
+              {(["Baixa", "Média", "Alta"] as const).map(p => (
+                <button
+                  key={p} type="button"
+                  onClick={() => setPriority(p)}
+                  className={cn(
+                    "flex-1 h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-all flex items-center justify-center gap-2",
+                    priority === p
+                      ? p === 'Alta' ? "bg-red-500/20 text-red-400 border-red-500/20 shadow-lg shadow-red-500/5"
+                        : p === 'Média' ? "bg-amber-500/20 text-amber-400 border-amber-500/20 shadow-lg shadow-amber-500/5"
+                          : "bg-blue-500/20 text-blue-400 border-blue-500/20 shadow-lg shadow-blue-500/5"
+                      : "bg-white/5 text-muted-foreground border-white/5 hover:bg-white/10"
+                  )}
+                >
+                  <Flag className={cn("w-3 h-3", priority === p && "fill-current")} />
+                  {p}
                 </button>
               ))}
             </div>

@@ -297,6 +297,15 @@ Frase do usuário: "${inputText}"`;
         }
     };
 
+    const speakMessage = (text: string) => {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'pt-BR';
+            utterance.rate = 1.1; // Slightly faster for a more natural flow
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
     const handleSave = async () => {
         if (!user || confirmEvents.length === 0) return;
         setIsProcessing(true);
@@ -317,6 +326,11 @@ Frase do usuário: "${inputText}"`;
             }
 
             toast.success(`${confirmEvents.length} eventos agendados com sucesso!`);
+
+            // Voice Feedback
+            const firstName = user.user_metadata?.full_name?.split(' ')[0] || "usuário";
+            speakMessage(`Feito, ${firstName}. Já organizei para você.`);
+
             setShowModal(false);
             setConfirmEvents([]);
             setInputText("");

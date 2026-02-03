@@ -1327,6 +1327,42 @@ SEMPRE:
         }
     };
 
+    // Unified helper for sharing or downloading
+    const shareOrDownload = async (files: File[], fallbackName: string) => {
+        // Try native sharing first (best for Mobile "Save to Gallery")
+        if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+            try {
+                await navigator.share({
+                    files: files,
+                    title: carousel.topic || 'Carrossel Yah 2.0',
+                    text: 'Meu carrossel criado com Yah 2.0'
+                });
+                return true; // Share successful
+            } catch (error: any) {
+                // Ignore AbortError (user cancelled share sheet)
+                if (error.name === 'AbortError') return true;
+                console.warn("Share failed, falling back to download", error);
+            }
+        }
+
+        // Fallback: Direct Download
+        // If single file, download directly
+        if (files.length === 1) {
+            const url = URL.createObjectURL(files[0]);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = files[0].name;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            return false; // Downloaded, not shared
+        }
+
+        // If multiple files, zip them (handled by caller or here? keeping existing zip logic in caller for now to minimize refactor risk of complex zip logic)
+        return false;
+    };
+
     const handleDownloadSlide = async () => {
         if (!carousel.slides?.[currentSlide]) return;
         const toastId = toast.loading("Preparando download do slide...");
@@ -1360,15 +1396,21 @@ SEMPRE:
                 } as any
             });
 
-            // 4. Download
-            const link = document.createElement("a");
-            link.href = dataUrl;
-            link.download = `slide_${currentSlide + 1}_${carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah'}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // Convert to File for Sharing
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const cleanTopic = carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah';
+            const filename = `slide_${currentSlide + 1}_${cleanTopic}.png`;
+            const file = new File([blob], filename, { type: "image/png" });
 
-            toast.success("Download concluído!", { id: toastId });
+            // 4. Share or Download
+            const shared = await shareOrDownload([file], filename);
+
+            if (shared) {
+                toast.success("Pronto! Verifique sua galeria.", { id: toastId });
+            } else {
+                toast.success("Download concluído!", { id: toastId });
+            }
 
         } catch (error) {
             console.error("Erro ao baixar slide:", error);
@@ -1382,7 +1424,7 @@ SEMPRE:
         const toastId = toast.loading("Preparando imagens para exportação...");
 
         try {
-            const blobs: { name: string, blob: Blob }[] = [];
+            const files: File[] = [];
 
             // 1. Capture all slides
             for (let i = 0; i < carousel.slides.length; i++) {
@@ -1423,48 +1465,23 @@ SEMPRE:
                     const cleanTopic = carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah';
                     const filename = `slide_${String(i + 1).padStart(2, '0')}_${cleanTopic}.png`;
 
-                    blobs.push({ name: filename, blob });
+                    files.push(new File([blob], filename, { type: "image/png" }));
                 }
             }
 
-            if (blobs.length === 0) throw new Error("Nenhum slide gerado.");
+            if (files.length === 0) throw new Error("Nenhum slide gerado.");
 
-            // 2. Try native sharing (Mobile "Save to Gallery")
-            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            let shareSuccess = false;
+            // 2. Try Share or Download
+            // Note: navigator.share with multiple info is supported on recent mobile OS
+            const shared = await shareOrDownload(files, "carrossel.zip");
 
-            if (isMobile && navigator.share) {
-                try {
-                    toast.loading("Abrindo opções de compartilhamento...", { id: toastId });
-
-                    const files = blobs.map(b => new File([b.blob], b.name, { type: "image/png" }));
-
-                    if (navigator.canShare && navigator.canShare({ files })) {
-                        await navigator.share({
-                            files: files,
-                            title: carousel.topic || 'Carrossel Yah 2.0',
-                            text: 'Meu carrossel criado com Yah 2.0'
-                        });
-                        shareSuccess = true;
-                        toast.success("Salvo! Verifique sua galeria.", { id: toastId });
-                    }
-                } catch (error: any) {
-                    // Ignore AbortError (user cancelled share), throw others
-                    if (error.name !== 'AbortError') {
-                        console.warn("Share failed, falling back to ZIP", error);
-                    } else {
-                        // User cancelled, but technically the flow worked. 
-                        shareSuccess = true;
-                        toast.dismiss(toastId);
-                    }
-                }
-            }
-
-            // 3. Fallback to ZIP download (Desktop or if Share failed/unsupported)
-            if (!shareSuccess) {
+            if (shared) {
+                toast.success("Salvo! Verifique sua galeria.", { id: toastId });
+            } else {
+                // 3. Fallback to ZIP download
                 toast.loading("Gerando arquivo ZIP...", { id: toastId });
                 const zip = new JSZip();
-                blobs.forEach(b => zip.file(b.name, b.blob));
+                files.forEach(f => zip.file(f.name, f));
 
                 const zipContent = await zip.generateAsync({ type: "blob" });
                 const zipUrl = URL.createObjectURL(zipContent);

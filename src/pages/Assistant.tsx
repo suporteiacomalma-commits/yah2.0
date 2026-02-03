@@ -56,9 +56,13 @@ export default function Assistant() {
     // Confirmation Modal
     const [showModal, setShowModal] = useState(false);
     const [confirmEvents, setConfirmEvents] = useState<EventoConfirmacao[]>([]);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         window.scrollTo(0, 0);
+        if (containerRef.current) {
+            containerRef.current.scrollTop = 0;
+        }
     }, []);
 
     const deleteEvent = (index: number) => {
@@ -403,7 +407,10 @@ Frase do usuário: "${inputText}"`;
 
     return (
         <MinimalLayout>
-            <div className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center md:justify-center py-10 px-4 font-sans selection:bg-primary/30 relative overflow-y-auto">
+            <div
+                ref={containerRef}
+                className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center py-10 px-4 font-sans selection:bg-primary/30 relative overflow-y-auto"
+            >
 
                 {/* Back Button */}
                 <Button

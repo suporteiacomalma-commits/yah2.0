@@ -425,9 +425,13 @@ export default function IdeiaInbox() {
     const audioChunksRef = useRef<Blob[]>([]);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const recognitionRef = useRef<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         window.scrollTo(0, 0);
+        if (containerRef.current) {
+            containerRef.current.scrollTop = 0;
+        }
     }, []);
 
     useEffect(() => {
@@ -2830,7 +2834,10 @@ export default function IdeiaInbox() {
                     </div>
 
                     {/* Main Content Area */}
-                    <div className="flex-1 bg-card/40 backdrop-blur-[40px] border border-white/5 rounded-[48px] p-8 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.2)] relative overflow-hidden flex flex-col items-center justify-center custom-scrollbar overflow-y-auto">
+                    <div
+                        ref={containerRef}
+                        className="flex-1 bg-card/40 backdrop-blur-[40px] border border-white/5 rounded-[48px] p-8 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.2)] relative overflow-hidden flex flex-col items-center custom-scrollbar overflow-y-auto"
+                    >
                         {/* Static Atmosphere */}
                         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 translate-x-1/4" />
                         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent/5 rounded-full blur-[120px] pointer-events-none translate-y-1/2 -translate-x-1/4" />

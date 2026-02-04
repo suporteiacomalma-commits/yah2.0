@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Download, Smartphone, Sparkles } from 'lucide-react';
+import { X, Download, Smartphone, Sparkles, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -12,6 +12,7 @@ export function InstallPrompt() {
     const [showPrompt, setShowPrompt] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
+    const [showDebugButton, setShowDebugButton] = useState(false);
 
     useEffect(() => {
         console.log('🔧 InstallPrompt component mounted');
@@ -56,7 +57,9 @@ export function InstallPrompt() {
         console.log('✨ Should show prompt:', shouldShow);
 
         if (!shouldShow) {
-            console.log('⏰ Prompt was dismissed recently, waiting...');
+            console.log('⏰ Prompt was dismissed recently, showing debug button...');
+            // Show debug button if dismissed recently
+            setShowDebugButton(true);
             return;
         }
 
@@ -109,7 +112,29 @@ export function InstallPrompt() {
         console.log('❌ User dismissed the install prompt');
         localStorage.setItem('pwa-install-dismissed', Date.now().toString());
         setShowPrompt(false);
+        setShowDebugButton(true);
     };
+
+    const handleResetDismissal = () => {
+        console.log('🔄 Resetting dismissal flag');
+        localStorage.removeItem('pwa-install-dismissed');
+        setShowDebugButton(false);
+        window.location.reload();
+    };
+
+    // Debug button for testing (shows when dismissed)
+    if (showDebugButton && !isStandalone) {
+        return (
+            <button
+                onClick={handleResetDismissal}
+                className="fixed bottom-6 right-6 z-[9999] p-4 bg-primary/90 hover:bg-primary rounded-full shadow-2xl transition-all active:scale-95 flex items-center gap-2"
+                title="Resetar prompt de instalação"
+            >
+                <RotateCcw className="w-5 h-5 text-white" />
+                <span className="text-white text-sm font-bold pr-1">Resetar PWA</span>
+            </button>
+        );
+    }
 
     if (isStandalone || !showPrompt) {
         return null;

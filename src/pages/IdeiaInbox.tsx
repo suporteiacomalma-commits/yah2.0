@@ -1338,7 +1338,7 @@ export default function IdeiaInbox() {
 
                                 {isTriageFolderOpen && (
                                     <div className="absolute bottom-full right-0 sm:right-0 mb-2 w-full sm:w-48 bg-card border border-white/10 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
-                                        <div className="p-2 space-y-1">
+                                        <div className="p-2 md:p-3 space-y-1">
                                             {FOLDERS.map(f => (
                                                 <button
                                                     key={f.name}
@@ -2775,7 +2775,7 @@ export default function IdeiaInbox() {
 
                                 {isDetailFolderOpen && (
                                     <div className="absolute bottom-full left-0 mb-2 w-full bg-card border border-white/10 rounded-2xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-bottom-2">
-                                        <div className="p-2 space-y-1">
+                                        <div className="p-2 md:p-3 space-y-1">
                                             {FOLDERS.map(f => (
                                                 <button
                                                     key={f.name}

@@ -68,9 +68,9 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
     };
 
     return (
-        <div className="bg-slate-900/40 md:border border-white/5 rounded-none md:rounded-3xl overflow-hidden h-[600px] flex flex-col md:shadow-2xl">
+        <div className="bg-slate-900/40 md:border border-white/5 rounded-none md:rounded-3xl h-[600px] flex flex-col md:shadow-2xl p-2 md:p-4">
             {/* Header with day names */}
-            <div ref={headerRef} className="overflow-x-auto scrollbar-hide border-b border-white/10 bg-white/10">
+            <div ref={headerRef} className="overflow-x-auto scrollbar-hide border-b border-white/10 bg-white/10 rounded-t-xl md:rounded-t-2xl overflow-hidden">
                 <div className="grid grid-cols-[30px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] min-w-[600px] md:min-w-full">
                     <div className="border-r border-white/5" />
                     {weekDays.map((day) => (
@@ -90,7 +90,7 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
             </div>
 
             {/* Main timeline grid */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto relative p-0 overflow-x-auto scrollbar-hide">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto relative p-0 overflow-x-auto scrollbar-hide rounded-b-xl md:rounded-b-2xl overflow-hidden">
                 <div className="grid grid-cols-[30px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] min-h-[1920px] min-w-[600px] md:min-w-full">
                     {/* Time Sidebar */}
                     <div className="border-r border-white/5 bg-slate-950/20">

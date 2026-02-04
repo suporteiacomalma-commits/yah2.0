@@ -35,7 +35,7 @@ export function CategoryFilters({ selectedCategories, onChange }: CategoryFilter
                     key={cat.id}
                     onClick={() => toggleCategory(cat.id)}
                     className={cn(
-                        "px-4 py-1.5 rounded-full text-[10px] font-bold border transition-all flex items-center gap-2",
+                        "px-3 md:px-4 py-1.5 md:py-2 rounded-full text-[10px] font-bold border transition-all flex items-center gap-2",
                         selectedCategories.includes(cat.id)
                             ? cn(cat.color, "text-white border-transparent shadow-lg shadow-black/20")
                             : cn("bg-white/5 text-muted-foreground border-white/5 hover:bg-white/10")

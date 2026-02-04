@@ -28,7 +28,7 @@ export default function CalendarPage() {
                         </div>
                     </div>
 
-                    <div className="bg-card md:border border-border md:rounded-2xl p-0 md:p-6 shadow-none md:shadow-xl">
+                    <div className="bg-card md:border border-border md:rounded-2xl p-2 md:p-4 shadow-none md:shadow-xl">
                         <ActivityCalendar />
                     </div>
                 </div>

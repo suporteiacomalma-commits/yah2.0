@@ -1,7 +1,8 @@
-import { LogOut, User, Coins, CreditCard, Sparkles, CheckCircle2 } from "lucide-react";
+import { LogOut, User, Coins, CreditCard, Sparkles, CheckCircle2, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { usePlans } from "@/hooks/usePlans";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
   const { createBilling } = useAbacatePay();
   const { createStripeCheckout } = useStripe();
   const navigate = useNavigate();
+  const { isAdmin } = useUserRole();
 
   // Use external state if provided, otherwise local state (backward compatibility)
   const [internalIsPurchaseOpen, setInternalIsPurchaseOpen] = useState(false);
@@ -162,6 +164,15 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 <Sparkles className="w-4 h-4 mr-3 text-purple-500" />
                 <span className="font-medium">Assinar Premium</span>
               </DropdownMenuItem>
+              {isAdmin && (
+                <DropdownMenuItem
+                  onClick={() => navigate("/admin")}
+                  className="cursor-pointer rounded-lg hover:bg-secondary transition-colors py-2"
+                >
+                  <Shield className="w-4 h-4 mr-3 text-amber-500" />
+                  <span className="font-medium">Painel Admin</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator className="bg-border/50" />
               <DropdownMenuItem
                 onClick={signOut}

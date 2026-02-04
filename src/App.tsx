@@ -20,6 +20,7 @@ import Calendar from "./pages/Calendar";
 import Profile from "./pages/Profile";
 import IdeiaInbox from "./pages/IdeiaInbox";
 import NotFound from "./pages/NotFound";
+import { InstallPrompt } from "./components/pwa/InstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -117,6 +118,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <InstallPrompt />
         <BrowserRouter>
           <AppRoutes />
         </BrowserRouter>

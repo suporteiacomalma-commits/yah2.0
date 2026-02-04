@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Download, Smartphone } from 'lucide-react';
+import { X, Download, Smartphone, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -12,6 +12,7 @@ export function InstallPrompt() {
     const [showPrompt, setShowPrompt] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
+    const [debugInfo, setDebugInfo] = useState<string>('');
 
     useEffect(() => {
         // Check if already installed
@@ -33,21 +34,45 @@ export function InstallPrompt() {
         // Show prompt if not installed, not dismissed recently (7 days), and on mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        if (!isInStandaloneMode && isMobile && daysSinceDismissed > 7) {
-            if (iOS) {
-                // For iOS, show custom instructions after a delay
-                setTimeout(() => setShowPrompt(true), 3000);
-            }
+        // Show if: not installed AND mobile AND (never dismissed OR dismissed more than 7 days ago)
+        const shouldShow = !isInStandaloneMode && isMobile && (!dismissed || daysSinceDismissed > 7);
+
+        // Debug info
+        const debug = `
+      Standalone: ${isInStandaloneMode}
+      iOS: ${iOS}
+      Mobile: ${isMobile}
+      Dismissed: ${dismissed ? 'Yes' : 'No'}
+      Days since: ${daysSinceDismissed.toFixed(2)}
+      Should show: ${shouldShow}
+    `;
+        setDebugInfo(debug);
+        console.log('PWA Install Prompt Debug:', debug);
+
+        if (shouldShow && iOS) {
+            // For iOS, show custom instructions after a delay
+            console.log('Setting timeout to show iOS prompt...');
+            setTimeout(() => {
+                console.log('Showing iOS prompt now');
+                setShowPrompt(true);
+            }, 2000);
         }
 
         // Listen for beforeinstallprompt event (Android/Chrome)
         const handleBeforeInstallPrompt = (e: Event) => {
+            console.log('beforeinstallprompt event fired!');
             e.preventDefault();
             const promptEvent = e as BeforeInstallPromptEvent;
             setDeferredPrompt(promptEvent);
 
-            // Show prompt after a delay
-            setTimeout(() => setShowPrompt(true), 3000);
+            // Only show if conditions are met
+            if (shouldShow) {
+                console.log('Setting timeout to show Android prompt...');
+                setTimeout(() => {
+                    console.log('Showing Android prompt now');
+                    setShowPrompt(true);
+                }, 2000);
+            }
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -63,6 +88,8 @@ export function InstallPrompt() {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
 
+        console.log('Install prompt outcome:', outcome);
+
         if (outcome === 'accepted') {
             console.log('User accepted the install prompt');
         }
@@ -72,9 +99,29 @@ export function InstallPrompt() {
     };
 
     const handleDismiss = () => {
+        console.log('User dismissed the install prompt');
         localStorage.setItem('pwa-install-dismissed', Date.now().toString());
         setShowPrompt(false);
     };
+
+    const handleClearDismissal = () => {
+        console.log('Clearing dismissal flag');
+        localStorage.removeItem('pwa-install-dismissed');
+        window.location.reload();
+    };
+
+    // Debug button (only in development)
+    if (import.meta.env.DEV && !showPrompt) {
+        return (
+            <button
+                onClick={handleClearDismissal}
+                className="fixed bottom-4 right-4 z-50 p-3 bg-primary/20 hover:bg-primary/30 rounded-full transition-colors"
+                title={debugInfo}
+            >
+                <Bug className="w-5 h-5 text-primary" />
+            </button>
+        );
+    }
 
     if (isStandalone || !showPrompt) {
         return null;
@@ -84,7 +131,7 @@ export function InstallPrompt() {
     if (isIOS) {
         return (
             <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-black via-black/95 to-transparent animate-in slide-in-from-bottom duration-500">
-                <div className="max-w-md mx-auto bg-card border border-primary/20 rounded-3xl p-6 shadow-2xl">
+                <div className="max-w-md mx-auto bg-card border border-primary/20 rounded-3xl p-6 shadow-2xl relative">
                     <button
                         onClick={handleDismiss}
                         className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition-colors"
@@ -137,7 +184,7 @@ export function InstallPrompt() {
     // Android/Chrome Install Prompt
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-black via-black/95 to-transparent animate-in slide-in-from-bottom duration-500">
-            <div className="max-w-md mx-auto bg-card border border-primary/20 rounded-3xl p-6 shadow-2xl">
+            <div className="max-w-md mx-auto bg-card border border-primary/20 rounded-3xl p-6 shadow-2xl relative">
                 <button
                     onClick={handleDismiss}
                     className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition-colors"

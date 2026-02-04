@@ -1948,8 +1948,8 @@ export default function IdeiaInbox() {
                                 className="h-40 rounded-[32px] flex flex-col items-start p-6 border-white/5 hover:border-primary/40 bg-card/40 hover:bg-card transition-all group shadow-2xl relative overflow-hidden text-left"
                             >
                                 <div className="flex justify-between w-full items-start mb-4">
-                                    <f.icon className="w-12 h-12 filter drop-shadow-md group-hover:scale-110 transition-transform" style={{ color: f.color }} />
-                                    <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                                    <f.icon className="w-8 h-8 md:w-12 md:h-12 filter drop-shadow-md group-hover:scale-110 transition-transform" style={{ color: f.color }} />
+                                    <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-muted-foreground">
                                         {count}
                                     </div>
                                 </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Download, Smartphone, Bug } from 'lucide-react';
+import { X, Download, Smartphone, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -12,67 +12,74 @@ export function InstallPrompt() {
     const [showPrompt, setShowPrompt] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
     const [isStandalone, setIsStandalone] = useState(false);
-    const [debugInfo, setDebugInfo] = useState<string>('');
 
     useEffect(() => {
+        console.log('🔧 InstallPrompt component mounted');
+
         // Check if already installed
         const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches ||
             (window.navigator as any).standalone ||
             document.referrer.includes('android-app://');
 
+        console.log('📱 Is Standalone:', isInStandaloneMode);
         setIsStandalone(isInStandaloneMode);
+
+        if (isInStandaloneMode) {
+            console.log('✅ App already installed, not showing prompt');
+            return;
+        }
 
         // Check if iOS
         const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        console.log('🍎 Is iOS:', iOS);
         setIsIOS(iOS);
+
+        // Check if mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('📱 Is Mobile:', isMobile);
+
+        if (!isMobile) {
+            console.log('💻 Desktop detected, not showing prompt');
+            return;
+        }
 
         // Check if user already dismissed the prompt
         const dismissed = localStorage.getItem('pwa-install-dismissed');
         const dismissedTime = dismissed ? parseInt(dismissed) : 0;
-        const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
+        const daysSinceDismissed = dismissed ? (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24) : 999;
 
-        // Show prompt if not installed, not dismissed recently (7 days), and on mobile
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('🚫 Dismissed:', dismissed ? 'Yes' : 'No');
+        console.log('📅 Days since dismissed:', daysSinceDismissed.toFixed(2));
 
-        // Show if: not installed AND mobile AND (never dismissed OR dismissed more than 7 days ago)
-        const shouldShow = !isInStandaloneMode && isMobile && (!dismissed || daysSinceDismissed > 7);
+        // Show if never dismissed OR dismissed more than 7 days ago
+        const shouldShow = !dismissed || daysSinceDismissed > 7;
+        console.log('✨ Should show prompt:', shouldShow);
 
-        // Debug info
-        const debug = `
-      Standalone: ${isInStandaloneMode}
-      iOS: ${iOS}
-      Mobile: ${isMobile}
-      Dismissed: ${dismissed ? 'Yes' : 'No'}
-      Days since: ${daysSinceDismissed.toFixed(2)}
-      Should show: ${shouldShow}
-    `;
-        setDebugInfo(debug);
-        console.log('PWA Install Prompt Debug:', debug);
+        if (!shouldShow) {
+            console.log('⏰ Prompt was dismissed recently, waiting...');
+            return;
+        }
 
-        if (shouldShow && iOS) {
-            // For iOS, show custom instructions after a delay
-            console.log('Setting timeout to show iOS prompt...');
+        if (iOS) {
+            console.log('🍎 iOS detected, showing prompt in 2 seconds...');
             setTimeout(() => {
-                console.log('Showing iOS prompt now');
+                console.log('🎉 Showing iOS install prompt NOW!');
                 setShowPrompt(true);
             }, 2000);
         }
 
         // Listen for beforeinstallprompt event (Android/Chrome)
         const handleBeforeInstallPrompt = (e: Event) => {
-            console.log('beforeinstallprompt event fired!');
+            console.log('🎯 beforeinstallprompt event fired!');
             e.preventDefault();
             const promptEvent = e as BeforeInstallPromptEvent;
             setDeferredPrompt(promptEvent);
 
-            // Only show if conditions are met
-            if (shouldShow) {
-                console.log('Setting timeout to show Android prompt...');
-                setTimeout(() => {
-                    console.log('Showing Android prompt now');
-                    setShowPrompt(true);
-                }, 2000);
-            }
+            console.log('🤖 Android detected, showing prompt in 2 seconds...');
+            setTimeout(() => {
+                console.log('🎉 Showing Android install prompt NOW!');
+                setShowPrompt(true);
+            }, 2000);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -83,45 +90,26 @@ export function InstallPrompt() {
     }, []);
 
     const handleInstallClick = async () => {
-        if (!deferredPrompt) return;
+        console.log('👆 Install button clicked');
+        if (!deferredPrompt) {
+            console.log('❌ No deferred prompt available');
+            return;
+        }
 
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
 
-        console.log('Install prompt outcome:', outcome);
-
-        if (outcome === 'accepted') {
-            console.log('User accepted the install prompt');
-        }
+        console.log('📊 Install prompt outcome:', outcome);
 
         setDeferredPrompt(null);
         setShowPrompt(false);
     };
 
     const handleDismiss = () => {
-        console.log('User dismissed the install prompt');
+        console.log('❌ User dismissed the install prompt');
         localStorage.setItem('pwa-install-dismissed', Date.now().toString());
         setShowPrompt(false);
     };
-
-    const handleClearDismissal = () => {
-        console.log('Clearing dismissal flag');
-        localStorage.removeItem('pwa-install-dismissed');
-        window.location.reload();
-    };
-
-    // Debug button (only in development)
-    if (import.meta.env.DEV && !showPrompt) {
-        return (
-            <button
-                onClick={handleClearDismissal}
-                className="fixed bottom-4 right-4 z-50 p-3 bg-primary/20 hover:bg-primary/30 rounded-full transition-colors"
-                title={debugInfo}
-            >
-                <Bug className="w-5 h-5 text-primary" />
-            </button>
-        );
-    }
 
     if (isStandalone || !showPrompt) {
         return null;
@@ -130,51 +118,94 @@ export function InstallPrompt() {
     // iOS Install Instructions
     if (isIOS) {
         return (
-            <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-black via-black/95 to-transparent animate-in slide-in-from-bottom duration-500">
-                <div className="max-w-md mx-auto bg-card border border-primary/20 rounded-3xl p-6 shadow-2xl relative">
-                    <button
-                        onClick={handleDismiss}
-                        className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition-colors"
-                    >
-                        <X className="w-4 h-4 text-muted-foreground" />
-                    </button>
+            <div className="fixed inset-0 z-[9999] flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="w-full max-w-md bg-gradient-to-b from-card/95 to-card border border-white/10 rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+                    {/* Header with Icon */}
+                    <div className="relative bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-8 pb-6">
+                        <button
+                            onClick={handleDismiss}
+                            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/5 hover:bg-white/10 transition-all active:scale-95"
+                        >
+                            <X className="w-4 h-4 text-white/70" />
+                        </button>
 
-                    <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center flex-shrink-0">
-                            <Smartphone className="w-6 h-6 text-white" />
-                        </div>
-
-                        <div className="flex-1 space-y-3">
-                            <div>
-                                <h3 className="font-bold text-lg text-foreground">Instalar YAH 2.0</h3>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Adicione à tela inicial para acesso rápido
-                                </p>
+                        <div className="flex flex-col items-center text-center space-y-4">
+                            {/* App Icon */}
+                            <div className="relative">
+                                <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-2xl shadow-primary/20">
+                                    <Sparkles className="w-10 h-10 text-white" />
+                                </div>
+                                <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-green-500 border-4 border-card flex items-center justify-center">
+                                    <Smartphone className="w-3.5 h-3.5 text-white" />
+                                </div>
                             </div>
 
-                            <div className="text-xs text-muted-foreground space-y-2 bg-white/5 p-3 rounded-xl">
-                                <p className="flex items-center gap-2">
-                                    <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">1</span>
-                                    Toque no botão <strong>Compartilhar</strong> (ícone de compartilhamento)
-                                </p>
-                                <p className="flex items-center gap-2">
-                                    <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">2</span>
-                                    Role para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>
-                                </p>
-                                <p className="flex items-center gap-2">
-                                    <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-[10px]">3</span>
-                                    Toque em <strong>"Adicionar"</strong>
+                            {/* Title */}
+                            <div className="space-y-1.5">
+                                <h3 className="text-2xl font-black tracking-tight text-foreground">
+                                    Instalar YAH 2.0
+                                </h3>
+                                <p className="text-sm text-muted-foreground/80 max-w-[280px]">
+                                    Acesso rápido direto da sua tela inicial
                                 </p>
                             </div>
-
-                            <Button
-                                onClick={handleDismiss}
-                                variant="ghost"
-                                className="w-full text-xs text-muted-foreground hover:text-foreground"
-                            >
-                                Agora não
-                            </Button>
                         </div>
+                    </div>
+
+                    {/* Instructions */}
+                    <div className="p-6 pt-4 space-y-4">
+                        <div className="space-y-3">
+                            <div className="flex items-start gap-3 group">
+                                <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/25 transition-colors">
+                                    <span className="text-primary font-bold text-sm">1</span>
+                                </div>
+                                <div className="flex-1 pt-0.5">
+                                    <p className="text-sm text-foreground/90 leading-relaxed">
+                                        Toque no botão <span className="font-semibold text-primary">Compartilhar</span>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground/60 mt-0.5">
+                                        Ícone de compartilhamento na barra inferior
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-3 group">
+                                <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/25 transition-colors">
+                                    <span className="text-primary font-bold text-sm">2</span>
+                                </div>
+                                <div className="flex-1 pt-0.5">
+                                    <p className="text-sm text-foreground/90 leading-relaxed">
+                                        Selecione <span className="font-semibold text-primary">"Adicionar à Tela de Início"</span>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground/60 mt-0.5">
+                                        Role para baixo se necessário
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-3 group">
+                                <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/25 transition-colors">
+                                    <span className="text-primary font-bold text-sm">3</span>
+                                </div>
+                                <div className="flex-1 pt-0.5">
+                                    <p className="text-sm text-foreground/90 leading-relaxed">
+                                        Confirme tocando em <span className="font-semibold text-primary">"Adicionar"</span>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground/60 mt-0.5">
+                                        Pronto! O app estará na sua tela inicial
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dismiss Button */}
+                        <Button
+                            onClick={handleDismiss}
+                            variant="ghost"
+                            className="w-full h-12 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-2xl transition-all"
+                        >
+                            Agora não
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -183,44 +214,79 @@ export function InstallPrompt() {
 
     // Android/Chrome Install Prompt
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-t from-black via-black/95 to-transparent animate-in slide-in-from-bottom duration-500">
-            <div className="max-w-md mx-auto bg-card border border-primary/20 rounded-3xl p-6 shadow-2xl relative">
-                <button
-                    onClick={handleDismiss}
-                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition-colors"
-                >
-                    <X className="w-4 h-4 text-muted-foreground" />
-                </button>
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="w-full max-w-md bg-gradient-to-b from-card/95 to-card border border-white/10 rounded-[32px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-500">
+                {/* Header with Icon */}
+                <div className="relative bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-8 pb-6">
+                    <button
+                        onClick={handleDismiss}
+                        className="absolute top-4 right-4 p-2.5 rounded-full bg-white/5 hover:bg-white/10 transition-all active:scale-95"
+                    >
+                        <X className="w-4 h-4 text-white/70" />
+                    </button>
 
-                <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center flex-shrink-0">
-                        <Download className="w-6 h-6 text-white" />
-                    </div>
+                    <div className="flex flex-col items-center text-center space-y-4">
+                        {/* App Icon */}
+                        <div className="relative">
+                            <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-2xl shadow-primary/20">
+                                <Sparkles className="w-10 h-10 text-white" />
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-green-500 border-4 border-card flex items-center justify-center">
+                                <Download className="w-3.5 h-3.5 text-white" />
+                            </div>
+                        </div>
 
-                    <div className="flex-1 space-y-4">
-                        <div>
-                            <h3 className="font-bold text-lg text-foreground">Instalar YAH 2.0</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Instale o app para acesso rápido e experiência completa
+                        {/* Title */}
+                        <div className="space-y-1.5">
+                            <h3 className="text-2xl font-black tracking-tight text-foreground">
+                                Instalar YAH 2.0
+                            </h3>
+                            <p className="text-sm text-muted-foreground/80 max-w-[280px]">
+                                Experiência completa com acesso instantâneo
                             </p>
                         </div>
+                    </div>
+                </div>
 
-                        <div className="flex gap-2">
-                            <Button
-                                onClick={handleInstallClick}
-                                className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-bold rounded-xl"
-                            >
-                                <Download className="w-4 h-4 mr-2" />
-                                Instalar
-                            </Button>
-                            <Button
-                                onClick={handleDismiss}
-                                variant="ghost"
-                                className="text-muted-foreground hover:text-foreground"
-                            >
-                                Agora não
-                            </Button>
+                {/* Benefits */}
+                <div className="p-6 pt-4 space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="flex flex-col items-center text-center p-3 rounded-2xl bg-white/5">
+                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-2">
+                                <Sparkles className="w-5 h-5 text-primary" />
+                            </div>
+                            <p className="text-[10px] font-medium text-muted-foreground">Acesso Rápido</p>
                         </div>
+                        <div className="flex flex-col items-center text-center p-3 rounded-2xl bg-white/5">
+                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-2">
+                                <Smartphone className="w-5 h-5 text-primary" />
+                            </div>
+                            <p className="text-[10px] font-medium text-muted-foreground">Modo App</p>
+                        </div>
+                        <div className="flex flex-col items-center text-center p-3 rounded-2xl bg-white/5">
+                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center mb-2">
+                                <Download className="w-5 h-5 text-primary" />
+                            </div>
+                            <p className="text-[10px] font-medium text-muted-foreground">Offline</p>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="space-y-2">
+                        <Button
+                            onClick={handleInstallClick}
+                            className="w-full h-14 bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/90 hover:via-primary/90 hover:to-primary/70 text-white font-bold text-base rounded-2xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                        >
+                            <Download className="w-5 h-5 mr-2" />
+                            Instalar Agora
+                        </Button>
+                        <Button
+                            onClick={handleDismiss}
+                            variant="ghost"
+                            className="w-full h-12 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-2xl transition-all"
+                        >
+                            Agora não
+                        </Button>
                     </div>
                 </div>
             </div>

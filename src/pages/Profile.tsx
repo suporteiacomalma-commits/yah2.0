@@ -24,7 +24,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, User, Building, Target, Mail, ArrowLeft, Lock, ShieldCheck, CreditCard, History, ExternalLink, MessageCircle, AlertCircle, Info } from "lucide-react";
+import { Loader2, User, Building, Target, Mail, ArrowLeft, Lock, ShieldCheck, CreditCard, History, ExternalLink, MessageCircle, AlertCircle, Info, Phone } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -36,6 +36,7 @@ export default function Profile() {
     const [formData, setFormData] = useState({
         full_name: "",
         user_name: "",
+        phone: "",
         business_stage: "",
         main_goal: "",
     });
@@ -52,6 +53,7 @@ export default function Profile() {
             setFormData({
                 full_name: profile.full_name || "",
                 user_name: profile.user_name || "",
+                phone: profile.phone || "",
                 business_stage: profile.business_stage || "",
                 main_goal: profile.main_goal || "",
             });
@@ -209,6 +211,19 @@ export default function Profile() {
                                         <p className="text-[10px] text-muted-foreground italic">
                                             O e-mail não pode ser alterado por aqui.
                                         </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="phone" className="flex items-center gap-2">
+                                            <Phone className="w-4 h-4 text-muted-foreground" />
+                                            Telefone
+                                        </Label>
+                                        <Input
+                                            id="phone"
+                                            value={formData.phone}
+                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                            placeholder="Ex: (11) 99999-9999"
+                                            className="bg-background/50 border-white/10 focus:border-primary/50"
+                                        />
                                     </div>
                                 </CardContent>
                             </Card>

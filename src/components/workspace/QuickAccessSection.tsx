@@ -28,7 +28,7 @@ export function QuickAccessSection() {
         </div>
         <div className="text-left">
           <h3 className="text-sm font-semibold text-foreground">Guardar ideias</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Capture. Enriqueça com IA.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Capture e estruture suas ideias</p>
         </div>
       </Link>
 

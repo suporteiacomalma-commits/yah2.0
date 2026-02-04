@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
     Plus,
     Sparkles,
@@ -78,6 +78,7 @@ interface CarouselSlide {
     secondaryIsItalic: boolean;
     secondaryLineHeight: string;
     secondaryUppercase: boolean;
+    templateVersion?: string; // Stability version tracking
 }
 
 interface AICarousel {
@@ -139,36 +140,64 @@ const hexToRgba = (hex: string, alpha: number) => {
 };
 
 // --- Main Component ---
-export function AICarousels() {
+interface AICarouselsProps {
+    onBackClick?: () => void;
+}
+
+export function AICarousels({ onBackClick }: AICarouselsProps = {}) {
     const { brand } = useBrand();
     const { getSetting } = useSystemSettings();
     const [isGenerating, setIsGenerating] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [showGenModal, setShowGenModal] = useState(false);
+    const [isFontsReady, setIsFontsReady] = useState(false); // New: Stability lock
 
-    // Preview Scaling Logic
-    const [previewScale, setPreviewScale] = useState(1);
-    const previewContainerRef = useRef<HTMLDivElement>(null);
+    // Preview Scaling Logic - Using callback ref for guaranteed DOM access
+    const [previewScale, setPreviewScale] = useState(0.33); // Default to mobile scale (~360px / 1080px)
+    const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-    useEffect(() => {
-        const updateScale = () => {
-            if (previewContainerRef.current) {
-                const { width } = previewContainerRef.current.getBoundingClientRect();
-                // Base width is 1080px (Export Resolution)
-                // We scale the 1080px container down to fit the available width (max 360px)
-                const scale = width / 1080;
-                setPreviewScale(scale);
+    // Callback ref to attach ResizeObserver when element is mounted
+    const previewContainerRef = useCallback((node: HTMLDivElement | null) => {
+        if (!node) {
+            // Element unmounted - disconnect observer
+            if (resizeObserverRef.current) {
+                console.log('🔌 ResizeObserver DISCONNECTED (element unmounted)');
+                resizeObserverRef.current.disconnect();
+                resizeObserverRef.current = null;
             }
-        };
-
-        const resizeObserver = new ResizeObserver(updateScale);
-        if (previewContainerRef.current) {
-            resizeObserver.observe(previewContainerRef.current);
+            return;
         }
 
-        return () => resizeObserver.disconnect();
+        console.log('✅ Preview container REF ATTACHED');
+
+        const updateScale = () => {
+            const { width } = node.getBoundingClientRect();
+            const scale = Math.min(width / 1080, 1.0); // CRITICAL: Never scale UP, only DOWN
+            console.log('📐 PREVIEW SCALE:', scale, 'Container width:', width);
+            setPreviewScale(scale);
+        };
+
+        // Immediate calculation
+        updateScale();
+
+        // Setup ResizeObserver
+        resizeObserverRef.current = new ResizeObserver(updateScale);
+        resizeObserverRef.current.observe(node);
+        console.log('👀 ResizeObserver ATTACHED to preview container');
     }, []);
+
+    // DEBUG: Log scale changes
+    useEffect(() => {
+        console.log('🎯 PREVIEW SCALE UPDATED:', previewScale);
+    }, [previewScale]);
+
+    // DEBUG: Component lifecycle
+    useEffect(() => {
+        console.log('🚀 AICarousels COMPONENT MOUNTED');
+        return () => console.log('💀 AICarousels COMPONENT UNMOUNTED');
+    }, []);
+
     const [currentSlide, setCurrentSlide] = useState(0);
     const [history, setHistory] = useState<AICarousel[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -184,11 +213,50 @@ export function AICarousels() {
         slides: []
     });
 
+    // Smart Back Navigation Handler
+    const handleBackClick = () => {
+        if (carousel.slides && carousel.slides.length > 0) {
+            // If in editing mode, clear carousel to return to home screen
+            setCarousel({
+                id: undefined,
+                mode: 'editorial',
+                topic: '',
+                objective: 'atração',
+                emotion: 'identificação',
+                slides: []
+            });
+            setCurrentSlide(0);
+        } else {
+            // If in home screen, call parent's onBackClick to return to dashboard
+            onBackClick?.();
+        }
+    };
+
+    useEffect(() => {
+        const checkFonts = async () => {
+            if (carousel?.slides?.length > 0) {
+                const uniqueFonts = Array.from(new Set(carousel.slides.map(s => s.font)));
+                await preloadFonts(uniqueFonts);
+            }
+            await document.fonts.ready;
+            setIsFontsReady(true);
+        };
+        checkFonts();
+    }, [carousel?.slides, currentSlide]);
+
     useEffect(() => {
         if (brand?.id) {
             fetchHistory();
         }
     }, [brand?.id]);
+
+    // Expose handleBackClick to PhasePage via window global
+    useEffect(() => {
+        (window as any).__carouselBackHandler = handleBackClick;
+        return () => {
+            delete (window as any).__carouselBackHandler;
+        };
+    }, [carousel.slides]);
 
     const fetchHistory = async () => {
         if (!brand?.id) return;
@@ -1212,16 +1280,19 @@ SEMPRE:
                 ...s,
                 // FORCE SAFE DEFAULTS (Override AI hallucinations)
                 font: "'Playfair Display', serif",
-                fontSize: 66, // Optimized for 1080px width
+                fontSize: 32, // Re-adjusted stable base
                 useOnlyMain: false,
                 alignment: "center",
                 textPosition: "center",
-                secondaryFontSize: 30, // Optimized for 1080px width
-                boxPadding: 40,
+                secondaryFontSize: 20,
+                boxPadding: 80,
                 lineHeight: "1.2",
                 secondaryLineHeight: "1.5",
-                secondaryFont: "'Inter', sans-serif"
+                secondaryFont: "'Inter', sans-serif",
+                templateVersion: "2.0" // Mark as new stable version
             }));
+
+            console.log('🎨 GENERATED SLIDES - First slide fontSize:', initialSlides[0].fontSize, 'secondaryFontSize:', initialSlides[0].secondaryFontSize, 'boxPadding:', initialSlides[0].boxPadding);
 
             // Auto-save the generated carousel
             const { data: savedData, error: saveError } = await (supabase as any).from("ai_carousels")
@@ -1244,11 +1315,15 @@ SEMPRE:
                 // Don't block UI if save fails, just warn? Or continue.
             }
 
+            console.log('💾 SAVING TO DB - First slide fontSize:', initialSlides[0].fontSize);
+
             setCarousel(prev => ({
                 ...prev,
                 slides: initialSlides,
                 id: savedData?.id || prev.id
             }));
+
+            console.log('✅ SAVED TO STATE - Current carousel fontSize:', initialSlides[0].fontSize);
 
             if (savedData) fetchHistory();
 
@@ -1295,6 +1370,7 @@ SEMPRE:
             return { ...prev, slides: newSlides };
         });
         toast.success("Estilos aplicados a todos os slides!");
+        // We trigger save manually or let user click save
     };
 
     const handleSave = async () => {
@@ -1312,7 +1388,7 @@ SEMPRE:
                     emotion: carousel.emotion,
                     slides: carousel.slides,
                     updated_at: new Date().toISOString()
-                })
+                }, { onConflict: 'id' })
                 .select()
                 .single();
             if (error) throw error;
@@ -1520,7 +1596,7 @@ SEMPRE:
             <div className="flex-1 relative lg:overflow-hidden">
                 {
                     carousel.slides && carousel.slides.length > 0 && carousel.slides[currentSlide] ? (
-                        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-0 min-h-[100dvh] lg:h-[calc(100vh-140px)] relative bg-[#09090B]">
+                        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-0 min-h-screen lg:h-[calc(100vh-140px)] relative bg-[#09090B]">
 
                             {/* LEFT: Preview 
                             Mobile: Visible, top of stack, auto height
@@ -1534,18 +1610,32 @@ SEMPRE:
                                         ref={previewContainerRef}
                                         className="h-auto w-auto aspect-[4/5] lg:w-full lg:max-w-[360px] lg:h-auto rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-2xl border border-white/5 relative bg-slate-900 ring-1 ring-white/10 mx-auto flex items-center justify-center"
                                     >
+                                        {!isFontsReady && (
+                                            <div className="absolute inset-0 z-50 bg-[#0C0C0C] flex items-center justify-center">
+                                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                            </div>
+                                        )}
                                         <div
-                                            className={cn("flex flex-col px-[60px] py-[72px] transition-all duration-500 overflow-hidden origin-center shrink-0")}
+                                            className={cn("flex flex-col transition-all duration-500 overflow-hidden origin-center shrink-0 box-border")}
                                             style={{
                                                 width: '1080px',
                                                 height: '1350px',
+                                                minWidth: '1080px', // Absolute enforcement
+                                                maxWidth: '1080px',
+                                                minHeight: '1350px',
+                                                maxHeight: '1350px',
+                                                padding: '160px 100px', // Balanced margins for 1080x1350px
                                                 transform: `scale(${previewScale})`,
                                                 fontFamily: carousel.slides[currentSlide].font,
                                                 backgroundColor: carousel.slides[currentSlide].bgColor,
                                                 backgroundImage: carousel.slides[currentSlide].bgImage ? `url(${carousel.slides[currentSlide].bgImage})` : 'none',
                                                 backgroundSize: 'cover',
                                                 backgroundPosition: 'center',
+                                                // DEBUG: Visual padding indicator
+                                                boxShadow: 'inset 0 0 0 2px rgba(255, 0, 255, 0.3)', // Magenta border to show padding
+                                                boxSizing: 'border-box'
                                             }}
+                                            onLoad={() => console.log('🔍 CURRENT PREVIEW SCALE:', previewScale)}
                                         >
                                             <div
                                                 className="absolute inset-0"
@@ -1555,10 +1645,10 @@ SEMPRE:
                                                 }}
                                             />
                                             <div className={cn(
-                                                "relative z-10 w-full h-full flex flex-col",
+                                                "relative z-10 w-full h-full flex flex-col box-border",
                                                 carousel.slides[currentSlide].textPosition === 'center' ? "justify-center items-center text-center" :
-                                                    carousel.slides[currentSlide].textPosition === 'top' ? "justify-start text-center py-4" :
-                                                        carousel.slides[currentSlide].textPosition === 'bottom' ? "justify-end text-center py-4" :
+                                                    carousel.slides[currentSlide].textPosition === 'top' ? "justify-start text-center pt-[40px]" :
+                                                        carousel.slides[currentSlide].textPosition === 'bottom' ? "justify-end text-center pb-[40px]" :
                                                             carousel.slides[currentSlide].textPosition === 'left' ? "justify-center items-start text-left" :
                                                                 "justify-center items-end text-right"
                                             )}>
@@ -1566,7 +1656,7 @@ SEMPRE:
                                                     className="w-full mx-auto transition-all duration-300 box-border"
                                                     style={{
                                                         backgroundColor: hexToRgba(carousel.slides[currentSlide].boxBgColor || "#000000", carousel.slides[currentSlide].boxOpacity ?? 0.8),
-                                                        padding: `${carousel.slides[currentSlide].boxPadding || 40}px`,
+                                                        padding: `${carousel.slides[currentSlide].boxPadding || 80}px`,
                                                         borderRadius: '24px',
                                                         display: 'flex',
                                                         flexDirection: 'column',
@@ -1576,22 +1666,26 @@ SEMPRE:
                                                     }}
                                                 >
                                                     <h1 className={cn(
-                                                        "font-black tracking-tighter break-normal w-full box-border hyphens-none",
+                                                        "font-black tracking-tighter w-full box-border",
                                                         carousel.slides[currentSlide].isItalic && "italic"
                                                     )}
                                                         style={{
                                                             color: carousel.slides[currentSlide].textColor,
                                                             fontFamily: carousel.slides[currentSlide].font,
-                                                            fontSize: `${carousel.slides[currentSlide].fontSize}px`, // Raw export size (1080p base)
+                                                            fontSize: `${carousel.slides[currentSlide].fontSize}px`,
                                                             fontWeight: (carousel.slides[currentSlide].font?.includes("Bold") || ["Montserrat Bold", "Poppins Bold", "Open Sans ExtraBold"].includes(TITLE_FONTS.find(f => f.value === carousel.slides[currentSlide].font)?.name || "")) ? "bold" : "normal",
-                                                            lineHeight: carousel.slides[currentSlide].lineHeight
+                                                            lineHeight: carousel.slides[currentSlide].lineHeight,
+                                                            whiteSpace: 'pre-wrap',
+                                                            overflowWrap: 'break-word',
+                                                            wordBreak: 'break-word',
+                                                            hyphens: 'auto'
                                                         }}
                                                     >
                                                         {carousel.slides[currentSlide].text}
                                                     </h1>
                                                     {!carousel.slides[currentSlide].useOnlyMain && (
                                                         <p className={cn(
-                                                            "mt-3 opacity-80 leading-relaxed transition-all break-normal w-full box-border hyphens-none",
+                                                            "mt-3 opacity-80 leading-relaxed transition-all w-full box-border",
                                                             // Removed secondaryFont class usage
                                                             carousel.slides[currentSlide].secondaryIsBold ? "font-bold" : "font-medium",
                                                             carousel.slides[currentSlide].secondaryIsItalic && "italic",
@@ -1601,7 +1695,10 @@ SEMPRE:
                                                                 color: carousel.slides[currentSlide].secondaryTextColor,
                                                                 fontFamily: carousel.slides[currentSlide].secondaryFont,
                                                                 fontSize: `${carousel.slides[currentSlide].secondaryFontSize}px`,
-                                                                lineHeight: carousel.slides[currentSlide].secondaryLineHeight
+                                                                lineHeight: carousel.slides[currentSlide].secondaryLineHeight,
+                                                                whiteSpace: 'pre-wrap',
+                                                                overflowWrap: 'break-word',
+                                                                wordBreak: 'break-word'
                                                             }}
                                                         >
                                                             {carousel.slides[currentSlide].secondaryText}
@@ -1658,382 +1755,380 @@ SEMPRE:
                                 </div>
                             </div>
 
-                            {/* RIGHT: Scrollable Editor Area 
-                            Mobile: Auto height
-                            Desktop: Scrollable independent area
-                        */}
                             <div className="h-auto w-full bg-[#09090B] pt-0 lg:pt-0 lg:col-span-6 lg:h-full lg:overflow-y-auto custom-scrollbar">
                                 <div className="p-4 sm:p-8 pb-32 space-y-8 max-w-2xl mx-auto">
+                                    <div className="grid grid-cols-1 gap-10">
 
-                                    {/* Block 1: TEXT */}
-                                    <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Type className="w-4 h-4" /></div>
-                                                <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Texto & Tipografia</h3>
-                                            </div>
-                                            <Button
-                                                className="h-9 px-4 rounded-xl gradient-primary text-white font-bold text-xs gap-2 shadow-lg hover:opacity-90 transition-opacity"
-                                                onClick={() => setShowConsultant(true)}
-                                            >
-                                                <Bot className="w-4 h-4 text-white" />
-                                                Consultar IA
-                                            </Button>
-                                        </div>
-
-                                        <Dialog open={showConsultant} onOpenChange={setShowConsultant}>
-                                            <DialogContent className="max-w-4xl h-[85vh] bg-[#09090B] border-white/10 p-0 flex flex-col shadow-2xl">
-                                                <DialogHeader className="px-6 py-4 border-b border-white/10 bg-slate-900/50 shrink-0">
-                                                    <DialogTitle className="flex items-center gap-2">
-                                                        <Bot className="w-5 h-5 text-primary" />
-                                                        Assistente de Conteúdo
-                                                    </DialogTitle>
-                                                </DialogHeader>
-                                                <div className="flex-1 overflow-y-auto bg-[#09090B] p-6 lg:p-8">
-                                                    <TrainedAIs initialAgentId="carrossel-cultural" />
-                                                </div>
-                                            </DialogContent>
-                                        </Dialog>
-
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1">Conteúdo Principal</Label>
-                                            <Textarea
-                                                value={carousel.slides[currentSlide].text}
-                                                onChange={(e) => updateSlide(currentSlide, { text: e.target.value })}
-                                                className="bg-white/5 border-white/5 rounded-xl min-h-[80px] text-sm resize-none"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-4 pt-2">
-                                            <div className="flex items-center justify-between">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Texto de Apoio</Label>
+                                        {/* Block 1: TEXT */}
+                                        <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
+                                            <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-2">
-                                                    <Checkbox
-                                                        id="onlyMain" checked={carousel.slides[currentSlide].useOnlyMain}
-                                                        onCheckedChange={(checked) => updateSlide(currentSlide, { useOnlyMain: !!checked })}
+                                                    <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Type className="w-4 h-4" /></div>
+                                                    <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Texto & Tipografia</h3>
+                                                </div>
+                                                <Button
+                                                    className="h-9 px-4 rounded-xl gradient-primary text-white font-bold text-xs gap-2 shadow-lg hover:opacity-90 transition-opacity"
+                                                    onClick={() => setShowConsultant(true)}
+                                                >
+                                                    <Bot className="w-4 h-4 text-white" />
+                                                    Consultar IA
+                                                </Button>
+                                            </div>
+
+                                            <Dialog open={showConsultant} onOpenChange={setShowConsultant}>
+                                                <DialogContent className="max-w-4xl h-[85vh] bg-[#09090B] border-white/10 p-0 flex flex-col shadow-2xl">
+                                                    <DialogHeader className="px-6 py-4 border-b border-white/10 bg-slate-900/50 shrink-0">
+                                                        <DialogTitle className="flex items-center gap-2">
+                                                            <Bot className="w-5 h-5 text-primary" />
+                                                            Assistente de Conteúdo
+                                                        </DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="flex-1 overflow-y-auto bg-[#09090B] p-6 lg:p-8">
+                                                        <TrainedAIs initialAgentId="carrossel-cultural" />
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Conteúdo Principal</Label>
+                                                <Textarea
+                                                    value={carousel.slides[currentSlide].text}
+                                                    onChange={(e) => updateSlide(currentSlide, { text: e.target.value })}
+                                                    className="bg-white/5 border-white/5 rounded-xl min-h-[80px] text-sm resize-none"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-4 pt-2">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Texto de Apoio</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Checkbox
+                                                            id="onlyMain" checked={carousel.slides[currentSlide].useOnlyMain}
+                                                            onCheckedChange={(checked) => updateSlide(currentSlide, { useOnlyMain: !!checked })}
+                                                        />
+                                                        <span className="text-[10px] font-bold text-muted-foreground">Somente título</span>
+                                                    </div>
+                                                </div>
+                                                {!carousel.slides[currentSlide].useOnlyMain && (
+                                                    <Textarea
+                                                        value={carousel.slides[currentSlide].secondaryText}
+                                                        onChange={(e) => updateSlide(currentSlide, { secondaryText: e.target.value })}
+                                                        className="bg-white/5 border-white/5 rounded-xl min-h-[60px] text-sm resize-none"
                                                     />
-                                                    <span className="text-[10px] font-bold text-muted-foreground">Somente título</span>
+                                                )}
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4 pt-2">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Fonte</Label>
+                                                    <Select value={carousel.slides[currentSlide].font} onValueChange={(v) => updateSlide(currentSlide, { font: v })}>
+                                                        <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-slate-900 border-white/10 text-white max-h-[300px]">
+                                                            {TITLE_FONTS.map(f => (
+                                                                <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>
+                                                                    {f.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Tamanho</Label>
+                                                    <div className="flex flex-col bg-white/5 rounded-xl p-3 gap-2">
+                                                        <div className="flex justify-between items-center w-full px-1">
+                                                            <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].fontSize}px</span>
+                                                        </div>
+                                                        <Slider
+                                                            value={[carousel.slides[currentSlide].fontSize]}
+                                                            min={12}
+                                                            max={80}
+                                                            step={1}
+                                                            onValueChange={(val) => updateSlide(currentSlide, { fontSize: val[0] })}
+                                                            className="py-1"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="col-span-2 space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Altura da Linha</Label>
+                                                        <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].lineHeight || "1.2"}</span>
+                                                    </div>
+                                                    <div className="bg-white/5 rounded-xl p-3">
+                                                        <Slider
+                                                            value={[parseFloat(carousel.slides[currentSlide].lineHeight || "1.2")]}
+                                                            min={0.8}
+                                                            max={2.5}
+                                                            step={0.1}
+                                                            onValueChange={(val) => updateSlide(currentSlide, { lineHeight: val[0].toString() })}
+                                                            className="py-1"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            {/* Configurações do Subtítulo */}
                                             {!carousel.slides[currentSlide].useOnlyMain && (
-                                                <Textarea
-                                                    value={carousel.slides[currentSlide].secondaryText}
-                                                    onChange={(e) => updateSlide(currentSlide, { secondaryText: e.target.value })}
-                                                    className="bg-white/5 border-white/5 rounded-xl min-h-[60px] text-sm resize-none"
-                                                />
+                                                <div className="pt-4 mt-4 border-t border-white/5 space-y-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-1 h-4 bg-primary rounded-full" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estilo do Subtítulo</Label>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1">Fonte</Label>
+                                                            <Select value={carousel.slides[currentSlide].secondaryFont} onValueChange={(v) => updateSlide(currentSlide, { secondaryFont: v })}>
+                                                                <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="bg-slate-900 border-white/10 text-white max-h-[300px]">
+                                                                    {SUBTITLE_FONTS.map(f => (
+                                                                        <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>
+                                                                            {f.name}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1">Tamanho</Label>
+                                                            <div className="flex flex-col bg-white/5 rounded-xl p-3 gap-2">
+                                                                <div className="flex justify-between items-center w-full px-1">
+                                                                    <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].secondaryFontSize}px</span>
+                                                                </div>
+                                                                <Slider
+                                                                    value={[carousel.slides[currentSlide].secondaryFontSize]}
+                                                                    min={8}
+                                                                    max={60}
+                                                                    step={1}
+                                                                    onValueChange={(val) => updateSlide(currentSlide, { secondaryFontSize: val[0] })}
+                                                                    className="py-1"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex-1 space-y-2">
+                                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor</Label>
+                                                            <input
+                                                                type="color" value={carousel.slides[currentSlide].secondaryTextColor}
+                                                                onChange={(e) => updateSlide(currentSlide, { secondaryTextColor: e.target.value })}
+                                                                className="w-full h-10 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1">Formatação</Label>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    variant="ghost" size="icon"
+                                                                    className={cn("h-10 w-10 rounded-xl bg-white/5", carousel.slides[currentSlide].secondaryIsBold && "bg-primary text-white")}
+                                                                    onClick={() => updateSlide(currentSlide, { secondaryIsBold: !carousel.slides[currentSlide].secondaryIsBold })}
+                                                                >
+                                                                    <Bold className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost" size="icon"
+                                                                    className={cn("h-10 w-10 rounded-xl bg-white/5", carousel.slides[currentSlide].secondaryIsItalic && "bg-primary text-white")}
+                                                                    onClick={() => updateSlide(currentSlide, { secondaryIsItalic: !carousel.slides[currentSlide].secondaryIsItalic })}
+                                                                >
+                                                                    <Italic className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-3 pt-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Entrelinha (Altura)</Label>
+                                                                <span className="text-[10px] font-bold text-primary">{carousel.slides[currentSlide].secondaryLineHeight || "1.5"}</span>
+                                                            </div>
+                                                            <Slider
+                                                                min={0.8}
+                                                                max={2.5}
+                                                                step={0.1}
+                                                                value={[parseFloat(carousel.slides[currentSlide].secondaryLineHeight || "1.5")]}
+                                                                onValueChange={(v) => updateSlide(currentSlide, { secondaryLineHeight: v[0].toFixed(1) })}
+                                                                className="w-full"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="space-y-2 flex-1">
+                                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1">Estilo Extra</Label>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    variant="ghost" size="sm"
+                                                                    className={cn("flex-1 h-9 rounded-xl bg-white/5 text-xs font-bold", carousel.slides[currentSlide].secondaryUppercase && "bg-primary text-white")}
+                                                                    onClick={() => updateSlide(currentSlide, { secondaryUppercase: !carousel.slides[currentSlide].secondaryUppercase })}
+                                                                >
+                                                                    AA
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4 pt-2">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Fonte</Label>
-                                                <Select value={carousel.slides[currentSlide].font} onValueChange={(v) => updateSlide(currentSlide, { font: v })}>
-                                                    <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-slate-900 border-white/10 text-white max-h-[300px]">
-                                                        {TITLE_FONTS.map(f => (
-                                                            <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>
-                                                                {f.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Tamanho</Label>
-                                                <div className="flex flex-col bg-white/5 rounded-xl p-3 gap-2">
-                                                    <div className="flex justify-between items-center w-full px-1">
-                                                        <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].fontSize}px</span>
-                                                    </div>
-                                                    <Slider
-                                                        value={[carousel.slides[currentSlide].fontSize]}
-                                                        min={12}
-                                                        max={120}
-                                                        step={1}
-                                                        onValueChange={(val) => updateSlide(currentSlide, { fontSize: val[0] })}
-                                                        className="py-1"
-                                                    />
-                                                </div>
+                                        {/* Block 1.5: BLOCO DE DESTAQUE */}
+                                        <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Settings2 className="w-4 h-4" /></div>
+                                                <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Bloco de Destaque</h3>
                                             </div>
 
-                                            <div className="col-span-2 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Altura da Linha</Label>
-                                                    <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].lineHeight || "1.2"}</span>
-                                                </div>
-                                                <div className="bg-white/5 rounded-xl p-3">
-                                                    <Slider
-                                                        value={[parseFloat(carousel.slides[currentSlide].lineHeight || "1.2")]}
-                                                        min={0.8}
-                                                        max={2.5}
-                                                        step={0.1}
-                                                        onValueChange={(val) => updateSlide(currentSlide, { lineHeight: val[0].toString() })}
-                                                        className="py-1"
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ativar Fundo</Label>
+                                                    <Checkbox
+                                                        checked={(carousel.slides[currentSlide].boxOpacity ?? 0.8) > 0}
+                                                        onCheckedChange={(checked) => updateSlide(currentSlide, { boxOpacity: checked ? 0.8 : 0 })}
                                                     />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Configurações do Subtítulo */}
-                                        {!carousel.slides[currentSlide].useOnlyMain && (
-                                            <div className="pt-4 mt-4 border-t border-white/5 space-y-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-1 h-4 bg-primary rounded-full" />
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estilo do Subtítulo</Label>
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Fonte</Label>
-                                                        <Select value={carousel.slides[currentSlide].secondaryFont} onValueChange={(v) => updateSlide(currentSlide, { secondaryFont: v })}>
-                                                            <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="bg-slate-900 border-white/10 text-white max-h-[300px]">
-                                                                {SUBTITLE_FONTS.map(f => (
-                                                                    <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>
-                                                                        {f.name}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
+                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Bloco</Label>
+                                                        <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/5">
+                                                            <input
+                                                                type="color"
+                                                                value={carousel.slides[currentSlide].boxBgColor || "#000000"}
+                                                                onChange={(e) => updateSlide(currentSlide, { boxBgColor: e.target.value })}
+                                                                className="w-8 h-8 rounded-lg bg-transparent cursor-pointer"
+                                                            />
+                                                            <span className="text-[10px] font-mono text-white/50">{carousel.slides[currentSlide].boxBgColor || "#000000"}</span>
+                                                        </div>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Tamanho</Label>
-                                                        <div className="flex flex-col bg-white/5 rounded-xl p-3 gap-2">
-                                                            <div className="flex justify-between items-center w-full px-1">
-                                                                <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].secondaryFontSize}px</span>
-                                                            </div>
+                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Transparência</Label>
+                                                        <div className="pt-2 px-1">
                                                             <Slider
-                                                                value={[carousel.slides[currentSlide].secondaryFontSize]}
-                                                                min={8}
-                                                                max={60}
+                                                                value={[(carousel.slides[currentSlide].boxOpacity ?? 0.8) * 100]}
+                                                                max={100}
                                                                 step={1}
-                                                                onValueChange={(val) => updateSlide(currentSlide, { secondaryFontSize: val[0] })}
-                                                                className="py-1"
+                                                                onValueChange={(v) => updateSlide(currentSlide, { boxOpacity: v[0] / 100 })}
                                                             />
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-4">
-                                                    <div className="flex-1 space-y-2">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor</Label>
-                                                        <input
-                                                            type="color" value={carousel.slides[currentSlide].secondaryTextColor}
-                                                            onChange={(e) => updateSlide(currentSlide, { secondaryTextColor: e.target.value })}
-                                                            className="w-full h-10 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
-                                                        />
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Preenchimento (Padding)</Label>
+                                                        <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].boxPadding || 40}px</span>
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Formatação</Label>
-                                                        <div className="flex gap-2">
-                                                            <Button
-                                                                variant="ghost" size="icon"
-                                                                className={cn("h-10 w-10 rounded-xl bg-white/5", carousel.slides[currentSlide].secondaryIsBold && "bg-primary text-white")}
-                                                                onClick={() => updateSlide(currentSlide, { secondaryIsBold: !carousel.slides[currentSlide].secondaryIsBold })}
-                                                            >
-                                                                <Bold className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost" size="icon"
-                                                                className={cn("h-10 w-10 rounded-xl bg-white/5", carousel.slides[currentSlide].secondaryIsItalic && "bg-primary text-white")}
-                                                                onClick={() => updateSlide(currentSlide, { secondaryIsItalic: !carousel.slides[currentSlide].secondaryIsItalic })}
-                                                            >
-                                                                <Italic className="w-4 h-4" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-3 pt-2">
-                                                        <div className="flex items-center justify-between">
-                                                            <Label className="text-[10px] font-bold text-muted-foreground ml-1">Entrelinha (Altura)</Label>
-                                                            <span className="text-[10px] font-bold text-primary">{carousel.slides[currentSlide].secondaryLineHeight || "1.5"}</span>
-                                                        </div>
-                                                        <Slider
-                                                            min={0.8}
-                                                            max={2.5}
-                                                            step={0.1}
-                                                            value={[parseFloat(carousel.slides[currentSlide].secondaryLineHeight || "1.5")]}
-                                                            onValueChange={(v) => updateSlide(currentSlide, { secondaryLineHeight: v[0].toFixed(1) })}
-                                                            className="w-full"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-4">
-                                                    <div className="space-y-2 flex-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground ml-1">Estilo Extra</Label>
-                                                        <div className="flex gap-2">
-                                                            <Button
-                                                                variant="ghost" size="sm"
-                                                                className={cn("flex-1 h-9 rounded-xl bg-white/5 text-xs font-bold", carousel.slides[currentSlide].secondaryUppercase && "bg-primary text-white")}
-                                                                onClick={() => updateSlide(currentSlide, { secondaryUppercase: !carousel.slides[currentSlide].secondaryUppercase })}
-                                                            >
-                                                                AA
-                                                            </Button>
-                                                        </div>
-                                                    </div>
+                                                    <Slider
+                                                        value={[carousel.slides[currentSlide].boxPadding || 40]}
+                                                        min={0} max={120} step={4}
+                                                        onValueChange={(v) => updateSlide(currentSlide, { boxPadding: v[0] })}
+                                                    />
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-
-                                    {/* Block 1.5: BLOCO DE DESTAQUE */}
-                                    <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Settings2 className="w-4 h-4" /></div>
-                                            <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Bloco de Destaque</h3>
                                         </div>
 
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl border border-white/5">
-                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ativar Fundo</Label>
-                                                <Checkbox
-                                                    checked={(carousel.slides[currentSlide].boxOpacity ?? 0.8) > 0}
-                                                    onCheckedChange={(checked) => updateSlide(currentSlide, { boxOpacity: checked ? 0.8 : 0 })}
-                                                />
+                                        {/* Block 2: LAYOUT & CORES */}
+                                        <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Palette className="w-4 h-4" /></div>
+                                                <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Layout & Cores</h3>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Bloco</Label>
-                                                    <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/5">
-                                                        <input
-                                                            type="color"
-                                                            value={carousel.slides[currentSlide].boxBgColor || "#000000"}
-                                                            onChange={(e) => updateSlide(currentSlide, { boxBgColor: e.target.value })}
-                                                            className="w-8 h-8 rounded-lg bg-transparent cursor-pointer"
-                                                        />
-                                                        <span className="text-[10px] font-mono text-white/50">{carousel.slides[currentSlide].boxBgColor || "#000000"}</span>
-                                                    </div>
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Posição Texto</Label>
+                                                    <Select value={carousel.slides[currentSlide].textPosition} onValueChange={(v: any) => updateSlide(currentSlide, { textPosition: v })}>
+                                                        <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs uppercase font-bold">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                                            {Object.keys(POSITIONS).map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Transparência</Label>
-                                                    <div className="pt-2 px-1">
-                                                        <Slider
-                                                            value={[(carousel.slides[currentSlide].boxOpacity ?? 0.8) * 100]}
-                                                            max={100}
-                                                            step={1}
-                                                            onValueChange={(v) => updateSlide(currentSlide, { boxOpacity: v[0] / 100 })}
-                                                        />
-                                                    </div>
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Título</Label>
+                                                    <input
+                                                        type="color" value={carousel.slides[currentSlide].textColor}
+                                                        onChange={(e) => updateSlide(currentSlide, { textColor: e.target.value })}
+                                                        className="w-full h-10 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
+                                                    />
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-2">
+                                            <div className="space-y-4 pt-2 border-t border-white/5 mt-4">
                                                 <div className="flex items-center justify-between">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Preenchimento (Padding)</Label>
-                                                    <span className="text-[10px] text-muted-foreground font-mono">{carousel.slides[currentSlide].boxPadding || 40}px</span>
+                                                    <Label className="text-[10px] font-bold text-muted-foreground">Película (Overlay)</Label>
+                                                    <span className="text-[10px] font-bold text-primary">{Math.round((carousel.slides?.[currentSlide]?.overlayOpacity || 0) * 100)}%</span>
                                                 </div>
                                                 <Slider
-                                                    value={[carousel.slides[currentSlide].boxPadding || 40]}
-                                                    min={0} max={120} step={4}
-                                                    onValueChange={(v) => updateSlide(currentSlide, { boxPadding: v[0] })}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Block 2: LAYOUT & CORES */}
-                                    <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Palette className="w-4 h-4" /></div>
-                                            <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Layout & Cores</h3>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Posição Texto</Label>
-                                                <Select value={carousel.slides[currentSlide].textPosition} onValueChange={(v: any) => updateSlide(currentSlide, { textPosition: v })}>
-                                                    <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs uppercase font-bold">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-slate-900 border-white/10 text-white">
-                                                        {Object.keys(POSITIONS).map(pos => <SelectItem key={pos} value={pos}>{pos}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Título</Label>
-                                                <input
-                                                    type="color" value={carousel.slides[currentSlide].textColor}
-                                                    onChange={(e) => updateSlide(currentSlide, { textColor: e.target.value })}
-                                                    className="w-full h-10 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
+                                                    value={[carousel.slides[currentSlide].overlayOpacity * 100]}
+                                                    max={100} step={1}
+                                                    onValueChange={(v) => updateSlide(currentSlide, { overlayOpacity: v[0] / 100 })}
+                                                    className="w-full"
                                                 />
                                             </div>
                                         </div>
 
-                                        <div className="space-y-4 pt-2 border-t border-white/5 mt-4">
-                                            <div className="flex items-center justify-between">
-                                                <Label className="text-[10px] font-bold text-muted-foreground">Película (Overlay)</Label>
-                                                <span className="text-[10px] font-bold text-primary">{Math.round((carousel.slides?.[currentSlide]?.overlayOpacity || 0) * 100)}%</span>
+                                        {/* Block 3: IMAGEM */}
+                                        <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><ImageIcon className="w-4 h-4" /></div>
+                                                <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Fundo & Mídia</h3>
                                             </div>
-                                            <Slider
-                                                value={[carousel.slides[currentSlide].overlayOpacity * 100]}
-                                                max={100} step={1}
-                                                onValueChange={(v) => updateSlide(currentSlide, { overlayOpacity: v[0] / 100 })}
-                                                className="w-full"
-                                            />
-                                        </div>
-                                    </div>
 
-                                    {/* Block 3: IMAGEM */}
-                                    <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><ImageIcon className="w-4 h-4" /></div>
-                                            <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Fundo & Mídia</h3>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="flex gap-3">
-                                                <Button
-                                                    variant="outline" size="sm" className="flex-1 bg-white/5 border-white/10 text-xs rounded-xl h-10 gap-2"
-                                                    onClick={() => document.getElementById('bg-upload')?.click()}
-                                                >
-                                                    <ImageIcon className="w-4 h-4" />
-                                                    Subir Imagem
-                                                </Button>
-                                                <input
-                                                    id="bg-upload" type="file" className="hidden" accept="image/*"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            const reader = new FileReader();
-                                                            reader.onload = (re) => updateSlide(currentSlide, { bgImage: re.target?.result as string });
-                                                            reader.readAsDataURL(file);
-                                                        }
-                                                    }}
-                                                />
-                                                {carousel.slides[currentSlide].bgImage && (
+                                            <div className="space-y-4">
+                                                <div className="flex gap-3">
                                                     <Button
-                                                        variant="ghost" size="icon" className="h-10 w-10 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl"
-                                                        onClick={() => updateSlide(currentSlide, { bgImage: undefined })}
+                                                        variant="outline" size="sm" className="flex-1 bg-white/5 border-white/10 text-xs rounded-xl h-10 gap-2"
+                                                        onClick={() => document.getElementById('bg-upload')?.click()}
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <ImageIcon className="w-4 h-4" />
+                                                        Subir Imagem
                                                     </Button>
-                                                )}
-                                            </div>
+                                                    <input
+                                                        id="bg-upload" type="file" className="hidden" accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onload = (re) => updateSlide(currentSlide, { bgImage: re.target?.result as string });
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }}
+                                                    />
+                                                    {carousel.slides[currentSlide].bgImage && (
+                                                        <Button
+                                                            variant="ghost" size="icon" className="h-10 w-10 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl"
+                                                            onClick={() => updateSlide(currentSlide, { bgImage: undefined })}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
 
-                                            <div className="flex items-center gap-3">
-                                                <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Fundo</Label>
-                                                <input
-                                                    type="color" value={carousel.slides[currentSlide].bgColor}
-                                                    onChange={(e) => updateSlide(currentSlide, { bgColor: e.target.value })}
-                                                    className="flex-1 h-8 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
-                                                />
+                                                <div className="flex items-center gap-3">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Fundo</Label>
+                                                    <input
+                                                        type="color" value={carousel.slides[currentSlide].bgColor}
+                                                        onChange={(e) => updateSlide(currentSlide, { bgColor: e.target.value })}
+                                                        className="flex-1 h-8 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <Button
-                                        className="gradient-primary w-full h-14 md:h-16 px-6 md:px-10 rounded-[24px] text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 md:gap-4 hover:scale-105 active:scale-95 transition-all mt-4"
-                                        onClick={handleExport}
-                                        disabled={isExporting}
-                                    >
-                                        {isExporting ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : <Download className="w-5 h-5 md:w-6 md:h-6" />}
-                                        Exportar Carrossel
-                                    </Button>
+                                        <Button
+                                            className="gradient-primary w-full h-14 md:h-16 px-6 md:px-10 rounded-[24px] text-white font-black text-[10px] md:text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/30 flex items-center justify-center gap-3 md:gap-4 hover:scale-105 active:scale-95 transition-all mt-4"
+                                            onClick={handleExport}
+                                            disabled={isExporting}
+                                        >
+                                            {isExporting ? <Loader2 className="w-5 h-5 md:w-6 md:h-6 animate-spin" /> : <Download className="w-5 h-5 md:w-6 md:h-6" />}
+                                            Exportar Carrossel
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2176,26 +2271,37 @@ SEMPRE:
                                                 className="group bg-slate-900/40 border border-white/5 hover:border-primary/30 rounded-[32px] p-6 transition-all duration-300 hover:bg-slate-900/60 cursor-pointer flex flex-col gap-4 relative overflow-hidden"
                                                 onClick={() => {
                                                     // Hydrate slides with defaults to prevent crashes on old data
-                                                    const hydratedSlides = (item.slides || []).map((s: any) => ({
-                                                        font: "'Playfair Display', serif",
-                                                        fontSize: 66,
-                                                        textColor: "#ffffff",
-                                                        boxBgColor: "#000000",
-                                                        boxPadding: 40,
-                                                        textPosition: "center",
-                                                        overlayColor: "#000000",
-                                                        overlayOpacity: 0.5,
-                                                        lineHeight: "1.2",
-                                                        useOnlyMain: false,
-                                                        secondaryFont: "'Inter', sans-serif",
-                                                        secondaryFontSize: 30,
-                                                        secondaryTextColor: "#cccccc",
-                                                        secondaryLineHeight: "1.5",
-                                                        secondaryIsBold: false,
-                                                        secondaryIsItalic: false,
-                                                        secondaryUppercase: false,
-                                                        ...s
-                                                    }));
+                                                    const hydratedSlides = (item.slides || []).map((s: any) => {
+                                                        const base = {
+                                                            // Defaults for MISSING properties - MUST MATCH GENERATION DEFAULTS
+                                                            font: "'Playfair Display', serif",
+                                                            fontSize: 32, // CRITICAL: Match generation default
+                                                            textColor: "#ffffff",
+                                                            boxBgColor: "#000000",
+                                                            boxPadding: 80,
+                                                            textPosition: "center",
+                                                            overlayColor: "#000000",
+                                                            overlayOpacity: 0.5,
+                                                            lineHeight: "1.2",
+                                                            useOnlyMain: false,
+                                                            secondaryFont: "'Inter', sans-serif",
+                                                            secondaryFontSize: 20, // CRITICAL: Match generation default
+                                                            secondaryTextColor: "#cccccc",
+                                                            secondaryLineHeight: "1.5",
+                                                            secondaryIsBold: false,
+                                                            secondaryIsItalic: false,
+                                                            secondaryUppercase: false,
+                                                            templateVersion: s.templateVersion || "1.0", // Fallback for old data
+                                                            ...s // Spread saved values AFTER defaults (so they override)
+                                                        };
+                                                        // Safety Clamp: ONLY for legacy carousels (v1.0)
+                                                        if (base.templateVersion === "1.0") {
+                                                            if (base.fontSize > 35) base.fontSize = 32;
+                                                            if (base.secondaryFontSize > 25) base.secondaryFontSize = 20;
+                                                        }
+                                                        return base;
+                                                    });
+                                                    console.log('📂 LOADING FROM HISTORY - First slide fontSize:', hydratedSlides[0].fontSize, 'secondaryFontSize:', hydratedSlides[0].secondaryFontSize, 'boxPadding:', hydratedSlides[0].boxPadding);
                                                     setCarousel({ ...item, slides: hydratedSlides });
                                                     setCurrentSlide(0);
                                                 }}
@@ -2264,12 +2370,18 @@ SEMPRE:
                                     style={{
                                         width: '1080px',
                                         height: '1350px',
+                                        minWidth: '1080px',
+                                        maxWidth: '1080px',
+                                        minHeight: '1350px',
+                                        maxHeight: '1350px',
+                                        padding: '160px 100px', // Same as preview
                                         backgroundColor: slide.bgColor,
                                         backgroundImage: slide.bgImage ? `url(${slide.bgImage})` : 'none',
                                         backgroundSize: 'cover',
                                         backgroundPosition: 'center',
                                         display: 'flex',
                                         flexDirection: 'column',
+                                        boxSizing: 'border-box'
                                     }}
                                     className="export-node"
                                 >
@@ -2281,42 +2393,47 @@ SEMPRE:
                                         }}
                                     />
                                     <div className={cn(
-                                        "relative z-10 w-full h-full flex flex-col px-[60px] py-[72px] overflow-hidden",
+                                        "relative z-10 w-full h-full flex flex-col box-border",
                                         slide.textPosition === 'center' ? "justify-center items-center text-center" :
-                                            slide.textPosition === 'top' ? "justify-start text-center py-[48px]" :
-                                                slide.textPosition === 'bottom' ? "justify-end text-center py-[48px]" :
+                                            slide.textPosition === 'top' ? "justify-start text-center pt-[40px]" :
+                                                slide.textPosition === 'bottom' ? "justify-end text-center pb-[40px]" :
                                                     slide.textPosition === 'left' ? "justify-center items-start text-left" :
                                                         "justify-center items-end text-right"
                                     )}>
                                         <div
+                                            className="w-full mx-auto transition-all duration-300 box-border"
                                             style={{
                                                 backgroundColor: hexToRgba(slide.boxBgColor || "#000000", slide.boxOpacity ?? 0.8),
-                                                padding: `${slide.boxPadding}px`,
+                                                padding: `${slide.boxPadding || 80}px`,
                                                 borderRadius: '24px',
                                                 display: 'flex',
                                                 flexDirection: 'column',
-                                                justifyContent: 'center'
+                                                justifyContent: 'center',
+                                                alignItems: slide.textPosition === 'left' ? 'flex-start' :
+                                                    slide.textPosition === 'right' ? 'flex-end' : 'center'
                                             }}
-                                            className="w-full box-border"
                                         >
                                             <h1 className={cn(
-                                                "font-black tracking-tighter break-normal w-full box-border hyphens-none",
+                                                "font-black tracking-tighter w-full box-border",
                                                 slide.isItalic && "italic"
                                             )}
                                                 style={{
                                                     color: slide.textColor,
                                                     fontFamily: slide.font,
-                                                    lineHeight: slide.lineHeight,
                                                     fontSize: `${slide.fontSize}px`,
-                                                    fontWeight: (slide.font?.includes("Bold") || ["Montserrat Bold", "Poppins Bold", "Open Sans ExtraBold"].includes(TITLE_FONTS.find(f => f.value === slide.font)?.name || "")) ? "bold" : "normal"
+                                                    fontWeight: (slide.font?.includes("Bold") || ["Montserrat Bold", "Poppins Bold", "Open Sans ExtraBold"].includes(TITLE_FONTS.find(f => f.value === slide.font)?.name || "")) ? "bold" : "normal",
+                                                    lineHeight: slide.lineHeight,
+                                                    whiteSpace: 'pre-wrap',
+                                                    overflowWrap: 'break-word',
+                                                    wordBreak: 'break-word',
+                                                    hyphens: 'auto'
                                                 }}
                                             >
                                                 {slide.text}
                                             </h1>
                                             {!slide.useOnlyMain && (
                                                 <p className={cn(
-                                                    "mt-10 opacity-80 transition-all break-normal w-full hyphens-none",
-                                                    slide.secondaryFont,
+                                                    "mt-3 opacity-80 leading-relaxed transition-all w-full box-border",
                                                     slide.secondaryIsBold ? "font-bold" : "font-medium",
                                                     slide.secondaryIsItalic && "italic",
                                                     slide.secondaryUppercase && "uppercase tracking-wider"
@@ -2324,8 +2441,11 @@ SEMPRE:
                                                     style={{
                                                         color: slide.secondaryTextColor,
                                                         fontFamily: slide.secondaryFont,
+                                                        fontSize: `${slide.secondaryFontSize}px`,
                                                         lineHeight: slide.secondaryLineHeight,
-                                                        fontSize: `${slide.secondaryFontSize}px`
+                                                        whiteSpace: 'pre-wrap',
+                                                        overflowWrap: 'break-word',
+                                                        wordBreak: 'break-word'
                                                     }}
                                                 >
                                                     {slide.secondaryText}
@@ -2368,6 +2488,6 @@ SEMPRE:
                     )
                 }
             </div>
-        </div>
+        </div >
     );
 }

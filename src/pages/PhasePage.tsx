@@ -61,7 +61,15 @@ export default function PhasePage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => {
+              // If AICarousels has a back handler, use it; otherwise go to dashboard
+              const carouselBackHandler = (window as any).__carouselBackHandler;
+              if (phaseNumber === 7 && carouselBackHandler) {
+                carouselBackHandler();
+              } else {
+                navigate("/dashboard");
+              }
+            }}
             className="mb-6"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -110,7 +118,7 @@ export default function PhasePage() {
             ) : phaseNumber === 6 ? (
               <TrainedAIs />
             ) : phaseNumber === 7 ? (
-              <AICarousels />
+              <AICarousels onBackClick={() => navigate("/dashboard")} />
             ) : phaseNumber === 8 ? (
               <BrandVault />
             ) : (

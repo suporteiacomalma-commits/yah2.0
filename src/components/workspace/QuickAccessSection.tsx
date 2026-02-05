@@ -13,7 +13,7 @@ export function QuickAccessSection() {
           <Mic className="w-5 h-5 text-primary" />
         </div>
         <div className="text-left">
-          <h3 className="text-sm font-semibold text-foreground">Assistente Pessoal</h3>
+          <h3 className="text-sm font-semibold text-foreground">Cérebro - sua assistente pessoal</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Fale. Organize. Receba avisos.</p>
         </div>
       </Link>
@@ -27,7 +27,7 @@ export function QuickAccessSection() {
           <Lightbulb className="w-5 h-5 text-amber-400" />
         </div>
         <div className="text-left">
-          <h3 className="text-sm font-semibold text-foreground">Guardar ideias</h3>
+          <h3 className="text-sm font-semibold text-foreground">Guardar ideias - alívio cognitivo + organização</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Capture e estruture suas ideias</p>
         </div>
       </Link>
@@ -41,7 +41,7 @@ export function QuickAccessSection() {
           <CalendarDays className="w-5 h-5 text-accent" />
         </div>
         <div className="text-left">
-          <h3 className="text-sm font-semibold text-foreground">Calendário</h3>
+          <h3 className="text-sm font-semibold text-foreground">Calendário - gestão de rotinas</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Gestão de posts e ideias.</p>
         </div>
       </Link>

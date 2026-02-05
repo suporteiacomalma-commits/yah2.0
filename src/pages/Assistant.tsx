@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { CenterToast, useCenterToast } from "@/components/ui/center-toast";
 
 const LIFE_BLOCKS = [
     { name: "Vida", color: "bg-pink-500" },
@@ -42,6 +43,7 @@ export default function Assistant() {
     const { getSetting } = useSystemSettings();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { toastState, showToast, hideToast } = useCenterToast();
 
     // UI States
     const [inputText, setInputText] = useState("");
@@ -357,7 +359,7 @@ Frase do usuário: "${inputText}"`;
                 });
             }
 
-            toast.success(`${confirmEvents.length} eventos agendados com sucesso!`);
+            showToast("Agendado! Vou te lembrar quando chegar a hora");
 
             // Voice Feedback
             const firstName = user.user_metadata?.full_name?.split(' ')[0] || "usuário";
@@ -575,9 +577,9 @@ Frase do usuário: "${inputText}"`;
                             </DialogHeader>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 relative z-10 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-3 md:p-8 space-y-4 md:space-y-8 relative z-10 custom-scrollbar">
                             {confirmEvents.map((event, index) => (
-                                <div key={index} className="relative group/card bg-white/[0.03] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 transition-all hover:bg-white/[0.05] hover:border-white/20">
+                                <div key={index} className="relative group/card bg-white/[0.03] border border-white/10 rounded-3xl p-4 md:p-8 space-y-4 md:space-y-6 transition-all hover:bg-white/[0.05] hover:border-white/20">
                                     {/* Action Header */}
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
@@ -598,20 +600,20 @@ Frase do usuário: "${inputText}"`;
 
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">O que precisa ser feito?</Label>
+                                            <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">O que precisa ser feito?</Label>
                                             <Input
                                                 value={event.titulo}
                                                 onChange={e => updateEvent(index, { titulo: e.target.value })}
-                                                className="bg-white/5 border-white/5 h-12 text-base font-bold rounded-xl focus:border-lime-500/50 transition-all px-6 shadow-inner"
+                                                className="bg-white/10 border-white/10 h-12 text-base font-bold rounded-xl focus:border-lime-500/50 transition-all px-3 md:px-6 shadow-inner text-white"
                                                 placeholder="Ex: Reunião com equipe..."
                                             />
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Bloco de Vida</Label>
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Bloco de Vida</Label>
                                                 <Select value={event.categoria} onValueChange={v => updateEvent(index, { categoria: v })}>
-                                                    <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                    <SelectTrigger className="bg-white/10 border-white/10 h-10 rounded-xl focus:ring-0 px-3 md:px-4 font-bold text-sm text-white">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
@@ -622,9 +624,9 @@ Frase do usuário: "${inputText}"`;
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Tipo de Evento</Label>
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Tipo de Evento</Label>
                                                 <Select value={event.tipo} onValueChange={(v: any) => updateEvent(index, { tipo: v })}>
-                                                    <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                    <SelectTrigger className="bg-white/10 border-white/10 h-10 rounded-xl focus:ring-0 px-3 md:px-4 font-bold text-sm text-white">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
@@ -637,20 +639,20 @@ Frase do usuário: "${inputText}"`;
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Quando?</Label>
-                                                <Input type="date" value={event.data} onChange={e => updateEvent(index, { data: e.target.value })} className="bg-white/5 border-white/5 h-10 rounded-xl px-4 font-bold text-sm" />
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Quando?</Label>
+                                                <Input type="date" value={event.data} onChange={e => updateEvent(index, { data: e.target.value })} className="bg-white/10 border-white/10 h-10 rounded-xl px-3 md:px-4 font-bold text-sm text-white" />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Qual horário?</Label>
-                                                <Input type="time" value={event.hora || ""} onChange={e => updateEvent(index, { hora: e.target.value || null })} className="bg-white/5 border-white/5 h-10 rounded-xl px-4 font-bold text-sm" />
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Qual horário?</Label>
+                                                <Input type="time" value={event.hora || ""} onChange={e => updateEvent(index, { hora: e.target.value || null })} className="bg-white/10 border-white/10 h-10 rounded-xl px-3 md:px-4 font-bold text-sm text-white" />
                                             </div>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Qual a prioridade?</Label>
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Qual a prioridade?</Label>
                                                 <Select value={event.prioridade} onValueChange={v => updateEvent(index, { prioridade: v as any })}>
-                                                    <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                    <SelectTrigger className="bg-white/10 border-white/10 h-10 rounded-xl focus:ring-0 px-3 md:px-4 font-bold text-sm text-white">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
@@ -662,9 +664,9 @@ Frase do usuário: "${inputText}"`;
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/20 ml-1">Repetir?</Label>
+                                                <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Repetir?</Label>
                                                 <Select value={event.recorrencia} onValueChange={v => updateEvent(index, { recorrencia: v })}>
-                                                    <SelectTrigger className="bg-white/5 border-white/5 h-10 rounded-xl focus:ring-0 px-4 font-bold text-sm">
+                                                    <SelectTrigger className="bg-white/10 border-white/10 h-10 rounded-xl focus:ring-0 px-3 md:px-4 font-bold text-sm text-white">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
@@ -697,6 +699,13 @@ Frase do usuário: "${inputText}"`;
                     </DialogContent>
                 </Dialog>
             </div>
+
+            {/* Center Toast Notification */}
+            <CenterToast
+                message={toastState.message}
+                show={toastState.show}
+                onClose={hideToast}
+            />
         </MinimalLayout >
     );
 }

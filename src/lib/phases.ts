@@ -27,7 +27,7 @@ export const phases: Phase[] = [
   {
     id: 1,
     title: "Caderno de Personalidade",
-    shortTitle: "Personalidade",
+    shortTitle: "Base",
     description: "Descubra a essência e personalidade única da sua marca",
     icon: Notebook,
     href: "/phase/1",
@@ -35,7 +35,7 @@ export const phases: Phase[] = [
   {
     id: 2,
     title: "DNA da Marca",
-    shortTitle: "DNA",
+    shortTitle: "Estratégia",
     description: "",
     icon: Dna,
     href: "/phase/2",
@@ -43,7 +43,7 @@ export const phases: Phase[] = [
   {
     id: 3,
     title: "Planejamento Semanal",
-    shortTitle: "Semanal",
+    shortTitle: "Estrutura",
     description: "Organize sua rotina de conteúdo",
     icon: ClipboardList,
     href: "/phase/3",
@@ -51,7 +51,7 @@ export const phases: Phase[] = [
   {
     id: 4,
     title: "Otimização das Redes",
-    shortTitle: "Redes",
+    shortTitle: "Percepção",
     description: "Configure suas redes sociais para máximo impacto",
     icon: Share2,
     href: "/phase/4",
@@ -67,7 +67,7 @@ export const phases: Phase[] = [
   {
     id: 6,
     title: "IAs Treinadas",
-    shortTitle: "IAs",
+    shortTitle: "IAs Treinadas",
     description: "",
     icon: Bot,
     href: "/phase/6",
@@ -75,7 +75,7 @@ export const phases: Phase[] = [
   {
     id: 7,
     title: "Carrosseis com IA",
-    shortTitle: "Carrosseis",
+    shortTitle: "Produção",
     description: "Gere carrosséis estratégicos com auxílio de IA",
     icon: Zap,
     href: "/phase/7",
@@ -83,7 +83,7 @@ export const phases: Phase[] = [
   {
     id: 8,
     title: "Baú de Marca",
-    shortTitle: "Baú de Marca",
+    shortTitle: "Memória",
     description: "Seu lugar seguro para guardar tudo da sua marca.",
     icon: BookOpen,
     href: "/phase/8",

@@ -188,7 +188,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
 
       {/* Purchase Dialog */}
       <Dialog open={isPurchaseOpen} onOpenChange={setIsPurchaseOpen}>
-        <DialogContent className="max-w-md bg-card border-border">
+        <DialogContent className="max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
               <Sparkles className="w-6 h-6 text-purple-500" />
@@ -224,15 +224,21 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
             </div>
 
             <Tabs defaultValue="pix" value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "pix" | "card")} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="pix" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
-                  <span className="flex items-center gap-2 text-xs sm:text-sm">
-                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> PIX (Instantâneo)
+              <TabsList className="grid w-full grid-cols-2 h-auto">
+                <TabsTrigger value="pix" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 h-auto py-2.5">
+                  <span className="flex flex-col items-center gap-0.5 text-xs sm:text-sm">
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> PIX
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">(Instantâneo)</span>
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="card" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
-                  <span className="flex items-center gap-2 text-xs sm:text-sm">
-                    <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Cartão
+                <TabsTrigger value="card" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 h-auto py-2.5">
+                  <span className="flex flex-col items-center gap-0.5 text-xs sm:text-sm">
+                    <span className="flex items-center gap-2">
+                      <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Cartão
+                    </span>
+                    <span className="text-[9px] text-muted-foreground">em até 12x</span>
                   </span>
                 </TabsTrigger>
               </TabsList>
@@ -353,7 +359,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
 
           <DialogFooter className="flex flex-col gap-2 sm:justify-center items-center text-center">
             <p className="text-xs text-muted-foreground">
-              Pagamento processado com segurança pela <span className="font-bold text-foreground">AbacatePay</span> ou <span className="font-bold text-foreground">Stripe</span>.
+              Pagamento processado com segurança pelo <span className="font-bold text-foreground">Mercado Pago</span>.
             </p>
           </DialogFooter>
         </DialogContent>

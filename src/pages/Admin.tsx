@@ -506,122 +506,241 @@ export default function Admin() {
                 <CardTitle className="text-foreground">Usuários</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border">
-                      <TableHead className="text-muted-foreground w-[100px]">Data</TableHead>
-                      <TableHead className="text-muted-foreground">Nome</TableHead>
-                      <TableHead className="text-muted-foreground">Status Assinatura</TableHead>
-                      <TableHead className="text-muted-foreground">Plano</TableHead>
-                      <TableHead className="text-muted-foreground">Trial (Dias)</TableHead>
-                      <TableHead className="text-muted-foreground">Role</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((userItem) => {
-                      const trialEnds = userItem.trial_ends_at ? new Date(userItem.trial_ends_at) : null;
-                      const daysLeft = trialEnds ? Math.ceil((trialEnds.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
-                      const isExpired = daysLeft < 0 && userItem.subscription_plan === 'trial';
 
-                      return (
-                        <TableRow key={userItem.id} className="border-border">
-                          <TableCell className="text-muted-foreground text-xs">
-                            {new Date(userItem.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-foreground font-medium">
-                            <div className="flex flex-col">
-                              <span>{userItem.full_name || userItem.user_name || "—"}</span>
-                              <span className="text-xs text-muted-foreground">{userItem.email}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border">
+                        <TableHead className="text-muted-foreground w-[100px]">Data</TableHead>
+                        <TableHead className="text-muted-foreground min-w-[200px]">Nome</TableHead>
+                        <TableHead className="text-muted-foreground">Status Assinatura</TableHead>
+                        <TableHead className="text-muted-foreground">Plano</TableHead>
+                        <TableHead className="text-muted-foreground">Trial (Dias)</TableHead>
+                        <TableHead className="text-muted-foreground">Role</TableHead>
+                        <TableHead className="text-muted-foreground text-right min-w-[300px]">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((userItem) => {
+                        const trialEnds = userItem.trial_ends_at ? new Date(userItem.trial_ends_at) : null;
+                        const daysLeft = trialEnds ? Math.ceil((trialEnds.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                        const isExpired = daysLeft < 0 && userItem.subscription_plan === 'trial';
+
+                        return (
+                          <TableRow key={userItem.id} className="border-border">
+                            <TableCell className="text-muted-foreground text-xs">
+                              {new Date(userItem.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-foreground font-medium">
+                              <div className="flex flex-col">
+                                <span>{userItem.full_name || userItem.user_name || "—"}</span>
+                                <span className="text-xs text-muted-foreground">{userItem.email}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={userItem.subscription_status === 'active' ? "default" : "secondary"} className={
+                                userItem.subscription_status === 'active' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : ''
+                              }>
+                                {userItem.subscription_status === 'active' ? 'Ativo' : 'Inativo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={
+                                userItem.subscription_plan === 'premium'
+                                  ? "border-purple-500 text-purple-400"
+                                  : "text-muted-foreground"
+                              }>
+                                {userItem.subscription_plan === 'premium' ? 'Premium' : 'Trial'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {userItem.subscription_plan === 'trial' ? (
+                                <span className={isExpired ? "text-red-400 font-bold" : "text-muted-foreground"}>
+                                  {daysLeft > 0 ? `${daysLeft} dias rest.` : "Expirado"}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{getRoleBadge(userItem.role)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    className="w-16 h-7 text-xs px-2"
+                                    placeholder="Dias"
+                                    value={trialDaysMap[userItem.user_id] || ""}
+                                    onChange={(e) => setTrialDaysMap({ ...trialDaysMap, [userItem.user_id]: e.target.value })}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-[10px]"
+                                    onClick={() => {
+                                      const days = parseInt(trialDaysMap[userItem.user_id] || "7");
+                                      handleExtendTrial(userItem.user_id, days);
+                                    }}
+                                  >
+                                    Definir Trial
+                                  </Button>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => setEditingUser(userItem)}
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                {userItem.subscription_plan !== 'premium' && (
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/50"
+                                    onClick={() => handleUpdateSubscription(userItem.user_id, 'premium')}
+                                  >
+                                    Ativar Premium
+                                  </Button>
+                                )}
+                                <Select
+                                  value={userItem.role || "none"}
+                                  onValueChange={(value) => handleRoleChange(userItem.user_id, value)}
+                                  disabled={assignRole.isPending || removeRole.isPending}
+                                >
+                                  <SelectTrigger className="w-[100px] h-7 text-xs bg-background border-border">
+                                    <SelectValue placeholder="Role" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">Sem role</SelectItem>
+                                    <SelectItem value="user">Usuário</SelectItem>
+                                    <SelectItem value="moderator">Moderadora</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Mobile View (Cards) */}
+                <div className="md:hidden space-y-4">
+                  {users.map((userItem) => {
+                    const trialEnds = userItem.trial_ends_at ? new Date(userItem.trial_ends_at) : null;
+                    const daysLeft = trialEnds ? Math.ceil((trialEnds.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                    const isExpired = daysLeft < 0 && userItem.subscription_plan === 'trial';
+
+                    return (
+                      <div key={userItem.id} className="bg-background/50 border border-border p-4 rounded-xl space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-bold text-foreground">{userItem.full_name || userItem.user_name || "—"}</h4>
+                            <p className="text-xs text-muted-foreground">{userItem.email}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Cadastrado em: {new Date(userItem.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            {getRoleBadge(userItem.role)}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => setEditingUser(userItem)}
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex flex-col gap-1 p-2 bg-background/50 rounded-lg">
+                            <span className="text-[10px] text-muted-foreground uppercase">Status</span>
                             <Badge variant={userItem.subscription_status === 'active' ? "default" : "secondary"} className={
-                              userItem.subscription_status === 'active' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : ''
+                              userItem.subscription_status === 'active' ? 'bg-green-500/20 text-green-400 w-fit' : 'w-fit'
                             }>
                               {userItem.subscription_status === 'active' ? 'Ativo' : 'Inativo'}
                             </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={
-                              userItem.subscription_plan === 'premium'
-                                ? "border-purple-500 text-purple-400"
-                                : "text-muted-foreground"
-                            }>
-                              {userItem.subscription_plan === 'premium' ? 'Premium' : 'Trial'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {userItem.subscription_plan === 'trial' ? (
-                              <span className={isExpired ? "text-red-400 font-bold" : "text-muted-foreground"}>
-                                {daysLeft > 0 ? `${daysLeft} dias rest.` : "Expirado"}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{getRoleBadge(userItem.role)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  type="number"
-                                  className="w-16 h-7 text-xs px-2"
-                                  placeholder="Dias"
-                                  value={trialDaysMap[userItem.user_id] || ""}
-                                  onChange={(e) => setTrialDaysMap({ ...trialDaysMap, [userItem.user_id]: e.target.value })}
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-7 px-2 text-[10px]"
-                                  onClick={() => {
-                                    const days = parseInt(trialDaysMap[userItem.user_id] || "7");
-                                    handleExtendTrial(userItem.user_id, days);
-                                  }}
-                                >
-                                  Definir Trial
-                                </Button>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 w-7 p-0"
-                                onClick={() => setEditingUser(userItem)}
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </Button>
-                              {userItem.subscription_plan !== 'premium' && (
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/50"
-                                  onClick={() => handleUpdateSubscription(userItem.user_id, 'premium')}
-                                >
-                                  Ativar Premium
-                                </Button>
+                          </div>
+
+                          <div className="flex flex-col gap-1 p-2 bg-background/50 rounded-lg">
+                            <span className="text-[10px] text-muted-foreground uppercase">Plano</span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className={
+                                userItem.subscription_plan === 'premium'
+                                  ? "border-purple-500 text-purple-400 w-fit"
+                                  : "text-muted-foreground w-fit"
+                              }>
+                                {userItem.subscription_plan === 'premium' ? 'Premium' : 'Trial'}
+                              </Badge>
+                              {userItem.subscription_plan === 'trial' && (
+                                <span className={`text-xs ${isExpired ? "text-red-400 font-bold" : "text-muted-foreground"}`}>
+                                  {daysLeft > 0 ? `${daysLeft}d` : "Exp."}
+                                </span>
                               )}
-                              <Select
-                                value={userItem.role || "none"}
-                                onValueChange={(value) => handleRoleChange(userItem.user_id, value)}
-                                disabled={assignRole.isPending || removeRole.isPending}
-                              >
-                                <SelectTrigger className="w-[100px] h-7 text-xs bg-background border-border">
-                                  <SelectValue placeholder="Role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Sem role</SelectItem>
-                                  <SelectItem value="user">Usuário</SelectItem>
-                                  <SelectItem value="moderator">Moderadora</SelectItem>
-                                  <SelectItem value="admin">Admin</SelectItem>
-                                </SelectContent>
-                              </Select>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-border space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground min-w-[60px]">Role:</span>
+                            <Select
+                              value={userItem.role || "none"}
+                              onValueChange={(value) => handleRoleChange(userItem.user_id, value)}
+                              disabled={assignRole.isPending || removeRole.isPending}
+                            >
+                              <SelectTrigger className="flex-1 h-7 text-xs bg-background border-border">
+                                <SelectValue placeholder="Role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Sem role</SelectItem>
+                                <SelectItem value="user">Usuário</SelectItem>
+                                <SelectItem value="moderator">Moderadora</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {userItem.subscription_plan !== 'premium' && (
+                            <Button
+                              size="sm"
+                              className="w-full h-8 text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/50"
+                              onClick={() => handleUpdateSubscription(userItem.user_id, 'premium')}
+                            >
+                              Ativar Premium Manualmente
+                            </Button>
+                          )}
+
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              className="w-16 h-8 text-xs px-2"
+                              placeholder="Dias"
+                              value={trialDaysMap[userItem.user_id] || ""}
+                              onChange={(e) => setTrialDaysMap({ ...trialDaysMap, [userItem.user_id]: e.target.value })}
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 h-8 text-xs"
+                              onClick={() => {
+                                const days = parseInt(trialDaysMap[userItem.user_id] || "7");
+                                handleExtendTrial(userItem.user_id, days);
+                              }}
+                            >
+                              Definir Trial
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

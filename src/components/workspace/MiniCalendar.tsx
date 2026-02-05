@@ -69,7 +69,7 @@ export function MiniCalendar() {
         if (error) throw error;
 
         setActivities(activities.map((e) => (e.id === realId ? { ...e, concluidos: newCompletions } : e)));
-        toast.success(isCurrentlyCompleted ? "Ocorrência marcada como pendente" : "Ocorrência concluída");
+        toast.success(isCurrentlyCompleted ? "Ocorrência marcada como pendente" : "Missão cumprida!");
       } catch (error: any) {
         toast.error("Erro ao atualizar status da ocorrência");
       }
@@ -84,7 +84,7 @@ export function MiniCalendar() {
         if (error) throw error;
 
         setActivities(activities.map((e) => (e.id === realId ? { ...e, status: newStatus as any } : e)));
-        toast.success(`Status atualizado para ${newStatus}`);
+        toast.success(newStatus === "Concluído" ? "Missão cumprida!" : "Status atualizado para Pendente");
       } catch (error: any) {
         toast.error("Erro ao atualizar status");
       }
@@ -181,7 +181,7 @@ export function MiniCalendar() {
               <div className="flex items-center justify-between">
                 <h4 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/80 flex items-center gap-2">
                   <div className="w-1 h-3 bg-primary rounded-full" />
-                  Atividades • {date ? format(date, "dd/MM") : ""}
+                  Seu dia, hoje: • {date ? format(date, "dd/MM") : ""}
                 </h4>
                 <div className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-primary">
                   {selectedDayActivities.length} total

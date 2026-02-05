@@ -24,7 +24,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, User, Building, Target, Mail, ArrowLeft, Lock, ShieldCheck, CreditCard, History, ExternalLink, MessageCircle, AlertCircle, Info, Phone } from "lucide-react";
+import { Loader2, User, Building, Target, Mail, ArrowLeft, Lock, ShieldCheck, CreditCard, History, ExternalLink, MessageCircle, AlertCircle, Info, Phone, Camera, Share2, Instagram } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -46,6 +46,8 @@ export default function Profile() {
         confirmPassword: "",
     });
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -57,6 +59,7 @@ export default function Profile() {
                 business_stage: profile.business_stage || "",
                 main_goal: profile.main_goal || "",
             });
+            setAvatarUrl(profile.avatar_url || null);
         }
     }, [profile]);
 
@@ -102,6 +105,66 @@ export default function Profile() {
         }
     };
 
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !profile) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            toast.error("Por favor, selecione uma imagem válida.");
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("A imagem deve ter no máximo 5MB.");
+            return;
+        }
+
+        setIsUploadingAvatar(true);
+        try {
+            // Delete old avatar if exists
+            if (profile.avatar_url) {
+                const oldPath = profile.avatar_url.split('/').pop();
+                if (oldPath) {
+                    await supabase.storage.from('avatars').remove([`${profile.id}/${oldPath}`]);
+                }
+            }
+
+            // Upload new avatar
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}.${fileExt}`;
+            const filePath = `${profile.id}/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file, { upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            // Update profile with new avatar URL
+            const { error: updateError } = await (supabase as any)
+                .from('profiles')
+                .update({ avatar_url: publicUrl })
+                .eq('id', profile.id);
+
+            if (updateError) throw updateError;
+
+            setAvatarUrl(publicUrl);
+            toast.success("Foto de perfil atualizada com sucesso!");
+        } catch (error: any) {
+            console.error('Avatar upload error:', error);
+            toast.error("Erro ao fazer upload da foto: " + (error.message || 'Erro desconhecido'));
+        } finally {
+            setIsUploadingAvatar(false);
+        }
+    };
+
     if (profileLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -139,10 +202,32 @@ export default function Profile() {
                             <Card className="bg-card/50 border-white/10 backdrop-blur-sm overflow-hidden">
                                 <div className="h-24 bg-gradient-to-br from-primary/20 to-accent/20" />
                                 <CardContent className="relative pt-0 flex flex-col items-center">
-                                    <div className="w-20 h-20 rounded-full border-4 border-background bg-secondary flex items-center justify-center -mt-10 mb-4">
-                                        <User className="w-10 h-10 text-primary" />
+                                    <div className="relative group">
+                                        <div className="w-20 h-20 rounded-full border-4 border-background bg-secondary flex items-center justify-center -mt-10 mb-4 overflow-hidden">
+                                            {isUploadingAvatar ? (
+                                                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                                            ) : avatarUrl ? (
+                                                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <User className="w-10 h-10 text-primary" />
+                                            )}
+                                        </div>
+                                        <label
+                                            htmlFor="avatar-upload"
+                                            className="absolute bottom-3 right-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg border-2 border-background"
+                                        >
+                                            <Camera className="w-4 h-4 text-primary-foreground" />
+                                        </label>
+                                        <input
+                                            id="avatar-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleAvatarUpload}
+                                            className="hidden"
+                                            disabled={isUploadingAvatar}
+                                        />
                                     </div>
-                                    <h3 className="font-bold text-center text-lg">{profile?.full_name || "Usuário"}</h3>
+                                    <h3 className="font-bold text-center text-lg">{formData.full_name || profile?.full_name || "Usuário"}</h3>
                                     <p className="text-sm text-muted-foreground text-center line-clamp-1">{profile?.email}</p>
                                 </CardContent>
                             </Card>
@@ -158,6 +243,36 @@ export default function Profile() {
                                     <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-500 border border-green-500/20">
                                         Ativa
                                     </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                        <Share2 className="w-4 h-4 text-primary" />
+                                        Compartilhar
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <Button
+                                        onClick={() => {
+                                            const message = encodeURIComponent("Conheça a YAh! A plataforma completa para criadores de conteúdo 🚀");
+                                            const url = encodeURIComponent("https://app.yahapp.com.br");
+                                            window.open(`https://wa.me/?text=${message}%20${url}`, "_blank");
+                                        }}
+                                        className="w-full bg-green-600 hover:bg-green-700 text-white gap-2 h-10 transition-all hover:scale-[1.02] active:scale-95"
+                                    >
+                                        <MessageCircle className="w-4 h-4" />
+                                        Compartilhar no WhatsApp
+                                    </Button>
+                                    <Button
+                                        onClick={() => window.open("https://instagram.com/yahapp", "_blank")}
+                                        variant="outline"
+                                        className="w-full border-pink-500/20 hover:bg-pink-500/10 text-pink-500 gap-2 h-10 transition-all hover:scale-[1.02] active:scale-95"
+                                    >
+                                        <Instagram className="w-4 h-4" />
+                                        Seguir no Instagram
+                                    </Button>
                                 </CardContent>
                             </Card>
                         </div>

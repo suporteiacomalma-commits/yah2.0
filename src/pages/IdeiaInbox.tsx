@@ -565,6 +565,7 @@ export default function IdeiaInbox() {
 
     const handleTextSubmit = async (text: string) => {
         if (!text.trim()) return;
+        setIsProcessing(true); // Set loading state immediately
         setEditingTranscript(text);
         await analyzeIdea(text);
     };
@@ -2001,11 +2002,20 @@ export default function IdeiaInbox() {
                                         if (e.key === 'Enter') handleTextSubmit(e.currentTarget.value);
                                     }}
                                 />
-                                <Button size="icon" className="shrink-0 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 gradient-primary shadow-lg" onClick={() => {
-                                    const input = document.querySelector('input') as HTMLInputElement;
-                                    handleTextSubmit(input.value);
-                                }}>
-                                    <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                                <Button
+                                    size="icon"
+                                    className="shrink-0 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 gradient-primary shadow-lg"
+                                    onClick={() => {
+                                        const input = document.querySelector('input') as HTMLInputElement;
+                                        handleTextSubmit(input.value);
+                                    }}
+                                    disabled={isProcessing}
+                                >
+                                    {isProcessing ? (
+                                        <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-white animate-spin" />
+                                    ) : (
+                                        <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                                    )}
                                 </Button>
                             </div>
                         </>

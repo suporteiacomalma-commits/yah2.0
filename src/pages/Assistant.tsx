@@ -412,15 +412,6 @@ Frase do usuário: "${inputText}"`;
                 className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center py-10 px-4 font-sans selection:bg-primary/30 relative overflow-y-auto"
             >
 
-                {/* Back Button */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => navigate("/")}
-                    className="fixed top-20 left-6 z-[100] md:top-6 h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md group"
-                >
-                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-1" />
-                </Button>
 
                 {/* Visual Background Glow (Subtle) */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(circle_at_center,rgba(132,204,22,0.15)_0%,transparent_70%)] pointer-events-none" />
@@ -504,8 +495,17 @@ Frase do usuário: "${inputText}"`;
                                             if (e.key === 'Enter') handleOrganize();
                                         }}
                                     />
-                                    <Button size="icon" className="shrink-0 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 gradient-primary shadow-lg" onClick={handleOrganize}>
-                                        <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                                    <Button
+                                        size="icon"
+                                        className="shrink-0 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 gradient-primary shadow-lg"
+                                        onClick={handleOrganize}
+                                        disabled={isProcessing}
+                                    >
+                                        {isProcessing ? (
+                                            <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-white animate-spin" />
+                                        ) : (
+                                            <Send className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                                        )}
                                     </Button>
                                 </div>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
@@ -555,7 +555,7 @@ Frase do usuário: "${inputText}"`;
                     <DialogContent className="sm:max-w-2xl w-[95vw] max-h-[90vh] bg-[#0D0D0D]/95 backdrop-blur-[40px] border border-white/10 p-0 rounded-[32px] md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col">
                         <div className="absolute inset-0 bg-gradient-to-br from-lime-500/5 to-yellow-500/5 pointer-events-none" />
 
-                        <div className="p-6 md:p-8 border-b border-white/5 relative z-10 flex items-center justify-between bg-black/20">
+                        <div className="p-6 md:p-8 border-b border-white/5 relative z-10 bg-black/20">
                             <DialogHeader>
                                 <DialogTitle className="flex items-center gap-4 text-2xl md:text-3xl font-black italic uppercase tracking-tighter">
                                     <div className="w-10 h-10 rounded-xl bg-lime-500/10 flex items-center justify-center border border-lime-500/20">

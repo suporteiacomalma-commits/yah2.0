@@ -60,6 +60,45 @@ export function useMercadoPago() {
         }
     };
 
+    const createPixPayment = async (planId: string, email: string, cpf: string) => {
+        setIsProcessing(true);
+        try {
+            const { data, error } = await supabase.functions.invoke("mercado-pago-process", {
+                body: {
+                    planId,
+                    email,
+                    cpf,
+                    paymentMethodId: "pix",
+                    userId: user?.id,
+                    installments: 1
+                }
+            });
+
+            if (error) throw error;
+
+            if (data.status === "pending" && data.point_of_interaction) {
+                return {
+                    success: true,
+                    status: data.status,
+                    qrCode: data.point_of_interaction.transaction_data.qr_code_base64,
+                    qrCodePaste: data.point_of_interaction.transaction_data.qr_code,
+                    ticketUrl: data.point_of_interaction.transaction_data.ticket_url,
+                    paymentId: data.id
+                };
+            } else {
+                toast.error(`Erro ao gerar PIX: ${data.status}`);
+                return { success: false, status: data.status };
+            }
+
+        } catch (error: any) {
+            console.error("Mercado Pago PIX Error:", error);
+            toast.error(`Erro ao gerar PIX: ${error.message}`);
+            return { success: false, error: error.message };
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const createPreference = async (planId: string, email: string) => {
         try {
             const { data, error } = await supabase.functions.invoke("mercado-pago-process", {
@@ -83,6 +122,7 @@ export function useMercadoPago() {
         loadMercadoPago,
         createPreference,
         processPayment,
+        createPixPayment,
         isProcessing,
         publicKey: getSetting("mercado_pago_public_key")?.value?.trim()
     };

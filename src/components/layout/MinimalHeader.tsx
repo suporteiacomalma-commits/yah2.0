@@ -17,10 +17,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { useAbacatePay } from "@/hooks/useAbacatePay";
+
 import { useStripe } from "@/hooks/useStripe";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MercadoPagoCheckout } from "@/components/payment/MercadoPagoCheckout";
+import { MercadoPagoPixCheckout } from "@/components/payment/MercadoPagoPixCheckout";
 
 
 interface MinimalHeaderProps {
@@ -32,7 +33,6 @@ interface MinimalHeaderProps {
 export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpen, setIsPurchaseOpen: externalSetIsPurchaseOpen }: MinimalHeaderProps) {
   const { signOut } = useAuth();
   const { profile, updateProfile } = useProfile();
-  const { createBilling } = useAbacatePay();
   const { createStripeCheckout } = useStripe();
   const navigate = useNavigate();
   const { isAdmin } = useUserRole();
@@ -70,15 +70,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
     }
 
     if (paymentMethod === "pix") {
-      await createBilling.mutateAsync({
-        planId: plan.id,
-        name: plan.name,
-        amount: plan.amount,
-        frequency: plan.frequency,
-        cpf: cpf,
-        phone: phone
-      });
-      setIsPurchaseOpen(false);
+      setSelectedPlan(plan);
     } else {
       setSelectedPlan(plan);
     }
@@ -271,6 +263,36 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 />
               </div>
             )}
+
+            {paymentMethod === "pix" && selectedPlan && (
+              <div className="mt-6 border-t border-border pt-6 animate-fade-in">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-purple-400">Pagamento via PIX</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-[10px]"
+                    onClick={() => setSelectedPlan(null)}
+                  >
+                    Trocar Plano
+                  </Button>
+                </div>
+                <MercadoPagoPixCheckout
+                  planId={selectedPlan.id}
+                  amount={selectedPlan.amount}
+                  email={profile?.email || ""}
+                  fullName={profile?.full_name || ""}
+                  cpf={cpf}
+                  phone={phone}
+                  onSuccess={() => {
+                    // Payment success logic for PIX (usually handled via webhook/polling, but we can close dialog if needed)
+                    // But for PIX we usually wait for user to pay. The component shows the QR Code.
+                    // The onSuccess prop in MP Pix component might not be triggered automatically unless we poll status.
+                    // For now, let's keep it open so user can scan.
+                  }}
+                />
+              </div>
+            )}
           </div>
 
 
@@ -295,9 +317,9 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                     className={`relative group p-5 rounded-2xl border transition-all duration-300 ${isActive
                       ? "bg-purple-500/10 border-purple-500/50 cursor-default"
                       : "bg-background/40 border-border hover:border-purple-500/50 cursor-pointer hover:bg-white/5"
-                      } ${(createBilling.isPending || createStripeCheckout.isPending) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      } ${(createStripeCheckout.isPending) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {(createBilling.isPending || createStripeCheckout.isPending) && !isActive && (
+                    {(createStripeCheckout.isPending) && !isActive && (
                       <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 backdrop-blur-[2px] rounded-2xl">
                         <div className="flex flex-col items-center gap-2">
                           <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent animate-spin rounded-full" />
@@ -336,7 +358,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                         e.stopPropagation();
                         if (!isActive) handlePurchase(plan);
                       }}
-                      disabled={isActive || createBilling.isPending || createStripeCheckout.isPending}
+                      disabled={isActive || createStripeCheckout.isPending}
                       className={`w-full h-11 rounded-xl font-bold transition-all duration-300 ${isActive
                         ? "bg-green-500/10 text-green-500 border border-green-500/30 hover:bg-green-500/15 cursor-default"
                         : "bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/40"

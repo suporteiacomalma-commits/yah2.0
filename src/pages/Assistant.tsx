@@ -378,14 +378,14 @@ Frase do usuário: "${inputText}"`;
     const renderRecording = () => (
         <div className="flex flex-col items-center justify-center text-center space-y-10 animate-in zoom-in-95 duration-300 w-full">
             <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-destructive flex items-center justify-center glow-destructive animate-pulse" onClick={stopRecording}>
+                <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center glow-primary animate-pulse" onClick={stopRecording}>
                     <Mic className="w-12 h-12 text-white" />
                 </div>
-                <div className="absolute -inset-4 border-2 border-destructive/20 rounded-full animate-ping opacity-50" />
+                <div className="absolute -inset-4 border-2 border-primary/20 rounded-full animate-ping opacity-50" />
             </div>
 
             <div className="space-y-6">
-                <div className="text-4xl font-mono font-black text-destructive tracking-widest">
+                <div className="text-4xl font-mono font-black text-primary tracking-widest">
                     {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}
                 </div>
                 <div className="min-h-[40px] px-8">
@@ -393,13 +393,13 @@ Frase do usuário: "${inputText}"`;
                         {transcript || "YAh ouvindo você..."}
                     </p>
                 </div>
-                <div className="flex items-center justify-center gap-2 text-destructive font-black animate-pulse text-[10px] uppercase tracking-[0.3em]">
-                    <div className="w-1 h-1 rounded-full bg-destructive" />
+                <div className="flex items-center justify-center gap-2 text-primary font-black animate-pulse text-[10px] uppercase tracking-[0.3em]">
+                    <div className="w-1 h-1 rounded-full bg-primary" />
                     Capturando Fluxo
                 </div>
             </div>
 
-            <Button onClick={stopRecording} className="rounded-full h-14 px-10 bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-widest shadow-xl shadow-destructive/20 active:scale-95">
+            <Button onClick={stopRecording} className="rounded-full h-14 px-10 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95">
                 Concluir
             </Button>
         </div>
@@ -412,6 +412,15 @@ Frase do usuário: "${inputText}"`;
                 className="min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center py-10 px-4 font-sans selection:bg-primary/30 relative overflow-y-auto"
             >
 
+                {/* Back Button */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate("/")}
+                    className="fixed top-24 left-6 z-[100] md:top-6 h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md group"
+                >
+                    <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-1" />
+                </Button>
 
                 {/* Visual Background Glow (Subtle) */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(circle_at_center,rgba(132,204,22,0.15)_0%,transparent_70%)] pointer-events-none" />

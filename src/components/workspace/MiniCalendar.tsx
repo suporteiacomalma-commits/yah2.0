@@ -26,6 +26,20 @@ export function MiniCalendar() {
   useEffect(() => {
     if (user) {
       fetchActivities();
+
+      // Subscribe to realtime changes for tasks
+      const channel = supabase
+        .channel('minicalendar-tasks')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'eventos_do_cerebro', filter: `user_id=eq.${user.id}` },
+          () => fetchActivities()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 

@@ -3,18 +3,35 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/hooks/useBrand";
 import { useProfile } from "@/hooks/useProfile";
 import { phases } from "@/lib/phases";
-import { Loader2, Mic, Lightbulb, Check, Map, CalendarDays } from "lucide-react";
+import { Loader2, Mic, Lightbulb, Check, Map, CalendarDays, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { MiniCalendar } from "@/components/workspace/MiniCalendar";
 import { cn } from "@/lib/utils";
+import { expandRecurringEvents } from "@/components/calendar/utils/recurrenceUtils";
 
 // Phases to display in the dashboard (skipping 5 and 9 as per design/existing logic)
 const DASHBOARD_PHASE_IDS = [1, 2, 3, 4, 6, 7, 8];
+
+const DAILY_TIPS = [
+  "Comece pelo Assistente — organize sua semana que o sistema sustenta",
+  "Capture uma ideia e estruture, antes que ela se perca.",
+  "Seu Cérebro de Marca está ativado! Ele já começou a aprender com suas respostas. Para acelerar o processo, que tal adicionar mais hábitos no assistente?",
+  "Lembre-se: o YAH 2.0 é seu copiloto. Quanto mais você o usa, mais ele se adapta ao seu ritmo e estilo. Que tal dar uma olhada na sua Estrutura Semanal?",
+  "A inteligência do YAH 2.0 é construída com a sua interação! Cada clique, edição e aprovação o torna mais afiado. Tem alguma ideia solta para capturar hoje?",
+  "Use o Guardar Ideias — transforme impulso em estratégia.",
+  "Transforme ideias em conteúdo de forma mais rápida e com a certeza de que a Yah está trabalhando para você, não por você.",
+  "Planeje seu conteúdo — presença digital sem improviso",
+  "Quer um YAH 2.0 ainda mais poderoso? Use-o diariamente! Ele aprende com seus padrões e preferências. Qual é a sua maior prioridade de conteúdo para hoje?",
+  "Acabe com a angústia da folha em branco. Sua semana de conteúdo está planejada, pronta para ser refinada por você.",
+  "Que tal revisar as headlines sugeridas para hoje?",
+  "Sua semana está pré-preenchida! Use a função ‘Ajustar Rotina’ para personalizar ainda mais.",
+  "Estruture sua vida, não deixe compromissos na sua sua cabeça, fale com o seu assistente pessoal que ele cuida para você."
+];
 
 export default function Dashboard() {
   const { brand, isLoading: brandLoading } = useBrand();
@@ -24,6 +41,7 @@ export default function Dashboard() {
 
   const [todaysTasks, setTodaysTasks] = useState<any[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
+  const [tipsExpanded, setTipsExpanded] = useState(true);
 
   // Fetch tasks for today
   useEffect(() => {
@@ -47,17 +65,29 @@ export default function Dashboard() {
   }, [user]);
 
   const fetchTodaysTasks = async () => {
+    if (!user) return;
+
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("eventos_do_cerebro")
         .select("*")
-        .eq("user_id", user?.id)
-        .eq("data", today)
-        .order("created_at", { ascending: true });
+        .eq("user_id", user?.id);
 
       if (error) throw error;
-      setTodaysTasks(data || []);
+
+      const now = new Date();
+      // Use local date for current day string to match how they are stored
+      const todayStr = format(now, "yyyy-MM-dd");
+
+      const expanded = expandRecurringEvents(
+        (data as any) || [],
+        startOfDay(now),
+        endOfDay(now)
+      );
+
+      // Filter for exactly today's instances
+      const todayTasks = expanded.filter(t => t.data === todayStr);
+      setTodaysTasks(todayTasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
     } finally {
@@ -67,13 +97,42 @@ export default function Dashboard() {
 
   const toggleTask = async (task: any) => {
     try {
-      const newStatus = task.status === "Concluído" ? "Pendente" : "Concluído";
-      const { error } = await supabase
-        .from("eventos_do_cerebro")
-        .update({ status: newStatus })
-        .eq("id", task.id);
+      const isVirtual = task.id.includes("-virtual-");
+      const realId = isVirtual ? task.id.split("-virtual-")[0] : task.id;
+      const isCompleted = task.status === "Concluído";
+      const newStatus = isCompleted ? "Pendente" : "Concluído";
 
-      if (error) throw error;
+      // If it's recurring, we update the 'concluidos' array instead of 'status'
+      if (task.recorrencia !== "Nenhuma") {
+        // We need the latest master event to get the current 'concluidos' list
+        const { data: masterEvent, error: fetchError } = await (supabase as any)
+          .from("eventos_do_cerebro")
+          .select("concluidos")
+          .eq("id", realId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentCompletions = masterEvent.concluidos || [];
+        const taskDate = task.data;
+        const newCompletions = isCompleted
+          ? currentCompletions.filter((d: string) => d !== taskDate)
+          : [...currentCompletions, taskDate];
+
+        const { error: updateError } = await (supabase as any)
+          .from("eventos_do_cerebro")
+          .update({ concluidos: newCompletions })
+          .eq("id", realId);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: updateError } = await (supabase as any)
+          .from("eventos_do_cerebro")
+          .update({ status: newStatus })
+          .eq("id", realId);
+
+        if (updateError) throw updateError;
+      }
 
       // Optimistic update
       setTodaysTasks(prev => prev.map(t =>
@@ -84,16 +143,33 @@ export default function Dashboard() {
         toast.success("Tarefa concluída!");
       }
     } catch (error) {
+      console.error("Error updating task:", error);
       toast.error("Erro ao atualizar tarefa");
     }
   };
 
+  const currentPhaseId = brand?.current_phase || 1;
+  const completedPhases = brand?.phases_completed || [];
+
+  const nextPhaseId = [1, 2, 3, 4].find(id => !completedPhases.includes(id)) || 5;
+  const isJourneyComplete = [1, 2, 3, 4].every(id => completedPhases.includes(id));
+
   const handleContinueJourney = () => {
-    if (brand?.current_phase) {
-      navigate(`/phase/${brand.current_phase}`);
-    } else {
-      navigate("/phase/1");
-    }
+    if (isJourneyComplete) return;
+    navigate(`/phase/${nextPhaseId}`);
+  };
+
+  const getContinueButtonText = () => {
+    if (isJourneyComplete) return "Tarefas concluídas";
+
+    const phaseNames: Record<number, string> = {
+      1: "Caderno de Personalidade",
+      2: "DNA da Marca",
+      3: "Estrutura Semanal Fixa",
+      4: "Otimização das Redes"
+    };
+
+    return `Continuar: ${phaseNames[nextPhaseId] || "Jornada"}`;
   };
 
   if (brandLoading || profileLoading) {
@@ -104,8 +180,10 @@ export default function Dashboard() {
     );
   }
 
-  const currentPhaseId = brand?.current_phase || 1;
-  const completedPhases = brand?.phases_completed || [];
+  // Render main layout after variables are defined
+  const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+  const dailyTipIndex = dayOfYear % DAILY_TIPS.length;
+  const currentTip = DAILY_TIPS[dailyTipIndex];
 
   return (
     <MinimalLayout brandName={brand?.name}>
@@ -126,10 +204,46 @@ export default function Dashboard() {
             </div>
             <button
               onClick={handleContinueJourney}
-              className="w-full bg-gradient-to-br from-[#B6BC45] to-[#9DA139] text-[#141414] font-semibold py-3.5 px-6 rounded-xl shadow-[0_4px_12px_rgba(182,188,69,0.2)] hover:shadow-[0_6px_16px_rgba(182,188,69,0.3)] hover:-translate-y-0.5 transition-all duration-200 text-[15px]"
+              disabled={isJourneyComplete}
+              className={cn(
+                "w-full font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 text-[15px]",
+                isJourneyComplete
+                  ? "bg-[#2A2A2A] text-[#B6BC45] border border-[#B6BC45]/30 cursor-default"
+                  : "bg-gradient-to-br from-[#B6BC45] to-[#9DA139] text-[#141414] shadow-[0_4px_12px_rgba(182,188,69,0.2)] hover:shadow-[0_6px_16px_rgba(182,188,69,0.3)] hover:-translate-y-0.5"
+              )}
             >
-              Continuar de onde parei (Fase {currentPhaseId})
+              {getContinueButtonText()}
             </button>
+
+            {isJourneyComplete && (
+              <div className="bg-[#1E1E1E] border border-[#B6BC45]/20 rounded-2xl overflow-hidden mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
+                <button
+                  onClick={() => setTipsExpanded(!tipsExpanded)}
+                  className="w-full flex items-center justify-between p-6 hover:bg-white/[0.02] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-[#B6BC45]/10 rounded-lg flex items-center justify-center">
+                      <Sparkles className="w-5 h-5 text-[#B6BC45]" />
+                    </div>
+                    <h3 className="text-[17px] font-bold text-[#EEEDE9]">Confira as próximas dicas</h3>
+                  </div>
+                  {tipsExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-[#999]" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-[#999]" />
+                  )}
+                </button>
+
+                {tipsExpanded && (
+                  <div className="px-6 pb-6 space-y-4 text-[14px] text-[#999] leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300">
+                    <p className="border-l-2 border-[#B6BC45]/30 pl-4 py-1 text-[#EEEDE9]/90 font-medium">
+                      {currentTip}
+                    </p>
+                    <p className="pt-2 text-[#999]/60 italic text-xs">"Sua marca agora tem alma e estratégia. Continue criando!"</p>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Ícones Principais */}
@@ -162,16 +276,16 @@ export default function Dashboard() {
           </section>
 
           {/* Seu Dia Hoje */}
-          <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-[#EEEDE9]">Seu dia, hoje</h2>
-              <span className="text-xs text-[#999] font-medium">{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</span>
+          <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-[20px] font-semibold text-[#EEEDE9] tracking-tight">Seu dia, hoje</h2>
+              <span className="text-[14px] text-[#999] opacity-70">{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</span>
             </div>
 
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {tasksLoading ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#B6BC45]" />
+                <div className="flex justify-center py-6">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#B6BC45]" />
                 </div>
               ) : todaysTasks.length > 0 ? (
                 todaysTasks.map((task) => {
@@ -181,20 +295,20 @@ export default function Dashboard() {
                       key={task.id}
                       onClick={() => toggleTask(task)}
                       className={cn(
-                        "flex items-center py-3 border-b border-[#2A2A2A] cursor-pointer transition-all active:scale-[0.99]",
-                        "last:border-0 hover:bg-white/[0.02] px-2 -mx-2 rounded-lg",
-                        isCompleted && "opacity-50"
+                        "flex items-center py-4 border-b border-white/5 cursor-pointer transition-all active:scale-[0.98]",
+                        "last:border-0 hover:bg-white/[0.02] -mx-2 px-2 rounded-xl group",
+                        isCompleted && "opacity-60"
                       )}
                     >
                       <div className={cn(
-                        "w-5 h-5 min-w-[20px] border-2 rounded-md mr-3 flex items-center justify-center transition-colors duration-200",
-                        isCompleted ? "bg-[#B6BC45] border-[#B6BC45]" : "border-[#3A3A3A]"
+                        "w-[22px] h-[22px] min-w-[22px] border-2 rounded-[6px] mr-4 flex items-center justify-center transition-all duration-300",
+                        isCompleted ? "bg-[#B6BC45] border-[#B6BC45]" : "border-[#3A3A3A] group-hover:border-[#B6BC45]/50"
                       )}>
-                        {isCompleted && <Check className="w-3.5 h-3.5 text-[#141414] stroke-[3]" />}
+                        {isCompleted && <Check className="w-3.5 h-3.5 text-[#141414] stroke-[4]" />}
                       </div>
                       <span className={cn(
-                        "text-sm text-[#EEEDE9] flex-1 line-clamp-2",
-                        isCompleted && "line-through text-[#999]"
+                        "text-[15px] text-[#EEEDE9] flex-1 font-medium transition-all duration-300",
+                        isCompleted && "line-through text-[#999] opacity-80"
                       )}>
                         {task.titulo}
                       </span>
@@ -202,7 +316,9 @@ export default function Dashboard() {
                   );
                 })
               ) : (
-                <p className="text-sm text-[#999] italic py-2 text-center">Nenhuma tarefa para hoje.</p>
+                <div className="py-8 text-center">
+                  <p className="text-[17px] text-[#999] italic font-medium opacity-60">Nenhuma tarefa para hoje.</p>
+                </div>
               )}
             </div>
           </section>
@@ -218,7 +334,7 @@ export default function Dashboard() {
 
                 const isCompleted = completedPhases.includes(phaseId);
                 const isCurrent = currentPhaseId === phaseId;
-                const isLocked = !isCompleted && !isCurrent && phaseId > currentPhaseId;
+                const isLocked = false;
 
                 // Match specific HTML titles if they differ
                 const displayTitle =
@@ -277,11 +393,15 @@ export default function Dashboard() {
                         <>
                           {isCompleted ? (
                             <button className="flex-1 bg-[#2A2A2A] border border-[#3A3A3A] text-[#EEEDE9] text-[13px] py-2.5 rounded-lg hover:bg-[#B6BC45] hover:text-[#141414] hover:border-[#B6BC45] transition-colors font-medium">
-                              Ver documento
+                              {(phaseId === 3 || phaseId === 4) ? "Organizar" : "Ver documento"}
                             </button>
                           ) : (
                             <button className="flex-1 bg-[#B6BC45] border border-[#B6BC45] text-[#141414] text-[13px] py-2.5 rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-all font-semibold">
-                              {isCurrent ? "Continuar" : "Começar"}
+                              {(phaseId === 3 || phaseId === 4) ? "Organizar" :
+                                phaseId === 6 ? "Entrar" :
+                                  phaseId === 7 ? "Criar" :
+                                    phaseId === 8 ? "Guardar" :
+                                      (isCurrent ? "Continuar" : "Começar")}
                             </button>
                           )}
                         </>

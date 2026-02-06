@@ -468,7 +468,7 @@ export default function Dashboard() {
             <h2 className="text-base font-semibold text-[#EEEDE9] mb-2">Mapa de como aproveitar melhor a Yah</h2>
             <p className="text-[13px] text-[#999] mb-4">Descubra todas as funcionalidades e otimize sua jornada</p>
             <button
-              onClick={() => toast("Mapa Yah em desenvolvimento", { description: "Em breve você terá um guia completo!" })}
+              onClick={() => navigate("/explore-map")}
               className="bg-[#B6BC45] text-[#141414] font-semibold py-2.5 px-6 rounded-lg text-sm hover:scale-105 hover:shadow-[0_4px_16px_rgba(182,188,69,0.3)] transition-all duration-200"
             >
               Explorar Mapa

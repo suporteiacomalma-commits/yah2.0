@@ -19,6 +19,7 @@ import Assistant from "./pages/Assistant";
 import Calendar from "./pages/Calendar";
 import Profile from "./pages/Profile";
 import IdeiaInbox from "./pages/IdeiaInbox";
+import ExploreMap from "./pages/ExploreMap";
 import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
 
@@ -107,6 +108,7 @@ function AppRoutes() {
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/explore-map" element={<ProtectedRoute><ExploreMap /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

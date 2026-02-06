@@ -76,6 +76,11 @@ export function useMercadoPago() {
 
             if (error) throw error;
 
+            // Handle handled backend errors (returned as 200 OK)
+            if (data.success === false) {
+                throw new Error(data.error || "Erro desconhecido do servidor");
+            }
+
             if (data.status === "pending" && data.point_of_interaction) {
                 return {
                     success: true,
@@ -91,9 +96,24 @@ export function useMercadoPago() {
             }
 
         } catch (error: any) {
-            console.error("Mercado Pago PIX Error:", error);
-            toast.error(`Erro ao gerar PIX: ${error.message}`);
-            return { success: false, error: error.message };
+            console.error("Mercado Pago PIX Error (Detail):", error);
+
+            let errorMessage = "Erro desconhecido";
+
+            if (error?.message) {
+                errorMessage = error.message;
+            } else if (typeof error === "string") {
+                errorMessage = error;
+            } else if (error && typeof error === "object") {
+                errorMessage = JSON.stringify(error);
+            }
+
+            if (errorMessage.includes("Financial Identity") || errorMessage.includes("payer is the same as the collector")) {
+                errorMessage = "Erro: Em produção, você não pode pagar para sua própria conta (mesmo CPF/Email). Use dados de outra pessoa ou modo Sandbox.";
+            }
+
+            toast.error(`Erro ao gerar PIX: ${errorMessage}`);
+            return { success: false, error: errorMessage };
         } finally {
             setIsProcessing(false);
         }

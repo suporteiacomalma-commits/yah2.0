@@ -22,27 +22,24 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
 
-    useEffect(() => {
-        const generatePix = async () => {
-            if (!cpf) {
-                setError("CPF é obrigatório para pagamento via PIX.");
-                return;
-            }
+    const generatePix = async () => {
+        if (!cpf) {
+            setError("CPF é obrigatório para pagamento via PIX.");
+            return;
+        }
 
-            const result = await createPixPayment(planId, email, cpf);
+        setError(null); // Clear previous errors
+        const result = await createPixPayment(planId, email, cpf);
 
-            if (result.success) {
-                setQrCodeImage(result.qrCode);
-                setQrCodeCopyPaste(result.qrCodePaste);
-                setTicketUrl(result.ticketUrl);
-                toast.success("PIX gerado com sucesso!");
-            } else {
-                setError(result.error || "Falha ao gerar o PIX.");
-            }
-        };
-
-        generatePix();
-    }, [planId, email, cpf]);
+        if (result.success) {
+            setQrCodeImage(result.qrCode);
+            setQrCodeCopyPaste(result.qrCodePaste);
+            setTicketUrl(result.ticketUrl);
+            toast.success("PIX gerado com sucesso!");
+        } else {
+            setError(result.error || "Falha ao gerar o PIX.");
+        }
+    };
 
     const copyToClipboard = () => {
         if (qrCodeCopyPaste) {
@@ -74,8 +71,25 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
                     <h3 className="font-bold text-red-400">Erro ao gerar PIX</h3>
                     <p className="text-sm text-muted-foreground">{error}</p>
                 </div>
-                <Button variant="outline" onClick={() => window.location.reload()}>
+                <Button variant="outline" onClick={generatePix}>
                     Tentar Novamente
+                </Button>
+            </div>
+        );
+    }
+
+    if (!qrCodeImage) {
+        return (
+            <div className="flex flex-col items-center justify-center p-6 gap-4 animate-fade-in w-full">
+                <p className="text-sm text-center text-muted-foreground">
+                    Confirme seus dados acima e clique para gerar o QR Code.
+                </p>
+                <Button
+                    onClick={generatePix}
+                    className="w-full bg-purple-600 hover:bg-purple-500 font-bold"
+                >
+                    <QrCode className="w-4 h-4 mr-2" />
+                    Gerar QR Code PIX
                 </Button>
             </div>
         );
@@ -83,6 +97,7 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
 
     return (
         <div className="flex flex-col items-center space-y-6 pt-2 animate-fade-in w-full text-center">
+            {/* Same QR Code display logic as before */}
             <div className="bg-purple-500/10 p-4 rounded-full">
                 <QrCode className="w-8 h-8 text-purple-500" />
             </div>

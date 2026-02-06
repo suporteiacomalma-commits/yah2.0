@@ -44,7 +44,6 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
 
   const [cpf, setCpf] = useState(profile?.tax_id || "");
   const [phone, setPhone] = useState(profile?.cellphone || "");
-  const [email, setEmail] = useState(profile?.email || "");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
@@ -52,15 +51,14 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
   useEffect(() => {
     if (profile?.tax_id) setCpf(profile.tax_id);
     if (profile?.cellphone) setPhone(profile.cellphone);
-    if (profile?.email) setEmail(profile.email);
   }, [profile]);
 
   const { plans: premiumPlans, isLoading: plansLoading } = usePlans(true);
 
   const handlePurchase = async (plan: any) => {
-    if (!cpf || !phone || !email) {
+    if (!cpf || !phone) {
       import("sonner").then(({ toast }) => {
-        toast.error("Por favor, preencha todos os campos para continuar.");
+        toast.error("Por favor, preencha o CPF e o Telefone para continuar.");
       });
       return;
     }
@@ -193,16 +191,6 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase opacity-70">Email para Pagamento</label>
-              <input
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
-              />
-            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase opacity-70">CPF / CNPJ</label>
@@ -263,7 +251,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 <MercadoPagoCheckout
                   planId={selectedPlan.id}
                   amount={selectedPlan.amount}
-                  email={email}
+                  email={profile?.email || ""}
                   fullName={profile?.full_name || ""}
                   cpf={cpf}
                   phone={phone}
@@ -291,7 +279,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 <MercadoPagoPixCheckout
                   planId={selectedPlan.id}
                   amount={selectedPlan.amount}
-                  email={email}
+                  email={profile?.email || ""}
                   fullName={profile?.full_name || ""}
                   cpf={cpf}
                   phone={phone}

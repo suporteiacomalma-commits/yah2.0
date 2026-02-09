@@ -41,6 +41,7 @@ import { toPng } from "html-to-image";
 import JSZip from "jszip";
 import { TrainedAIs } from "./TrainedAIs";
 import { getFontEmbedCSS, preloadFonts } from "../../utils/fontHelper";
+import { imageUrlToDataUrl } from "@/lib/imageUtils";
 
 const GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=Cormorant:ital,wght@0,300..700;1,300..700&family=DM+Serif+Display:ital@0;1&family=Bodoni+Moda:ital,wght@0,400..900;1,400..900&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100..900;1,100..900&family=Architects+Daughter&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Inter:ital,wght@0,100..900;1,100..900&family=Manrope:wght@200..800&family=Lato:ital,wght@0,100..900;1,100..900&family=Nunito+Sans:ital,wght@0,200..1000;1,200..1000&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&family=Karla:ital,wght@0,200..800;1,200..800&display=swap";
 // --- Types ---
@@ -1439,20 +1440,65 @@ SEMPRE:
         return false;
     };
 
+    // State for preloaded images for robust mobile export
+    const [preloadedImages, setPreloadedImages] = useState<Record<number, string>>({});
+
+    const preloadCurrentSlideImages = async (slideIndex: number) => {
+        const slide = carousel.slides?.[slideIndex];
+        if (!slide?.bgImage || slide.bgImage.startsWith('data:')) return;
+
+        try {
+            const dataUrl = await imageUrlToDataUrl(slide.bgImage);
+            setPreloadedImages(prev => ({ ...prev, [slideIndex]: dataUrl }));
+            // Give it 100ms to propagate to the DOM
+            await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+            console.error("Error preloading slide image:", error);
+        }
+    };
+
+    const preloadAllSlideImages = async () => {
+        if (!carousel.slides) return;
+        const newPreloaded: Record<number, string> = {};
+
+        for (let i = 0; i < carousel.slides.length; i++) {
+            const slide = carousel.slides[i];
+            if (slide.bgImage && !slide.bgImage.startsWith('data:')) {
+                try {
+                    newPreloaded[i] = await imageUrlToDataUrl(slide.bgImage);
+                } catch (e) {
+                    console.error(`Error preloading slide ${i}:`, e);
+                }
+            }
+        }
+
+        setPreloadedImages(prev => ({ ...prev, ...newPreloaded }));
+        // Ensure DOM has time to update
+        await new Promise(resolve => setTimeout(resolve, 200));
+    };
+
     const handleDownloadSlide = async () => {
         if (!carousel.slides?.[currentSlide]) return;
         const toastId = toast.loading("Preparando download do slide...");
 
         try {
-            // 1. Preload Fonts
+            // 1. Preload Fonts & Images (Crucial for Mobile/Safari)
             const fontsToLoad = [
                 carousel.slides[currentSlide].font,
                 carousel.slides[currentSlide].secondaryFont
             ].filter(Boolean);
-            await preloadFonts(fontsToLoad);
+
+            // Parallel preloading
+            await Promise.all([
+                preloadFonts(fontsToLoad),
+                preloadCurrentSlideImages(currentSlide)
+            ]);
 
             // 2. Get Font Embed CSS
             const fontEmbedCSS = await getFontEmbedCSS(GOOGLE_FONTS_URL);
+
+            // Extra delay for image rendering stability on mobile
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             // 3. Capture Reference (Hidden Export Node)
             const el = slideRefs.current[currentSlide];
@@ -1461,9 +1507,10 @@ SEMPRE:
             const dataUrl = await toPng(el, {
                 width: 1080,
                 height: 1350,
-                pixelRatio: 1, // Already 1080px in DOM
+                pixelRatio: 1,
                 fontEmbedCSS,
                 cacheBust: true,
+                skipAutoScale: true,
                 style: {
                     transform: 'none',
                     transformOrigin: 'top left',
@@ -1503,14 +1550,18 @@ SEMPRE:
         try {
             const files: File[] = [];
 
-            // 1. Capture all slides
+            // 1. Preload everything for all slides (Optimization for sequential capture)
+            toast.loading("Otimizando imagens para celular...", { id: toastId });
+            await preloadAllSlideImages();
+
+            // 2. Capture all slides
             for (let i = 0; i < carousel.slides.length; i++) {
                 const el = slideRefs.current[i];
                 if (el) {
                     toast.loading(`Gerando slide ${i + 1} de ${carousel.slides.length}...`, { id: toastId });
 
-                    // Add a small delay for rendering stability
-                    await new Promise(resolve => setTimeout(resolve, 300));
+                    // Extra delay for rendering stability
+                    await new Promise(resolve => setTimeout(resolve, 400));
 
                     // Calculate Pixel Ratio to ensure 1080px width output
                     const clientWidth = el.clientWidth;
@@ -1528,6 +1579,7 @@ SEMPRE:
                         pixelRatio: ratio,
                         fontEmbedCSS: fontEmbedCss,
                         cacheBust: true,
+                        skipAutoScale: true,
                         style: {
                             transform: 'none',
                             transformOrigin: 'top left',
@@ -2386,7 +2438,7 @@ SEMPRE:
                                 >
                                     {slide.bgImage && (
                                         <img
-                                            src={slide.bgImage}
+                                            src={preloadedImages[idx] || slide.bgImage}
                                             alt=""
                                             className="absolute inset-0 w-full h-full object-cover"
                                             crossOrigin="anonymous"

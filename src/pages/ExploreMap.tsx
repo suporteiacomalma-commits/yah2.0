@@ -286,55 +286,12 @@ export default function ExploreMap() {
                         <p className="text-[#999] text-sm leading-relaxed px-4">Cada fase alimenta a próxima. No final, tudo se conecta para criar uma presença digital sustentável.</p>
                     </section>
 
-                    {/* DIAGRAMA DE FLUXO VISUAL */}
-                    <section className="relative py-4">
-                        <div className="space-y-6 flex flex-col items-center">
-                            {MODULES.map((mod, idx) => (
-                                <div key={mod.id} className="w-full flex flex-col items-center">
-                                    <button
-                                        onClick={() => setExpandedCard(expandedCard === mod.id ? null : mod.id)}
-                                        className="w-full bg-[#1E1E1E] border border-white/5 rounded-2xl p-5 flex items-center gap-4 hover:border-[#B6BC45]/50 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-300 relative z-10"
-                                    >
-                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ backgroundColor: `${mod.color}15` }}>
-                                            <span style={{ color: mod.color }}>{mod.icon}</span>
-                                        </div>
-                                        <div className="flex-1 text-left">
-                                            <div className="text-xs font-bold uppercase tracking-widest opacity-40 mb-0.5" style={{ color: mod.color }}>Módulo {mod.id}</div>
-                                            <div className="text-[16px] font-bold text-[#EEEDE9]">{mod.title}</div>
-                                        </div>
-                                        <ChevronDown className={cn("w-5 h-5 text-white/20 transition-transform", expandedCard === mod.id && "rotate-180")} />
-                                    </button>
-
-                                    {idx < MODULES.length - 1 && (
-                                        <div className="h-6 w-0.5 bg-[#B6BC45] relative">
-                                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#B6BC45] shadow-[0_0_12px_#B6BC45]" />
-                                            {idx === 0 && (
-                                                <div className="absolute top-1/2 left-4 whitespace-nowrap text-[10px] font-bold text-[#B6BC45] uppercase tracking-tighter bg-[#141414] px-2 py-0.5 rounded border border-[#B6BC45]/20">
-                                                    Alimenta tudo
-                                                </div>
-                                            )}
-                                            {idx === 1 && (
-                                                <div className="absolute top-1/2 left-4 whitespace-nowrap text-[10px] font-bold text-[#B6BC45] uppercase tracking-tighter bg-[#141414] px-2 py-0.5 rounded border border-[#B6BC45]/20">
-                                                    Define temas
-                                                </div>
-                                            )}
-                                            {idx === 2 && (
-                                                <div className="absolute top-1/2 left-4 whitespace-nowrap text-[10px] font-bold text-[#B6BC45] uppercase tracking-tighter bg-[#141414] px-2 py-0.5 rounded border border-[#B6BC45]/20">
-                                                    Perfil Estratégico
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
 
                     {/* ACORDEÕES DETALHADOS */}
                     <section className="space-y-4">
                         <h2 className="text-lg font-bold flex items-center gap-2 mb-6">
                             <Sparkles className="w-5 h-5 text-[#B6BC45]" />
-                            Visão Profunda dos Módulos
+                            Módulos da Jornada
                         </h2>
 
                         {MODULES.map((mod) => (
@@ -451,9 +408,11 @@ export default function ExploreMap() {
                         </div>
 
                         {/* BLOCO 2 - PRAZOS */}
-                        <div className="bg-[#1E1E1E] border border-white/5 rounded-2xl p-6 space-y-6">
-                            <h3 className="text-sm font-bold uppercase tracking-widest text-[#B6BC45]">Defina prazos sustentáveis</h3>
-                            <div className="grid grid-cols-1 gap-4">
+                        <div className="bg-[#1E1E1E] border border-white/5 rounded-2xl p-4 sm:p-6 space-y-5">
+                            <div className="flex items-center gap-3 border-b border-white/5 pb-3">
+                                <h3 className="text-[12px] font-bold uppercase tracking-widest text-[#B6BC45]">Defina prazos sugeridos</h3>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 {[
                                     { id: 'personalidade', label: 'Personalidade' },
                                     { id: 'dna', label: 'DNA de Marca' },
@@ -462,16 +421,20 @@ export default function ExploreMap() {
                                     { id: 'destaques', label: 'Destaques' },
                                     { id: 'fixados', label: 'Posts Fixados' },
                                 ].map((field) => (
-                                    <div key={field.id} className="flex flex-col gap-2">
-                                        <label className="text-[13px] font-semibold text-[#BBB]">{field.label}</label>
+                                    <div key={field.id} className="flex flex-col gap-1 min-w-0">
+                                        <label className="text-[10px] font-bold text-[#666] uppercase tracking-wider px-1">{field.label}</label>
                                         <input
                                             type="date"
                                             value={checklist.deadlines[field.id as keyof ChecklistState['deadlines']]}
                                             onChange={(e) => handleDeadlineChange(field.id as keyof ChecklistState['deadlines'], e.target.value)}
-                                            className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-[#B6BC45]/50 outline-none transition-all w-full color-scheme-dark"
+                                            className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[13px] font-medium text-[#EEEDE9] focus:border-[#B6BC45]/50 focus:bg-white/[0.06] outline-none transition-all w-full color-scheme-dark"
                                         />
                                     </div>
                                 ))}
+                            </div>
+                            <div className="text-[10px] text-[#555] italic bg-black/10 p-2.5 rounded-lg border border-white/5 flex items-start gap-2">
+                                <span>💡</span>
+                                <span>Dica: Comece pela Bio e o DNA. São as bases essenciais.</span>
                             </div>
                         </div>
 

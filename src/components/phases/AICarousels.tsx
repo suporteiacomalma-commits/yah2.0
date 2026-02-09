@@ -1449,7 +1449,11 @@ SEMPRE:
 
         try {
             const dataUrl = await imageUrlToDataUrl(slide.bgImage);
-            setPreloadedImages(prev => ({ ...prev, [slideIndex]: dataUrl }));
+            if (dataUrl && dataUrl.startsWith('data:')) {
+                setPreloadedImages(prev => ({ ...prev, [slideIndex]: dataUrl }));
+            } else {
+                console.warn("Preloading failed to produce a data URL for slide", slideIndex);
+            }
             // Give it 100ms to propagate to the DOM
             await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
@@ -1465,7 +1469,10 @@ SEMPRE:
             const slide = carousel.slides[i];
             if (slide.bgImage && !slide.bgImage.startsWith('data:')) {
                 try {
-                    newPreloaded[i] = await imageUrlToDataUrl(slide.bgImage);
+                    const dataUrl = await imageUrlToDataUrl(slide.bgImage);
+                    if (dataUrl && dataUrl.startsWith('data:')) {
+                        newPreloaded[i] = dataUrl;
+                    }
                 } catch (e) {
                     console.error(`Error preloading slide ${i}:`, e);
                 }
@@ -1498,13 +1505,14 @@ SEMPRE:
             const fontEmbedCSS = await getFontEmbedCSS(GOOGLE_FONTS_URL);
 
             // Extra delay for image rendering stability on mobile
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // iOS Safari often needs a bit more time to decode Data URLs in hidden containers
+            await new Promise(resolve => setTimeout(resolve, 500));
 
             // 3. Capture Reference (Hidden Export Node)
             const el = slideRefs.current[currentSlide];
             if (!el) throw new Error("Elemento de exportação não encontrado");
 
-            const dataUrl = await toPng(el, {
+            const captureProps = {
                 width: 1080,
                 height: 1350,
                 pixelRatio: 1,
@@ -1518,7 +1526,15 @@ SEMPRE:
                     textRendering: 'geometricPrecision',
                     WebkitFontSmoothing: 'antialiased'
                 } as any
-            });
+            };
+
+            // Workaround for Safari: First call sometimes fails to include all resources
+            // but "warms up" the canvas engine. We discard the first result.
+            await toPng(el, captureProps);
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            const dataUrl = await toPng(el, captureProps);
+
 
             // Convert to File for Sharing
             const res = await fetch(dataUrl);
@@ -1573,7 +1589,7 @@ SEMPRE:
                     const fontEmbedCss = await getFontEmbedCSS(GOOGLE_FONTS_URL);
                     await preloadFonts(["Playfair Display", "Inter", "Montserrat", "Poppins"]); // Preload common fonts
 
-                    const dataUrl = await toPng(el, {
+                    const captureProps = {
                         width: clientWidth,
                         height: clientHeight,
                         pixelRatio: ratio,
@@ -1587,7 +1603,13 @@ SEMPRE:
                             textRendering: 'geometricPrecision',
                             WebkitFontSmoothing: 'antialiased'
                         } as any
-                    });
+                    };
+
+                    // Safari "warm-up" call
+                    await toPng(el, captureProps);
+                    await new Promise(resolve => setTimeout(resolve, 150));
+
+                    const dataUrl = await toPng(el, captureProps);
 
                     const res = await fetch(dataUrl);
                     const blob = await res.blob();
@@ -2415,7 +2437,7 @@ SEMPRE:
                 {/* --- HIDDEN EXPORT LAYER --- */}
                 {
                     carousel.slides && carousel.slides.length > 0 && (
-                        <div className="fixed top-0 left-[-9999px] pointer-events-none opacity-0 overflow-hidden">
+                        <div className="fixed top-0 left-0 w-[1080px] h-[1350px] pointer-events-none opacity-0 z-[-100] overflow-hidden">
                             {carousel.slides.map((slide, idx) => (
                                 <div
                                     key={`export-slide-${idx}`}

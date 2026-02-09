@@ -39,7 +39,12 @@ export function useProfile() {
         .maybeSingle();
 
       if (error) throw error;
-      return data as Profile | null;
+
+      // Merge with auth metadata for avatar_url
+      return {
+        ...data,
+        avatar_url: (data as any)?.avatar_url || user.user_metadata?.avatar_url || null
+      } as Profile;
     },
     enabled: !!user,
   });
@@ -48,15 +53,31 @@ export function useProfile() {
     mutationFn: async (updates: Partial<Profile>) => {
       if (!user) throw new Error("User not authenticated");
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .update(updates)
-        .eq("user_id", user.id)
-        .select()
-        .limit(1)
-        .single();
+      const { avatar_url, ...profileUpdates } = updates;
 
-      if (error) throw error;
+      // 1. Update auth metadata if avatar_url is provided
+      if (avatar_url) {
+        const { error: authError } = await supabase.auth.updateUser({
+          data: { avatar_url }
+        });
+        if (authError) throw authError;
+      }
+
+      // 2. Update profiles table with other fields
+      let data = null;
+      if (Object.keys(profileUpdates).length > 0) {
+        const { data: updateData, error: updateError } = await supabase
+          .from("profiles")
+          .update(profileUpdates)
+          .eq("user_id", user.id)
+          .select()
+          .limit(1)
+          .single();
+
+        if (updateError) throw updateError;
+        data = updateData;
+      }
+
       return data;
     },
     onSuccess: async () => {

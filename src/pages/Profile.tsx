@@ -125,11 +125,11 @@ export default function Profile() {
         try {
             // 1. Upload new avatar
             const fileExt = file.name.split('.').pop();
-            const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
-            const filePath = `${profile.id}/${fileName}`;
+            const fileName = `profile_${profile.id}_${Date.now()}.${fileExt}`;
+            const filePath = `profiles/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
-                .from('avatars')
+                .from('social_assets')
                 .upload(filePath, file, {
                     upsert: true,
                     cacheControl: '3600'
@@ -139,7 +139,7 @@ export default function Profile() {
 
             // 2. Get public URL
             const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
+                .from('social_assets')
                 .getPublicUrl(filePath);
 
             // 3. Update profile with new avatar URL using the hook
@@ -148,8 +148,7 @@ export default function Profile() {
             setAvatarUrl(publicUrl);
             toast.success("Foto de perfil atualizada com sucesso!");
         } catch (error: any) {
-            console.error('Avatar upload error:', error);
-            toast.error("Erro ao fazer upload da foto: " + (error.message || 'Erro desconhecido. Verifique se o bucket "avatars" existe no Supabase.'));
+            toast.error("Erro ao fazer upload da foto: " + (error.message || 'Erro desconhecido.'));
         } finally {
             setIsUploadingAvatar(false);
             // Clear input

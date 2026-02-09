@@ -123,45 +123,37 @@ export default function Profile() {
 
         setIsUploadingAvatar(true);
         try {
-            // Delete old avatar if exists
-            if (profile.avatar_url) {
-                const oldPath = profile.avatar_url.split('/').pop();
-                if (oldPath) {
-                    await supabase.storage.from('avatars').remove([`${profile.id}/${oldPath}`]);
-                }
-            }
-
-            // Upload new avatar
+            // 1. Upload new avatar
             const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}.${fileExt}`;
+            const fileName = `${profile.id}-${Date.now()}.${fileExt}`;
             const filePath = `${profile.id}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(filePath, file, { upsert: true });
+                .upload(filePath, file, {
+                    upsert: true,
+                    cacheControl: '3600'
+                });
 
             if (uploadError) throw uploadError;
 
-            // Get public URL
+            // 2. Get public URL
             const { data: { publicUrl } } = supabase.storage
                 .from('avatars')
                 .getPublicUrl(filePath);
 
-            // Update profile with new avatar URL
-            const { error: updateError } = await (supabase as any)
-                .from('profiles')
-                .update({ avatar_url: publicUrl })
-                .eq('id', profile.id);
-
-            if (updateError) throw updateError;
+            // 3. Update profile with new avatar URL using the hook
+            await updateProfile.mutateAsync({ avatar_url: publicUrl });
 
             setAvatarUrl(publicUrl);
             toast.success("Foto de perfil atualizada com sucesso!");
         } catch (error: any) {
             console.error('Avatar upload error:', error);
-            toast.error("Erro ao fazer upload da foto: " + (error.message || 'Erro desconhecido'));
+            toast.error("Erro ao fazer upload da foto: " + (error.message || 'Erro desconhecido. Verifique se o bucket "avatars" existe no Supabase.'));
         } finally {
             setIsUploadingAvatar(false);
+            // Clear input
+            if (e.target) e.target.value = '';
         }
     };
 

@@ -1463,6 +1463,7 @@ SEMPRE:
                 height: 1350,
                 pixelRatio: 1, // Already 1080px in DOM
                 fontEmbedCSS,
+                cacheBust: true,
                 style: {
                     transform: 'none',
                     transformOrigin: 'top left',
@@ -1509,7 +1510,7 @@ SEMPRE:
                     toast.loading(`Gerando slide ${i + 1} de ${carousel.slides.length}...`, { id: toastId });
 
                     // Add a small delay for rendering stability
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, 300));
 
                     // Calculate Pixel Ratio to ensure 1080px width output
                     const clientWidth = el.clientWidth;
@@ -2376,15 +2377,21 @@ SEMPRE:
                                         maxHeight: '1350px',
                                         padding: '160px 100px', // Same as preview
                                         backgroundColor: slide.bgColor,
-                                        backgroundImage: slide.bgImage ? `url(${slide.bgImage})` : 'none',
-                                        backgroundSize: 'cover',
-                                        backgroundPosition: 'center',
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        boxSizing: 'border-box'
+                                        boxSizing: 'border-box',
+                                        position: 'relative'
                                     }}
                                     className="export-node"
                                 >
+                                    {slide.bgImage && (
+                                        <img
+                                            src={slide.bgImage}
+                                            alt=""
+                                            className="absolute inset-0 w-full h-full object-cover"
+                                            crossOrigin="anonymous"
+                                        />
+                                    )}
                                     <div
                                         className="absolute inset-0"
                                         style={{

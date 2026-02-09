@@ -132,9 +132,22 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full w-10 h-10 border border-border hover:border-primary/50 hover:bg-secondary"
+                className="rounded-full w-10 h-10 border border-border hover:border-primary/50 hover:bg-secondary p-0 overflow-hidden"
               >
-                <User className="w-5 h-5 text-foreground" />
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.full_name || "Perfil"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                      // Fallback logic if image fails to load
+                    }}
+                  />
+                ) : (
+                  <User className="w-5 h-5 text-foreground" />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-card border-border w-56 p-2 space-y-1 shadow-2xl">

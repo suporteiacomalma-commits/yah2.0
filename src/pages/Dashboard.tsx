@@ -198,22 +198,19 @@ export default function Dashboard() {
           <section className="space-y-4">
             <div>
               <h1 className="text-2xl font-semibold text-[#EEEDE9] mb-2">
-                Bom te ver por aqui, <span className="text-[#B6BC45]">{profile?.full_name?.split(' ')[0] || "Criador"}</span>! ✨
+                Bom te ver por aqui, <span className="text-[#B6BC45]">{profile?.full_name?.split(' ')[0] || "Criador"}</span>!
               </h1>
               <p className="text-sm text-[#999]">Vamos continuar construindo sua presença digital</p>
             </div>
-            <button
-              onClick={handleContinueJourney}
-              disabled={isJourneyComplete}
-              className={cn(
-                "w-full font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 text-[15px]",
-                isJourneyComplete
-                  ? "bg-[#2A2A2A] text-[#B6BC45] border border-[#B6BC45]/30 cursor-default"
-                  : "bg-gradient-to-br from-[#B6BC45] to-[#9DA139] text-[#141414] shadow-[0_4px_12px_rgba(182,188,69,0.2)] hover:shadow-[0_6px_16px_rgba(182,188,69,0.3)] hover:-translate-y-0.5"
-              )}
-            >
-              {getContinueButtonText()}
-            </button>
+
+            {!isJourneyComplete && (
+              <button
+                onClick={handleContinueJourney}
+                className="w-full font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 text-[15px] bg-gradient-to-br from-[#B6BC45] to-[#9DA139] text-[#141414] shadow-[0_4px_12px_rgba(182,188,69,0.2)] hover:shadow-[0_6px_16px_rgba(182,188,69,0.3)] hover:-translate-y-0.5"
+              >
+                {getContinueButtonText()}
+              </button>
+            )}
 
             {isJourneyComplete && (
               <div className="bg-[#1E1E1E] border border-[#B6BC45]/20 rounded-2xl overflow-hidden mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -278,7 +275,7 @@ export default function Dashboard() {
           {/* Seu Dia Hoje */}
           <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[20px] font-semibold text-[#EEEDE9] tracking-tight">Seu dia, hoje</h2>
+              <h2 className="text-[20px] font-semibold text-[#EEEDE9] tracking-tight">SEU DIA HOJE</h2>
               <span className="text-[14px] text-[#999] opacity-70">{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</span>
             </div>
 
@@ -417,19 +414,85 @@ export default function Dashboard() {
             </div>
           </section>
 
-          {/* Hoje você pode falar - Static/Placeholder as per layout request */}
+          {/* Hoje você pode falar - Dynamic Content from Weekly Planner */}
           <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5">
-            <h2 className="text-lg font-semibold text-[#EEEDE9] mb-4">Hoje você pode falar no digital sobre:</h2>
-            <div className="space-y-4">
-              <div className="border-b border-[#2A2A2A] pb-4 last:border-0 last:pb-0">
-                <div className="text-sm font-semibold text-[#B6BC45] mb-1">Feed</div>
-                <div className="text-[13px] text-[#999]">Intenção: Educar | Tema: Como estruturar processos criativos</div>
-              </div>
-              <div className="border-b border-[#2A2A2A] pb-4 last:border-0 last:pb-0">
-                <div className="text-sm font-semibold text-[#B6BC45] mb-1">Stories</div>
-                <div className="text-[13px] text-[#999]">Intenção: Conectar | Tema: Bastidores da criação de conteúdo</div>
-              </div>
-            </div>
+            <h2 className="text-lg font-semibold text-[#B6BC45] mb-4">Hoje você pode falar no digital sobre:</h2>
+
+            {(() => {
+              // Get current day index (0-6)
+              const today = new Date();
+              const dayIndex = today.getDay();
+
+              // Get today's content from Week 1 (index 0)
+              // We assume Week 1 is the current active week for the dashboard view
+              const weeklyData = brand?.weekly_structure_data || {};
+              const todayData = weeklyData[0]?.[dayIndex] || {};
+
+              const feed = todayData.feed;
+              const stories = todayData.stories;
+
+              const hasFeed = feed?.headline || feed?.intention;
+              const hasStories = stories?.headline || stories?.intention;
+
+              if (!hasFeed && !hasStories) {
+                return (
+                  <div className="py-4 text-center text-[#999] text-sm italic">
+                    Nenhum conteúdo planejado para hoje.
+                    <button onClick={() => navigate('/phase/3')} className="ml-2 text-[#B6BC45] hover:underline underline-offset-4">
+                      Ir para o Planejador
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-4">
+                  {/* Feed Section */}
+                  <div className="border-b border-[#2A2A2A] pb-4 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-sm font-semibold text-[#B6BC45]">Feed</div>
+                      {hasFeed && (
+                        <span className="text-[10px] bg-[#2A2A2A] text-[#999] px-2 py-0.5 rounded border border-[#3A3A3A]">
+                          {feed?.format || 'Formato indefinido'}
+                        </span>
+                      )}
+                    </div>
+                    {hasFeed ? (
+                      <>
+                        <div className="text-[14px] text-[#EEEDE9] font-medium mb-1">{feed?.headline || 'Sem título definido'}</div>
+                        <div className="text-[13px] text-[#999]">
+                          <span className="opacity-70">Intenção:</span> {feed?.intention || '-'}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-[13px] text-[#999] italic">Nada planejado para o feed hoje.</div>
+                    )}
+                  </div>
+
+                  {/* Stories Section */}
+                  <div className="border-b border-[#2A2A2A] pb-4 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-sm font-semibold text-[#B6BC45]">Stories</div>
+                      {hasStories && (
+                        <span className="text-[10px] bg-[#2A2A2A] text-[#999] px-2 py-0.5 rounded border border-[#3A3A3A]">
+                          {stories?.format || 'Formato indefinido'}
+                        </span>
+                      )}
+                    </div>
+                    {hasStories ? (
+                      <>
+                        <div className="text-[14px] text-[#EEEDE9] font-medium mb-1">{stories?.headline || 'Sem título definido'}</div>
+                        <div className="text-[13px] text-[#999]">
+                          <span className="opacity-70">Intenção:</span> {stories?.intention || '-'}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-[13px] text-[#999] italic">Nada planejado para os stories hoje.</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </section>
 
           {/* Calendar Section - Using MiniCalendar Component */}

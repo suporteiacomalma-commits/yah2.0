@@ -1458,34 +1458,6 @@ ${block.caption || 'Sem legenda.'}`;
                             </CardHeader>
                             <CardContent className="p-4 space-y-4">
                                 <div className="space-y-4">
-                                    {(bIdx === 0) && (
-                                        <div className="p-4 rounded-xl bg-[#0F172A] border border-white/5 relative overflow-hidden group">
-                                            <div className="absolute top-0 left-0 w-1 h-full bg-accent/50" />
-
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <Sparkles className="w-3.5 h-3.5 text-accent animate-pulse" />
-                                                <span className="text-[10px] font-black tracking-widest text-accent uppercase">
-                                                    DICA IA • {DAILY_AI_TIPS[selectedDayIndex]?.title}
-                                                </span>
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground/60">Hoje você vai falar sobre:</p>
-                                                    <p className="text-xs text-white/90 leading-relaxed font-medium whitespace-pre-line">
-                                                        {DAILY_AI_TIPS[selectedDayIndex]?.topic}
-                                                    </p>
-                                                </div>
-
-                                                <div className="pt-2 border-t border-white/5">
-                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground/60 mb-1">Sugestão de formato:</p>
-                                                    <p className="text-xs text-accent/90 italic">
-                                                        {DAILY_AI_TIPS[selectedDayIndex]?.format}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Título / Tema</Label>

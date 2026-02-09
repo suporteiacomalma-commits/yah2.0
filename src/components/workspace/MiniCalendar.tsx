@@ -195,7 +195,7 @@ export function MiniCalendar() {
               <div className="flex items-center justify-between">
                 <h4 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/80 flex items-center gap-2">
                   <div className="w-1 h-3 bg-primary rounded-full" />
-                  Seu dia, hoje: • {date ? format(date, "dd/MM") : ""}
+                  Visão do Dia: • {date ? format(date, "dd/MM") : ""}
                 </h4>
                 <div className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold text-primary">
                   {selectedDayActivities.length} total

@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History } from "lucide-react";
 import { PaymentHistoryDialog } from "@/components/admin/PaymentHistoryDialog";
+import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
 import { toast } from "sonner";
 import type { AppRole } from "@/hooks/useUserRole";
 import type { AdminUser } from "@/hooks/useAdminUsers";
@@ -64,167 +65,7 @@ import {
 
 const COLORS = ["#8B5CF6", "#10B981", "#F59E0B", "#EF4444"];
 
-function AdminDashboard({ users }: { users: AdminUser[] }) {
-  // 1. Growth Data (last 30 days)
-  const last30Days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (29 - i));
-    return d.toISOString().split("T")[0];
-  });
 
-  const growthData = last30Days.map(date => {
-    const count = users.filter(u => u.created_at.startsWith(date)).length;
-    // Cumulative count would be better, but daily reveals spikes
-    return {
-      date: new Date(date).toLocaleDateString("pt-BR", { day: 'numeric', month: 'short' }),
-      users: count
-    };
-  });
-
-  // 2. Subscription Data
-  const subscriptionStats = [
-    { name: "Trial", value: users.filter(u => u.subscription_plan === "trial").length },
-    { name: "Premium", value: users.filter(u => u.subscription_plan === "premium").length },
-  ];
-
-  // 3. KPI Calculations
-  const totalUsers = users.length;
-  const premiumUsers = users.filter(u => u.subscription_plan === "premium").length;
-  const conversionRate = totalUsers > 0 ? ((premiumUsers / totalUsers) * 100).toFixed(1) : "0";
-  const activeTrials = users.filter(u => {
-    const trialEnds = u.trial_ends_at ? new Date(u.trial_ends_at) : null;
-    return u.subscription_plan === 'trial' && trialEnds && trialEnds > new Date();
-  }).length;
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Conversão Premium</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-400">{conversionRate}%</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Trials Ativos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-400">{activeTrials}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Novos Hoje</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-400">
-              {users.filter(u => u.created_at.startsWith(new Date().toISOString().split('T')[0])).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Onboarding</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-400">
-              {((users.filter(u => u.onboarding_completed).length / (totalUsers || 1)) * 100).toFixed(0)}%
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Growth Chart */}
-        <Card className="md:col-span-2 bg-card border-border p-6">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <Users className="w-5 h-5 text-primary" />
-            Crescimento de Usuários (30 dias)
-          </h3>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={growthData}>
-                <defs>
-                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#9CA3AF"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <RechartsTooltip
-                  contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
-                  itemStyle={{ color: '#F3F4F6' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="users"
-                  stroke="#8B5CF6"
-                  fillOpacity={1}
-                  fill="url(#colorUsers)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Subscription Pie Chart */}
-        <Card className="bg-card border-border p-6">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            Distribuição de Planos
-          </h3>
-          <div className="h-[300px] w-full flex flex-col items-center justify-center">
-            <ResponsiveContainer width="100%" height="80%">
-              <PieChart>
-                <Pie
-                  data={subscriptionStats}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {subscriptionStats.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip
-                  contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '8px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex gap-4 mt-4">
-              {subscriptionStats.map((stat, i) => (
-                <div key={stat.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
-                  <span className="text-sm text-muted-foreground">{stat.name}: {stat.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-}
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -549,7 +390,7 @@ export default function Admin() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <AdminDashboard users={users} />
+            <AnalyticsDashboard />
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">

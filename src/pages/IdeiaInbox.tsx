@@ -519,16 +519,36 @@ export default function IdeiaInbox() {
     };
 
     const stopRecording = () => {
+        // Cleanup MediaRecorder
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            // Remove onstop handler to prevent auto-transcription if we already have text
+            mediaRecorderRef.current.onstop = null;
             mediaRecorderRef.current.stop();
         }
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-        }
+
+        // Cleanup Timer
         if (timerRef.current) {
             clearInterval(timerRef.current);
         }
+
+        // Cleanup SpeechRecognition
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+
         setIsListening(false);
+        setInboxState("processing");
+
+        // Use SpeechRecognition result if available, otherwise fallback to silence/error handling
+        setTimeout(() => {
+            if (transcript) {
+                setEditingTranscript(transcript);
+                analyzeIdea(transcript, 'normal', manualFolder);
+            } else {
+                setInboxState("initial");
+                toast.error("Não entendi o que você disse.");
+            }
+        }, 500);
     };
 
     const transcribeAudio = async (blob: Blob) => {
@@ -563,14 +583,21 @@ export default function IdeiaInbox() {
         }
     };
 
+    const [manualFolder, setManualFolder] = useState<string | null>(null);
+
     const handleTextSubmit = async (text: string) => {
         if (!text.trim()) return;
-        setIsProcessing(true); // Set loading state immediately
+
+        // If user selected a folder manually, use it effectively
+        setIsProcessing(true);
         setEditingTranscript(text);
-        await analyzeIdea(text);
+
+        // Pass the manual folder to analyzeIdea to prioritize it or force it
+        await analyzeIdea(text, 'normal', manualFolder);
     };
 
-    const analyzeIdea = async (content: string, mode: 'normal' | 'rajada' = 'normal') => {
+    // Update analyzeIdea signature to accept manualFolder
+    const analyzeIdea = async (content: string, mode: 'normal' | 'rajada' = 'normal', forcedFolder: string | null = null) => {
         setInboxState("processing");
         setIsProcessing(true);
         try {
@@ -578,12 +605,16 @@ export default function IdeiaInbox() {
             if (!apiKey) throw new Error("API Key não configurada");
 
             const brandContext = brand ? `
-                Nicho: ${brand.dna_nicho || 'Não definido'}
+                Niche: ${brand.dna_nicho || 'Não definido'}
                 Produto: ${brand.dna_produto || 'Não definido'}
                 Objetivo: ${brand.dna_objetivo || 'Não definido'}
                 Essência: ${brand.result_essencia || 'Não definida'}
                 Pilares: ${brand.dna_pilares?.map((p: any) => p.name || p).join(', ') || 'Não definidos'}
             ` : '';
+
+            const folderInstruction = forcedFolder
+                ? `O usuário JÁ selecionou a pasta: "${forcedFolder}". OBRIGATORIAMENTE use "suggested_destination": "${forcedFolder}" e ajuste a "category" para a mais compatível com esta pasta.`
+                : `Analise e escolha a melhor pasta baseada no conteúdo.`;
 
             const prompt = `Você é a Yah, uma assistente de estratégia para mentes atípicas.
             Sua tarefa é analisar a ideia do usuário e organizá-la seguindo regras estritas.
@@ -593,14 +624,17 @@ export default function IdeiaInbox() {
 
             MODO: ${mode}
             CONTEÚDO PARA ANÁLISE: "${content}"
+            INSTRUÇÃO DE PASTA: ${folderInstruction}
 
-            REGRAS DE CATEGORIZAÇÃO:
-            - Conteúdo (conteudo): Posts, vídeos, reels, stories, temas de feed, educação, dor, identificação, polêmica.
-            - Meta (meta): Objetivo concreto com número ou resultado (ex: fechar clientes, bater seguidores).
-            - Insight (insight): Percepção, regra ou padrão (ex: horários de postagem, comportamento do público).
-            - Produto / serviço (produto): Oferta específica (curso, mentoria, app, serviço, evento pago).
-            - Projeto (projeto): Iniciativa ampla com várias ações (evento, reforma, nova temporada).
-            - Stand-by (standby): Ideia de conteúdo guardada para depois ou não definida.
+            REGRAS DE CATEGORIZAÇÃO (OBRIGATÓRIO ESCOLHER UMA):
+            - Conteúdo (conteudo) -> Pasta: "Conteúdo"
+            - Meta (meta) -> Pasta: "Metas"
+            - Insight (insight) -> Pasta: "Insights"
+            - Produto / serviço (produto) -> Pasta: "Produto / serviço"
+            - Projeto (projeto) -> Pasta: "Projeto"
+            - Stand-by (standby) -> Pasta: "Stand-by"
+
+            IMPORTANTE: O campo "suggested_destination" DEVE ser exatamente o nome de uma das pastas acima. Nunca retorne "Sem Pasta".
 
             REGRAS DE SAÍDA POR CATEGORIA:
 
@@ -706,6 +740,12 @@ export default function IdeiaInbox() {
 
             const data = await response.json();
             const result = JSON.parse(data.choices[0].message.content);
+
+            // Force the folder if provided manually
+            if (forcedFolder) {
+                result.suggested_destination = forcedFolder;
+            }
+
             setAnalysisResult(result);
             setInboxState("triage");
         } catch (error: any) {
@@ -908,23 +948,32 @@ export default function IdeiaInbox() {
 
     const saveIdeaDirectly = async () => {
         if (!editingTranscript) return;
+
+        // Validate Folder
+        const targetFolder = analysisResult?.suggested_destination;
+        const isValidFolder = FOLDERS.some(f => f.name === targetFolder);
+
+        if (!isValidFolder) {
+            toast.error("Por favor, selecione uma pasta válida antes de salvar.");
+            // Optionally open folder selector or highlight it
+            return;
+        }
+
         setIsProcessing(true);
         try {
             const { error } = await (supabase.from("idea_inbox" as any) as any).insert({
                 user_id: user?.id,
                 content: editingTranscript,
                 category: analysisResult?.category || "folder",
-                folder: analysisResult?.suggested_destination || "Sem Pasta",
+                folder: targetFolder,
                 metadata: analysisResult || {},
                 status: "processed"
             });
 
             if (error) throw error;
-            if (error) throw error;
             triggerFeedback();
             // toast.success("Ideia salva!");
 
-            const targetFolder = analysisResult?.suggested_destination || "Sem Pasta";
             setSelectedFolder(targetFolder);
             setInboxState("folder_detail");
 
@@ -2020,6 +2069,29 @@ export default function IdeiaInbox() {
                                     )}
                                 </Button>
                             </div>
+
+                            {/* Folder Selector Pills */}
+                            <div className="flex flex-wrap items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100 mt-4">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 w-full text-center mb-1">
+                                    {manualFolder ? "Pasta selecionada:" : "Selecione a pasta (opcional):"}
+                                </span>
+                                {FOLDERS.map(f => (
+                                    <button
+                                        key={f.name}
+                                        onClick={() => setManualFolder(manualFolder === f.name ? null : f.name)}
+                                        className={cn(
+                                            "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2",
+                                            manualFolder === f.name
+                                                ? "bg-white text-black border-white scale-105 shadow-lg"
+                                                : "bg-white/5 text-muted-foreground border-white/5 hover:bg-white/10 hover:border-white/20"
+                                        )}
+                                        style={{ color: manualFolder === f.name ? undefined : f.color, borderColor: manualFolder === f.name ? undefined : `${f.color}20` }}
+                                    >
+                                        <span className="text-sm">{f.emoji}</span>
+                                        {f.name}
+                                    </button>
+                                ))}
+                            </div>
                         </>
                     )}
                 </div>
@@ -2065,14 +2137,14 @@ export default function IdeiaInbox() {
     const renderRecording = () => (
         <div className="flex flex-col items-center justify-center text-center space-y-10 animate-in zoom-in-95 duration-300 w-full">
             <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-destructive flex items-center justify-center glow-destructive animate-pulse" onClick={stopRecording}>
+                <div className="w-32 h-32 rounded-full gradient-primary flex items-center justify-center glow-primary animate-pulse" onClick={stopRecording}>
                     <Mic className="w-12 h-12 text-white" />
                 </div>
-                <div className="absolute -inset-4 border-2 border-destructive/20 rounded-full animate-ping opacity-50" />
+                <div className="absolute -inset-4 border-2 border-primary/20 rounded-full animate-ping opacity-50" />
             </div>
 
             <div className="space-y-6">
-                <div className="text-4xl font-mono font-black text-destructive tracking-widest">
+                <div className="text-4xl font-mono font-black text-primary tracking-widest">
                     {Math.floor(recordingTime / 60).toString().padStart(2, '0')}:{(recordingTime % 60).toString().padStart(2, '0')}
                 </div>
                 <div className="min-h-[40px] px-8">
@@ -2080,13 +2152,13 @@ export default function IdeiaInbox() {
                         {transcript || "YAh ouvindo você..."}
                     </p>
                 </div>
-                <div className="flex items-center justify-center gap-2 text-destructive font-black animate-pulse text-[10px] uppercase tracking-[0.3em]">
-                    <div className="w-1 h-1 rounded-full bg-destructive" />
+                <div className="flex items-center justify-center gap-2 text-primary font-black animate-pulse text-[10px] uppercase tracking-[0.3em]">
+                    <div className="w-1 h-1 rounded-full bg-primary" />
                     Capturando Fluxo
                 </div>
             </div>
 
-            <Button onClick={stopRecording} className="rounded-full h-14 px-10 bg-destructive hover:bg-destructive/90 text-white font-black uppercase tracking-widest shadow-xl shadow-destructive/20 active:scale-95">
+            <Button onClick={stopRecording} className="rounded-full h-14 px-10 gradient-primary text-white font-black uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95">
                 Concluir
             </Button>
         </div>

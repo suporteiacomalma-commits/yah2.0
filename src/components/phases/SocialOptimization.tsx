@@ -360,7 +360,7 @@ export function SocialOptimization() {
                         />
                         <Button
                             size="lg"
-                            className="w-full h-20 rounded-[28px] gradient-primary text-white font-black text-xl gap-4 shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all group"
+                            className="w-full h-auto py-6 rounded-[28px] gradient-primary text-white font-black text-lg md:text-xl gap-3 shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all group whitespace-normal"
                             onClick={() => handleGenerateDiagnosis()}
                             disabled={isProcessing || isGenerating}
                         >
@@ -1835,7 +1835,33 @@ Estrutura do card:
             const apiKey = getSetting("openai_api_key")?.value;
             if (!apiKey) throw new Error("Chave da API não configurada.");
 
-            const prompt = `High-end professional cinematic photography representing the theme: "${posts[idx].theme}". Visual metaphor: a bold conceptual scene related to ${posts[idx].theme}. Style: Ultra-luxury, minimalist, premium textures, cinematic lighting. ABSOLUTELY NO TEXT. NO WORDS. NO LETTERS. NO TYPOGRAPHY. ZERO SIGNS. ONLY A CLEAN VISUAL IMAGE.`;
+            const brandContext = brand ? `
+                Niche: ${brand.dna_nicho || 'General'}
+                Brand Essence: ${brand.result_essencia || 'Premium'}
+                Visual Style: ${brand.graphic_elements || 'Minimalist, luxury'}
+                Colors: ${brand.primary_color || 'Gold'} and ${brand.secondary_color || 'Black'}
+                Key Elements: ${brand.logo_description || 'Clean, abstract'}
+            ` : '';
+
+            const prompt = `
+                Create a high-end, professional social media post cover for a brand in the ${brandContext} niche.
+                
+                Theme: "${posts[idx].theme}"
+                
+                Strict Visual Guidelines:
+                - Style: Ultra-luxury, ${brand?.graphic_elements || 'minimalist'}, cinematic lighting.
+                - Color Palette: Use tones related to ${brand?.primary_color || 'Gold'} and ${brand?.secondary_color || 'Black'}.
+                - Atmosphere: ${brand?.result_essencia || 'Sophisticated and authoritative'}.
+                - Composition: Clean, editorial photography, 8k resolution.
+                
+                Visual Metaphor:
+                A bold, conceptual scene representing "${posts[idx].theme}" in a way that appeals to a ${brand?.dna_persona_data?.name || 'high-ticket'} audience.
+                
+                NEGATIVE PROMPT (STRICT):
+                - ABSOLUTELY NO TEXT. NO WORDS. NO LETTERS. NO TYPOGRAPHY. ZERO SIGNS.
+                - No messy details, no cartoonish style, no low resolution, no distort faces.
+                - ONLY A CLEAN VISUAL IMAGE.
+            `.trim();
 
             const response = await fetch('https://api.openai.com/v1/images/generations', {
                 method: 'POST',

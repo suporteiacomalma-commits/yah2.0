@@ -7,7 +7,7 @@ import {
     Calendar as CalendarIcon, ListTodo, Brain, ScrollText, Plus, MessageSquare,
     ChevronRight, Clock, Info, Share2, Tag, Instagram, Zap, FileText, Target,
     Rocket, Eye, Layers, Play, FolderSync, Wrench, Megaphone, BarChart3, Settings2,
-    PenTool, FolderOpen
+    PenTool, FolderOpen, MessageCircle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -2758,11 +2758,10 @@ export default function IdeiaInbox() {
                             )}
 
                             <Button
-                                variant="outline"
-                                className="w-full justify-start gap-3 rounded-xl h-12 border-border/50"
+                                className="w-full justify-start gap-3 rounded-xl h-12 bg-green-600 hover:bg-green-700 text-white transition-all hover:scale-[1.02] active:scale-95"
                                 onClick={handleShareToWhatsApp}
                             >
-                                <Share2 className="w-4 h-4 text-blue-500" /> Compartilhar
+                                <MessageCircle className="w-4 h-4" /> Compartilhar no WhatsApp
                             </Button>
                             <Button
                                 variant="outline"

@@ -90,7 +90,7 @@ export function AppSidebar() {
         <Link to="/dashboard" className="flex items-center gap-2">
           <div className="w-24 h-24 overflow-hidden">
             <img
-              src="/logo.png"
+              src="/logo-login.png"
               alt="YAh Logo"
               className="w-full h-full object-contain"
             />

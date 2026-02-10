@@ -82,7 +82,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
         <div className="flex items-center gap-3">
           <div className="w-16 h-16 overflow-hidden">
             <img
-              src="/logo.png"
+              src="/logo-login.png"
               alt="YAh Logo"
               className="w-full h-full object-contain"
             />

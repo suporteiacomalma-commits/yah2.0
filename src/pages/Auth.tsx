@@ -129,7 +129,7 @@ export default function Auth() {
           <div className="flex justify-center mb-0">
             <div className="w-64 h-64">
               <img
-                src="/logo.png"
+                src="/logo-login.png"
                 alt="YAh Logo"
                 className="w-full h-full object-contain"
               />
@@ -139,7 +139,7 @@ export default function Auth() {
           {/* Header */}
           <div className="text-center mb-8">
             <p className="text-muted-foreground text-sm">
-              Construa sua marca de forma estratégica
+              Sua assistente inteligente que pensa com você.
             </p>
           </div>
 

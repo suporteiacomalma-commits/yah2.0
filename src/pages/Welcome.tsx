@@ -19,9 +19,9 @@ export default function Welcome() {
                 <div className="flex flex-col items-center">
                     <div className="w-80 h-80 sm:w-96 sm:h-96 -my-24 relative z-20">
                         <img
-                            src="/logo.png"
+                            src="/logo-login.png"
                             alt="YAh Logo"
-                            className="w-full h-full object-contain mix-blend-screen"
+                            className="w-full h-full object-contain"
                         />
                     </div>
                 </div>

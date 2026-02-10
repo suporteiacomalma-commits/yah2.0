@@ -26,7 +26,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History } from "lucide-react";
+import { PaymentHistoryDialog } from "@/components/admin/PaymentHistoryDialog";
 import { toast } from "sonner";
 import type { AppRole } from "@/hooks/useUserRole";
 import type { AdminUser } from "@/hooks/useAdminUsers";
@@ -252,6 +253,7 @@ export default function Admin() {
   const [trialDaysMap, setTrialDaysMap] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [historyUser, setHistoryUser] = useState<AdminUser | null>(null);
 
   const filteredUsers = users.filter(user =>
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -651,6 +653,15 @@ export default function Admin() {
                                   size="sm"
                                   variant="ghost"
                                   className="h-7 w-7 p-0"
+                                  onClick={() => setHistoryUser(userItem)}
+                                  title="Histórico de Pagamentos"
+                                >
+                                  <History className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
                                   onClick={() => setEditingUser(userItem)}
                                 >
                                   <Edit2 className="h-4 w-4" />
@@ -707,6 +718,14 @@ export default function Admin() {
                           </div>
                           <div className="flex flex-col items-end gap-2">
                             {getRoleBadge(userItem.role)}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => setHistoryUser(userItem)}
+                            >
+                              <History className="h-3 w-3" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -1091,6 +1110,13 @@ export default function Admin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PaymentHistoryDialog
+        open={!!historyUser}
+        onOpenChange={(open) => !open && setHistoryUser(null)}
+        userId={historyUser?.user_id || null}
+        userName={historyUser?.full_name || historyUser?.user_name}
+      />
     </div>
   );
 }

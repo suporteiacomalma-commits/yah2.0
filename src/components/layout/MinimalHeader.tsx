@@ -107,24 +107,31 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
         {/* Center/Right - Balances & Menu */}
         <div className="flex items-center gap-3">
           {/* Premium Status Display */}
-          <div
-            onClick={() => setIsPurchaseOpen(true)}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-full border transition-all hover:scale-105 active:scale-95 group cursor-pointer ${profile?.subscription_plan === 'premium'
-              ? 'bg-purple-500/10 border-purple-500/20 text-purple-400'
-              : 'bg-purple-500/10 border-purple-500/20 text-purple-500 hover:bg-purple-500/20'
-              }`}
-          >
-            {profile?.subscription_plan === 'premium' ? (
-              <>
-                <Sparkles className="w-4 h-4 text-purple-500 group-hover:rotate-12 transition-transform" />
-                <span className="font-bold text-sm uppercase tracking-wider">Premium</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 text-purple-500 group-hover:rotate-12 transition-transform" />
-                <span className="font-bold text-sm capitalize">Trial</span>
-              </>
+          <div className="flex flex-col items-end">
+            {profile?.subscription_plan === 'trial' && profile?.trial_ends_at && (
+              <span className="text-[10px] font-medium text-purple-400 mb-1 animate-pulse mr-1">
+                Seu acesso completo termina em {Math.ceil((new Date(profile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
+              </span>
             )}
+            <div
+              onClick={() => setIsPurchaseOpen(true)}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-full border transition-all hover:scale-105 active:scale-95 group cursor-pointer ${profile?.subscription_plan === 'premium'
+                ? 'bg-purple-500/10 border-purple-500/20 text-purple-400'
+                : 'bg-purple-500/10 border-purple-500/20 text-purple-500 hover:bg-purple-500/20'
+                }`}
+            >
+              {profile?.subscription_plan === 'premium' ? (
+                <>
+                  <Sparkles className="w-4 h-4 text-purple-500 group-hover:rotate-12 transition-transform" />
+                  <span className="font-bold text-sm uppercase tracking-wider">Premium</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-purple-500 group-hover:rotate-12 transition-transform" />
+                  <span className="font-bold text-sm capitalize">Trial</span>
+                </>
+              )}
+            </div>
           </div>
 
           <DropdownMenu>
@@ -424,6 +431,6 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </header>
+    </header >
   );
 }

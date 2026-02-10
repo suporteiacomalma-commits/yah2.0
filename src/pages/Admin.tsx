@@ -26,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu } from "lucide-react";
 import { toast } from "sonner";
 import type { AppRole } from "@/hooks/useUserRole";
 import type { AdminUser } from "@/hooks/useAdminUsers";
@@ -38,6 +38,14 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   LineChart,
   Line,
@@ -242,6 +250,14 @@ export default function Admin() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [trialDaysMap, setTrialDaysMap] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  const filteredUsers = users.filter(user =>
+    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -474,8 +490,44 @@ export default function Admin() {
           </div>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="bg-card border border-border">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="w-full justify-start px-4 gap-2 border-border bg-card">
+                  <Menu className="h-4 w-4" />
+                  <span className="capitalize">{
+                    activeTab === 'dashboard' ? 'Painel' :
+                      activeTab === 'users' ? 'Usuários' :
+                        activeTab === 'settings' ? 'Integrações' :
+                          'Planos'
+                  }</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[80vw] sm:w-[350px] bg-card border-r border-border">
+                <SheetHeader>
+                  <SheetTitle>Menu</SheetTitle>
+                  <SheetDescription>Navegue pelo painel administrativo</SheetDescription>
+                </SheetHeader>
+                <div className="flex flex-col gap-2 mt-6">
+                  <Button variant={activeTab === 'dashboard' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('dashboard')}>
+                    <Settings className="h-4 w-4" /> Painel
+                  </Button>
+                  <Button variant={activeTab === 'users' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('users')}>
+                    <Users className="h-4 w-4" /> Usuários
+                  </Button>
+                  <Button variant={activeTab === 'settings' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('settings')}>
+                    <Key className="h-4 w-4" /> Integrações
+                  </Button>
+                  <Button variant={activeTab === 'plans' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('plans')}>
+                    <CreditCard className="h-4 w-4" /> Planos
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          <TabsList className="hidden md:flex bg-card border border-border w-full justify-start">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               Painel
@@ -502,8 +554,17 @@ export default function Admin() {
 
             {/* Users Table */}
             <Card className="bg-card border-border">
-              <CardHeader>
+              <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0 pb-4">
                 <CardTitle className="text-foreground">Usuários</CardTitle>
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome ou email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 bg-background/50 border-border"
+                  />
+                </div>
               </CardHeader>
               <CardContent>
 
@@ -522,7 +583,7 @@ export default function Admin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((userItem) => {
+                      {filteredUsers.map((userItem) => {
                         const trialEnds = userItem.trial_ends_at ? new Date(userItem.trial_ends_at) : null;
                         const daysLeft = trialEnds ? Math.ceil((trialEnds.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
                         const isExpired = daysLeft < 0 && userItem.subscription_plan === 'trial';
@@ -629,7 +690,7 @@ export default function Admin() {
 
                 {/* Mobile View (Cards) */}
                 <div className="md:hidden space-y-4">
-                  {users.map((userItem) => {
+                  {filteredUsers.map((userItem) => {
                     const trialEnds = userItem.trial_ends_at ? new Date(userItem.trial_ends_at) : null;
                     const daysLeft = trialEnds ? Math.ceil((trialEnds.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0;
                     const isExpired = daysLeft < 0 && userItem.subscription_plan === 'trial';

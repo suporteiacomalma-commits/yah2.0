@@ -2048,6 +2048,54 @@ SEMPRE:
                                             )}
                                         </div>
 
+                                        {/* Block 3: IMAGEM */}
+                                        <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><ImageIcon className="w-4 h-4" /></div>
+                                                <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Fundo & Mídia</h3>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="flex gap-3">
+                                                    <Button
+                                                        variant="outline" size="sm" className="flex-1 bg-white/5 border-white/10 text-xs rounded-xl h-10 gap-2"
+                                                        onClick={() => document.getElementById('bg-upload')?.click()}
+                                                    >
+                                                        <ImageIcon className="w-4 h-4" />
+                                                        Subir Imagem
+                                                    </Button>
+                                                    <input
+                                                        id="bg-upload" type="file" className="hidden" accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) {
+                                                                const reader = new FileReader();
+                                                                reader.onload = (re) => updateSlide(currentSlide, { bgImage: re.target?.result as string });
+                                                                reader.readAsDataURL(file);
+                                                            }
+                                                        }}
+                                                    />
+                                                    {carousel.slides[currentSlide].bgImage && (
+                                                        <Button
+                                                            variant="ghost" size="icon" className="h-10 w-10 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl"
+                                                            onClick={() => updateSlide(currentSlide, { bgImage: undefined })}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center gap-3">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Fundo</Label>
+                                                    <input
+                                                        type="color" value={carousel.slides[currentSlide].bgColor}
+                                                        onChange={(e) => updateSlide(currentSlide, { bgColor: e.target.value })}
+                                                        className="flex-1 h-8 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         {/* Block 1.5: BLOCO DE DESTAQUE */}
                                         <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
                                             <div className="flex items-center gap-2 mb-4">
@@ -2144,54 +2192,6 @@ SEMPRE:
                                                     onValueChange={(v) => updateSlide(currentSlide, { overlayOpacity: v[0] / 100 })}
                                                     className="w-full"
                                                 />
-                                            </div>
-                                        </div>
-
-                                        {/* Block 3: IMAGEM */}
-                                        <div className="bg-slate-900/40 border border-white/5 rounded-[24px] p-6 space-y-4">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><ImageIcon className="w-4 h-4" /></div>
-                                                <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Fundo & Mídia</h3>
-                                            </div>
-
-                                            <div className="space-y-4">
-                                                <div className="flex gap-3">
-                                                    <Button
-                                                        variant="outline" size="sm" className="flex-1 bg-white/5 border-white/10 text-xs rounded-xl h-10 gap-2"
-                                                        onClick={() => document.getElementById('bg-upload')?.click()}
-                                                    >
-                                                        <ImageIcon className="w-4 h-4" />
-                                                        Subir Imagem
-                                                    </Button>
-                                                    <input
-                                                        id="bg-upload" type="file" className="hidden" accept="image/*"
-                                                        onChange={(e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                const reader = new FileReader();
-                                                                reader.onload = (re) => updateSlide(currentSlide, { bgImage: re.target?.result as string });
-                                                                reader.readAsDataURL(file);
-                                                            }
-                                                        }}
-                                                    />
-                                                    {carousel.slides[currentSlide].bgImage && (
-                                                        <Button
-                                                            variant="ghost" size="icon" className="h-10 w-10 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-xl"
-                                                            onClick={() => updateSlide(currentSlide, { bgImage: undefined })}
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </Button>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex items-center gap-3">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Fundo</Label>
-                                                    <input
-                                                        type="color" value={carousel.slides[currentSlide].bgColor}
-                                                        onChange={(e) => updateSlide(currentSlide, { bgColor: e.target.value })}
-                                                        className="flex-1 h-8 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
-                                                    />
-                                                </div>
                                             </div>
                                         </div>
 

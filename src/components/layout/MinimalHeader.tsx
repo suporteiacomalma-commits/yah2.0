@@ -43,14 +43,14 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
   const setIsPurchaseOpen = externalSetIsPurchaseOpen || setInternalIsPurchaseOpen;
 
   const [cpf, setCpf] = useState(profile?.tax_id || "");
-  const [phone, setPhone] = useState(profile?.cellphone || "");
+  const [phone, setPhone] = useState(profile?.phone || "");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
 
   useEffect(() => {
     if (profile?.tax_id) setCpf(profile.tax_id);
-    if (profile?.cellphone) setPhone(profile.cellphone);
+    if (profile?.phone) setPhone(profile.phone);
   }, [profile]);
 
   const { plans: premiumPlans, isLoading: plansLoading } = usePlans(true);
@@ -111,7 +111,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
             onClick={() => setIsPurchaseOpen(true)}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-full border transition-all hover:scale-105 active:scale-95 group cursor-pointer ${profile?.subscription_plan === 'premium'
               ? 'bg-purple-500/10 border-purple-500/20 text-purple-400'
-              : 'bg-amber-500/10 border-amber-500/20 text-amber-500 hover:bg-amber-500/20'
+              : 'bg-purple-500/10 border-purple-500/20 text-purple-500 hover:bg-purple-500/20'
               }`}
           >
             {profile?.subscription_plan === 'premium' ? (
@@ -121,7 +121,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 text-amber-500 group-hover:rotate-12 transition-transform" />
+                <Sparkles className="w-4 h-4 text-purple-500 group-hover:rotate-12 transition-transform" />
                 <span className="font-bold text-sm capitalize">Trial</span>
               </>
             )}
@@ -195,11 +195,13 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
         <DialogContent className="max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
-              <Sparkles className="w-6 h-6 text-purple-500" />
+              <Sparkles className="w-6 h-6 text-primary" />
               Upgrade para o Premium
             </DialogTitle>
-            <DialogDescription className="text-base">
-              Desbloqueie todo o potencial da YAh com gerações ilimitadas e ferramentas exclusivas.
+            <DialogDescription className="text-base text-left space-y-4 pt-2">
+              <p>Voltar a carregar tudo na cabeça não precisa ser sua rotina.</p>
+              <p>Ative o plano para continuar organizando sua vida, sua marca e sua presença digital em um só lugar com a Yah.</p>
+              <p className="font-medium text-primary">Evoluções contínuas e melhorias da plataforma incluídas</p>
             </DialogDescription>
           </DialogHeader>
 
@@ -212,7 +214,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                   placeholder="000.000.000-00"
                   value={cpf}
                   onChange={(e) => setCpf(e.target.value)}
-                  className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
+                  className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all"
                 />
               </div>
               <div className="space-y-2">
@@ -222,14 +224,14 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                   placeholder="(00) 00000-0000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all"
+                  className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all"
                 />
               </div>
             </div>
 
             <Tabs defaultValue="pix" value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as "pix" | "card")} className="w-full">
               <TabsList className="grid w-full grid-cols-2 h-auto">
-                <TabsTrigger value="pix" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 h-auto py-2.5">
+                <TabsTrigger value="pix" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary h-auto py-2.5">
                   <span className="flex flex-col items-center gap-0.5 text-xs sm:text-sm">
                     <span className="flex items-center gap-2">
                       <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> PIX
@@ -237,7 +239,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                     <span className="text-[9px] text-muted-foreground">(Instantâneo)</span>
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="card" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 h-auto py-2.5">
+                <TabsTrigger value="card" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary h-auto py-2.5">
                   <span className="flex flex-col items-center gap-0.5 text-xs sm:text-sm">
                     <span className="flex items-center gap-2">
                       <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Cartão
@@ -251,7 +253,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
             {paymentMethod === "card" && selectedPlan && (
               <div className="mt-6 border-t border-border pt-6 animate-fade-in">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold text-sm uppercase tracking-wider text-purple-400">Dados do Cartão</h4>
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-primary">Dados do Cartão</h4>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -279,7 +281,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
             {paymentMethod === "pix" && selectedPlan && (
               <div className="mt-6 border-t border-border pt-6 animate-fade-in">
                 <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold text-sm uppercase tracking-wider text-purple-400">Pagamento via PIX</h4>
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-primary">Pagamento via PIX</h4>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -311,7 +313,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
           <div className="grid gap-4 py-2 max-h-[50vh] overflow-y-auto pr-1">
             {plansLoading ? (
               <div className="flex flex-col items-center justify-center p-12 gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="text-sm text-muted-foreground">Carregando planos...</p>
               </div>
             ) : premiumPlans.length === 0 ? (
@@ -327,21 +329,21 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                     key={plan.id}
                     onClick={() => !isActive && !createStripeCheckout.isPending && handlePurchase(plan)}
                     className={`relative group p-5 rounded-2xl border transition-all duration-300 ${isActive
-                      ? "bg-purple-500/10 border-purple-500/50 cursor-default"
-                      : "bg-background/40 border-border hover:border-purple-500/50 cursor-pointer hover:bg-white/5"
+                      ? "bg-primary/10 border-primary/50 cursor-default"
+                      : "bg-background/40 border-border hover:border-primary/50 cursor-pointer hover:bg-white/5"
                       } ${(createStripeCheckout.isPending) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {(createStripeCheckout.isPending) && !isActive && (
                       <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 backdrop-blur-[2px] rounded-2xl">
                         <div className="flex flex-col items-center gap-2">
-                          <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent animate-spin rounded-full" />
-                          <span className="text-[10px] font-bold text-purple-400 uppercase">Processando...</span>
+                          <div className="w-5 h-5 border-2 border-primary border-t-transparent animate-spin rounded-full" />
+                          <span className="text-[10px] font-bold text-primary uppercase">Processando...</span>
                         </div>
                       </div>
                     )}
 
                     {plan.popular && !isActive && (
-                      <div className="absolute top-0 right-0 bg-purple-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-tighter shadow-lg">
+                      <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-tighter shadow-lg">
                         RECOMENDADO
                       </div>
                     )}
@@ -361,7 +363,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                     </div>
 
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-5">
-                      <CheckCircle2 className={`w-3.5 h-3.5 ${isActive ? 'text-green-500' : 'text-purple-500 opacity-60'}`} />
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${isActive ? 'text-green-500' : 'text-primary opacity-60'}`} />
                       <span>{paymentMethod === 'pix' ? 'PIX Instantâneo' : 'Cartão de Crédito'}</span>
                     </div>
 
@@ -373,7 +375,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                       disabled={isActive || createStripeCheckout.isPending}
                       className={`w-full h-11 rounded-xl font-bold transition-all duration-300 ${isActive
                         ? "bg-green-500/10 text-green-500 border border-green-500/30 hover:bg-green-500/15 cursor-default"
-                        : "bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/40"
+                        : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                         }`}
                     >
                       {isActive ? (
@@ -382,9 +384,33 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                           Seu Plano Atual
                         </span>
                       ) : (
-                        "Assinar Agora"
+                        "Ativar premium"
                       )}
                     </Button>
+
+                    {!isActive && (
+                      <div className="mt-4 space-y-3 pt-3 border-t border-border/50">
+                        <p className="text-xs text-center font-medium text-muted-foreground">
+                          Empreendedores já usam a YAh para organizar sua presença digital e rotina.
+                        </p>
+                        <p className="text-xs text-center font-bold text-primary">
+                          Por menos de 1 real por dia você tem uma assistente pessoal para te ajudar a sustentar sua vida.
+                        </p>
+                        <div className="space-y-1.5 pt-1">
+                          {[
+                            "Seus dados e estrutura ficam preservados e protegidos",
+                            "Sua rotina e presença fica mais leve",
+                            "Acesso contínuo após o teste gratuito",
+                            "Evoluções contínuas e melhorias da plataforma incluídas"
+                          ].map((item, i) => (
+                            <div key={i} className="flex items-start gap-2 text-[11px] text-muted-foreground">
+                              <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0 mt-0.5" />
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })

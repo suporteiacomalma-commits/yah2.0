@@ -24,10 +24,47 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, User, Building, Target, Mail, ArrowLeft, Lock, ShieldCheck, CreditCard, History, ExternalLink, MessageCircle, AlertCircle, Info, Phone, Camera, Share2, Instagram } from "lucide-react";
+import {
+    Loader2,
+    User,
+    Building,
+    Target,
+    Mail,
+    ArrowLeft,
+    Lock,
+    ShieldCheck,
+    CreditCard,
+    History,
+    ExternalLink,
+    MessageCircle,
+    AlertCircle,
+    Info,
+    Phone,
+    Camera,
+    Share2,
+    Instagram,
+    Sparkles,
+    Rocket,
+    Briefcase
+} from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+
+// Constants synced with Onboarding.tsx
+const stages = [
+    { id: "idea", label: "Apenas uma ideia", description: "Ainda não comecei" },
+    { id: "starting", label: "Começando", description: "Primeiros passos" },
+    { id: "growing", label: "Em crescimento", description: "Já tenho clientes" },
+    { id: "established", label: "Estabelecido", description: "Marca consolidada" },
+];
+
+const goals = [
+    { id: "create", label: "Criar minha marca", icon: Sparkles },
+    { id: "improve", label: "Melhorar presença", icon: Target },
+    { id: "reposition", label: "Reposicionar", icon: Rocket },
+    { id: "scale", label: "Escalar o negócio", icon: Briefcase },
+];
 
 export default function Profile() {
     const { profile, isLoading: profileLoading, updateProfile } = useProfile();
@@ -259,7 +296,7 @@ export default function Profile() {
                                     <Button
                                         onClick={() => window.open("https://instagram.com/yahapp", "_blank")}
                                         variant="outline"
-                                        className="w-full border-pink-500/20 hover:bg-pink-500/10 text-pink-500 gap-2 h-10 transition-all hover:scale-[1.02] active:scale-95"
+                                        className="w-full border-pink-500/20 hover:bg-pink-500/10 text-pink-500 hover:text-[#E1306C] gap-2 h-10 transition-all hover:scale-[1.02] active:scale-95"
                                     >
                                         <Instagram className="w-4 h-4" />
                                         Seguir no Instagram
@@ -355,22 +392,34 @@ export default function Profile() {
                                                 <SelectValue placeholder="Selecione sua fase atual" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="ideacao">Ideação (Apenas o projeto)</SelectItem>
-                                                <SelectItem value="validacao">Validação (Primeiros clientes)</SelectItem>
-                                                <SelectItem value="tracao">Tração (Crescimento constante)</SelectItem>
-                                                <SelectItem value="escala">Escala (Expansão acelerada)</SelectItem>
+                                                {stages.map((stage) => (
+                                                    <SelectItem key={stage.id} value={stage.id}>
+                                                        {stage.label} <span className="text-muted-foreground text-xs ml-2">({stage.description})</span>
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="main_goal">Objetivo Principal</Label>
-                                        <Textarea
-                                            id="main_goal"
+                                        <Select
                                             value={formData.main_goal}
-                                            onChange={(e) => setFormData({ ...formData, main_goal: e.target.value })}
-                                            placeholder="Ex: Quero automatizar minha criação de conteúdo para ter mais tempo livre."
-                                            className="bg-background/50 border-white/10 focus:border-primary/50 min-h-[100px]"
-                                        />
+                                            onValueChange={(value) => setFormData({ ...formData, main_goal: value })}
+                                        >
+                                            <SelectTrigger className="bg-background/50 border-white/10">
+                                                <SelectValue placeholder="Selecione seu objetivo" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {goals.map((goal) => (
+                                                    <SelectItem key={goal.id} value={goal.id}>
+                                                        <div className="flex items-center gap-2">
+                                                            <goal.icon className="w-4 h-4" />
+                                                            <span>{goal.label}</span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -510,9 +559,10 @@ function SubscriptionSection() {
     };
 
     const handleContactSupport = () => {
-        // WhatsApp link - using a placeholder or generic link
-        const message = encodeURIComponent("Olá! Preciso de ajuda com minha assinatura/pagamento na YAh.");
-        window.open(`https://wa.me/5511999999999?text=${message}`, "_blank");
+        const email = "yahaapp2.0@gmail.com";
+        const subject = encodeURIComponent("Suporte Financeiro");
+        const body = encodeURIComponent("Olá, preciso de ajuda com minha assinatura/pagamento na YAh.");
+        window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank");
     };
 
     const renewalDate = subscription?.plan === 'trial' ? subscription?.trialEndsAt : subscription?.currentPeriodEnd;
@@ -585,7 +635,7 @@ function SubscriptionSection() {
                             className="gap-2 border-primary/20 hover:bg-primary/5 text-primary"
                             onClick={handleContactSupport}
                         >
-                            <MessageCircle className="w-4 h-4" />
+                            <Mail className="w-4 h-4" />
                             Suporte Financeiro
                         </Button>
                     </div>

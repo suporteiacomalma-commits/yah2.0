@@ -198,9 +198,9 @@ export default function Dashboard() {
           <section className="space-y-4">
             <div>
               <h1 className="text-2xl font-semibold text-[#EEEDE9] mb-2">
-                Bom te ver por aqui, <span className="text-[#B6BC45]">{profile?.full_name?.split(' ')[0] || "Criador"}</span>!
+                Bom te ver por aqui, <span className="text-[#B6BC45]">{profile?.full_name?.split(' ')[0] || "Criador"}</span><span className="text-[#B6BC45]">!</span>
               </h1>
-              <p className="text-sm text-[#999]">Vamos continuar construindo sua presença digital</p>
+              <p className="text-sm text-[#999]">Vamos continuar estruturando sua vida digital, marca e rotina.</p>
             </div>
 
             {!isJourneyComplete && (
@@ -275,46 +275,50 @@ export default function Dashboard() {
           {/* Seu Dia Hoje */}
           <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[20px] font-semibold text-[#EEEDE9] tracking-tight">SEU DIA HOJE</h2>
-              <span className="text-[14px] text-[#999] opacity-70">{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</span>
+              <h2 className="text-[12px] font-bold text-[#EEEDE9] uppercase tracking-widest">SEU DIA HOJE</h2>
+              <span className="text-[14px] text-[#999] font-medium">{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</span>
             </div>
 
-            <div className="space-y-1">
+            <div className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-1 min-h-[120px] relative overflow-hidden flex flex-col justify-center">
               {tasksLoading ? (
                 <div className="flex justify-center py-6">
                   <Loader2 className="w-6 h-6 animate-spin text-[#B6BC45]" />
                 </div>
               ) : todaysTasks.length > 0 ? (
-                todaysTasks.map((task) => {
-                  const isCompleted = task.status === "Concluído";
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => toggleTask(task)}
-                      className={cn(
-                        "flex items-center py-4 border-b border-white/5 cursor-pointer transition-all active:scale-[0.98]",
-                        "last:border-0 hover:bg-white/[0.02] -mx-2 px-2 rounded-xl group",
-                        isCompleted && "opacity-60"
-                      )}
-                    >
-                      <div className={cn(
-                        "w-[22px] h-[22px] min-w-[22px] border-2 rounded-[6px] mr-4 flex items-center justify-center transition-all duration-300",
-                        isCompleted ? "bg-[#B6BC45] border-[#B6BC45]" : "border-[#3A3A3A] group-hover:border-[#B6BC45]/50"
-                      )}>
-                        {isCompleted && <Check className="w-3.5 h-3.5 text-[#141414] stroke-[4]" />}
+                <div className="space-y-1">
+                  {todaysTasks.map((task) => {
+                    const isCompleted = task.status === "Concluído";
+                    return (
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors group cursor-pointer"
+                        onClick={() => toggleTask(task)}
+                      >
+                        <div className={cn(
+                          "w-[22px] h-[22px] min-w-[22px] border-2 rounded-[6px] flex items-center justify-center transition-all duration-300",
+                          isCompleted ? "bg-[#B6BC45] border-[#B6BC45]" : "border-[#3A3A3A] group-hover:border-[#B6BC45]/50"
+                        )}>
+                          {isCompleted && <Check className="w-3.5 h-3.5 text-[#141414] stroke-[4]" />}
+                        </div>
+                        <span className={cn(
+                          "text-[15px] text-[#EEEDE9] flex-1 font-medium transition-all duration-300",
+                          isCompleted && "line-through text-[#999] opacity-80"
+                        )}>
+                          {task.titulo}
+                        </span>
                       </div>
-                      <span className={cn(
-                        "text-[15px] text-[#EEEDE9] flex-1 font-medium transition-all duration-300",
-                        isCompleted && "line-through text-[#999] opacity-80"
-                      )}>
-                        {task.titulo}
-                      </span>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               ) : (
-                <div className="py-8 text-center">
-                  <p className="text-[17px] text-[#999] italic font-medium opacity-60">Nenhuma tarefa para hoje.</p>
+                <div className="flex flex-col items-center justify-center text-center p-6 space-y-1">
+                  <p className="text-sm font-semibold text-[#EEEDE9]">Nenhuma tarefa adicionada para hoje.</p>
+                  <p className="text-xs text-[#999] max-w-[280px] leading-relaxed">
+                    Abra o Assistente e registre ações, tarefas, reuniões e compromissos...
+                  </p>
+                  <p className="text-xs text-[#999]/60 italic mt-2">
+                    "Quanto mais você tira da cabeça e coloca aqui, mais leve fica sua mente."
+                  </p>
                 </div>
               )}
             </div>

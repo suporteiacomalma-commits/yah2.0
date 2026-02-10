@@ -21,6 +21,7 @@ export interface Phase {
   description: string;
   icon: LucideIcon;
   href: string;
+  emoji: string;
 }
 
 export const phases: Phase[] = [
@@ -31,6 +32,7 @@ export const phases: Phase[] = [
     description: "Descubra a essência e personalidade única da sua marca",
     icon: Notebook,
     href: "/phase/1",
+    emoji: "📔"
   },
   {
     id: 2,
@@ -39,6 +41,7 @@ export const phases: Phase[] = [
     description: "",
     icon: Dna,
     href: "/phase/2",
+    emoji: "🧬"
   },
   {
     id: 3,
@@ -47,6 +50,7 @@ export const phases: Phase[] = [
     description: "Organize sua rotina de conteúdo",
     icon: ClipboardList,
     href: "/phase/3",
+    emoji: "📅"
   },
   {
     id: 4,
@@ -55,6 +59,7 @@ export const phases: Phase[] = [
     description: "Configure suas redes sociais para máximo impacto",
     icon: Share2,
     href: "/phase/4",
+    emoji: "🚀"
   },
   {
     id: 5,
@@ -63,6 +68,7 @@ export const phases: Phase[] = [
     description: "Visualize e gerencie todo seu conteúdo",
     icon: CalendarDays,
     href: "/phase/5",
+    emoji: "🗓️"
   },
   {
     id: 6,
@@ -71,6 +77,7 @@ export const phases: Phase[] = [
     description: "",
     icon: Bot,
     href: "/phase/6",
+    emoji: "🤖"
   },
   {
     id: 7,
@@ -79,6 +86,7 @@ export const phases: Phase[] = [
     description: "Gere carrosséis estratégicos com auxílio de IA",
     icon: Zap,
     href: "/phase/7",
+    emoji: "⚡"
   },
   {
     id: 8,
@@ -87,6 +95,7 @@ export const phases: Phase[] = [
     description: "Seu lugar seguro para guardar tudo da sua marca.",
     icon: BookOpen,
     href: "/phase/8",
+    emoji: "📦"
   },
   {
     id: 9,
@@ -95,5 +104,6 @@ export const phases: Phase[] = [
     description: "Experimente e crie conteúdo inovador",
     icon: FlaskConical,
     href: "/phase/9",
+    emoji: "🧪"
   },
 ];

@@ -366,7 +366,7 @@ export default function Dashboard() {
 
                     <div className="flex items-center mb-3">
                       <div className="w-10 h-10 bg-[#2A2A2A] rounded-xl flex items-center justify-center mr-3 text-xl">
-                        <phaseConfig.icon className={cn("w-5 h-5", isCurrent ? "text-[#B6BC45]" : "text-[#EEEDE9]")} />
+                        <span className="text-xl filter drop-shadow-md group-hover:scale-110 transition-transform select-none">{phaseConfig.emoji}</span>
                       </div>
                       <div className="flex-1">
                         <div className="text-[15px] font-semibold text-[#EEEDE9]">{displayTitle}</div>
@@ -375,7 +375,15 @@ export default function Dashboard() {
                     </div>
 
                     <p className="text-[13px] text-[#999] mb-3 leading-relaxed line-clamp-2">
-                      {phaseConfig.description || "Avance para desbloquear novos potenciais da sua marca."}
+                      {isCompleted ? (
+                        phaseId === 1 ? "Você capturou sua essência" :
+                          phaseId === 2 ? "Sua tese central está definida" :
+                            phaseId === 3 ? "Faça no seu tempo, organize do seu jeito com minha ajuda" :
+                              phaseId === 4 ? "Seu perfil está estratégico" :
+                                (phaseConfig.description || "Avance para desbloquear novos potenciais da sua marca.")
+                      ) : (
+                        phaseConfig.description || "Avance para desbloquear novos potenciais da sua marca."
+                      )}
                     </p>
 
                     <div className="bg-[#2A2A2A] h-1.5 rounded-full overflow-hidden mb-3">

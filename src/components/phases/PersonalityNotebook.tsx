@@ -206,20 +206,26 @@ export function PersonalityNotebook() {
             const aiData = await response.json();
             const results = JSON.parse(aiData.choices[0].message.content);
 
+            // Safety check to ensure we always have strings
+            const ensureString = (val: any) => {
+                if (!val) return "";
+                return typeof val === "string" ? val : JSON.stringify(val);
+            };
+
+            const updates = {
+                result_essencia: ensureString(results.result_essencia),
+                result_tom_voz: ensureString(results.result_tom_voz),
+                result_como_funciona: ensureString(results.result_como_funciona)
+            };
+
             await updateBrand.mutateAsync({
-                updates: {
-                    result_essencia: results.result_essencia,
-                    result_tom_voz: results.result_tom_voz,
-                    result_como_funciona: results.result_como_funciona
-                }
+                updates
             });
 
             // Update local state immediately so user sees results without refresh
             setFormData(prev => ({
                 ...prev,
-                result_essencia: results.result_essencia,
-                result_tom_voz: results.result_tom_voz,
-                result_como_funciona: results.result_como_funciona
+                ...updates
             }));
 
             setStep(4);
@@ -561,9 +567,13 @@ export function PersonalityNotebook() {
                                 Agora que definimos quem você é estrategicamente, vamos transformar isso em uma marca visual inesquecível.
                             </p>
                             <Button
-                                onClick={() => {
-                                    completePhase.mutate(1);
-                                    navigate("/phase/2");
+                                onClick={async () => {
+                                    try {
+                                        await completePhase.mutateAsync(1);
+                                        navigate("/phase/2");
+                                    } catch (error) {
+                                        console.error("Error completing phase:", error);
+                                    }
                                 }}
                                 className="w-full md:w-auto gradient-primary text-white h-auto py-4 px-8 md:px-12 text-lg md:text-xl font-bold rounded-full shadow-xl shadow-primary/20 hover:scale-105 transition-transform whitespace-normal"
                             >
@@ -603,6 +613,8 @@ function ResultCard({ title, content, onSave, icon, isEditing, onToggle, onTitle
 
     const formatContent = (text: string) => {
         if (!text) return "Aguardando geração...";
+        if (typeof text !== "string") return String(text);
+
         try {
             // Try to parse if it looks like JSON objects/arrays
             if (text.trim().startsWith('[') || text.trim().startsWith('{')) {
@@ -617,7 +629,7 @@ function ResultCard({ title, content, onSave, icon, isEditing, onToggle, onTitle
                             ))}
                         </div>
                     );
-                } else if (typeof parsed === 'object') {
+                } else if (parsed && typeof parsed === 'object') {
                     return (
                         <div className="space-y-2">
                             {Object.entries(parsed).map(([key, val]) => (
@@ -681,7 +693,7 @@ function ResultCard({ title, content, onSave, icon, isEditing, onToggle, onTitle
                     </div>
                 ) : (
                     <div className="whitespace-pre-wrap leading-relaxed text-foreground text-lg opacity-90 p-4 rounded-xl bg-background/30 break-words overflow-hidden print:bg-transparent print:p-0 print:text-black print:text-base">
-                        {typeof formatContent(content) === 'string' ? content : formatContent(content)}
+                        {formatContent(content)}
                     </div>
                 )}
             </CardContent>

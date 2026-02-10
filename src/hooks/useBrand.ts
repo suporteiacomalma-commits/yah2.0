@@ -168,7 +168,10 @@ export function useBrand() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data) {
+        queryClient.setQueryData(["brand", user?.id], data);
+      }
       queryClient.invalidateQueries({ queryKey: ["brand", user?.id] });
       toast.success("Fase concluída! 🎉");
     },

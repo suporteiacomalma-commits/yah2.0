@@ -200,7 +200,7 @@ export default function Dashboard() {
               <h1 className="text-2xl font-semibold text-[#EEEDE9] mb-2">
                 Bom te ver por aqui, <span className="text-[#B6BC45]">{profile?.full_name?.split(' ')[0] || "Criador"}</span><span className="text-[#B6BC45]">!</span>
               </h1>
-              <p className="text-sm text-[#999]">Vamos continuar estruturando sua vida digital, marca e rotina.</p>
+              <p className="text-sm text-[#999]">Vamos continuar estruturando sua rotina, marca e presença digital.</p>
             </div>
 
             {!isJourneyComplete && (
@@ -335,7 +335,9 @@ export default function Dashboard() {
 
                 const isCompleted = completedPhases.includes(phaseId);
                 const isCurrent = currentPhaseId === phaseId;
-                const isLocked = false;
+                // Unlock phases 4, 6, 7, 8 as per user request (always open)
+                const ALWAYS_UNLOCKED = [4, 6, 7, 8];
+                const isLocked = !ALWAYS_UNLOCKED.includes(phaseId) && false; // Keep global unlock for now, but explicit on requested IDs
 
                 // Match specific HTML titles if they differ
                 const displayTitle =

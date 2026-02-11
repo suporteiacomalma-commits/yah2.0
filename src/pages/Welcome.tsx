@@ -15,9 +15,9 @@ export default function Welcome() {
                 <div className="absolute inset-0 grid-pattern opacity-20" />
             </div>
 
-            <div className="w-full max-w-2xl relative z-10 text-center space-y-6 animate-fade-in py-4">
+            <div className="w-full max-w-2xl relative z-10 text-center space-y-2 animate-fade-in py-4">
                 <div className="flex flex-col items-center">
-                    <div className="w-80 h-80 sm:w-96 sm:h-96 -my-24 relative z-20">
+                    <div className="w-48 h-48 sm:w-60 sm:h-60 -my-12 relative z-20">
                         <img
                             src="/logo-login.png"
                             alt="YAh Logo"
@@ -27,7 +27,7 @@ export default function Welcome() {
                 </div>
 
                 {/* Content Section */}
-                <div className="glass-dark rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden group border-white/10">
+                <div className="glass-dark rounded-3xl px-6 pb-6 pt-2 md:px-8 md:pb-8 md:pt-4 space-y-6 shadow-2xl relative overflow-hidden group border-white/10">
                     {/* Subtle overlay gradient */}
                     <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "./useSystemSettings";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "./useProfile";
 import { toast } from "sonner";
 
 export interface AbacatePayProduct {
@@ -28,6 +29,7 @@ export interface AbacatePayBillingRequest {
 export function useAbacatePay() {
     const { getSetting } = useSystemSettings();
     const { user } = useAuth();
+    const { profile } = useProfile();
     const queryClient = useQueryClient();
 
     const createBilling = useMutation({
@@ -79,7 +81,7 @@ export function useAbacatePay() {
                     name: (user as any).user_metadata?.full_name || user.email?.split('@')[0] || "Cliente",
                     email: user.email,
                     taxId: params.cpf,
-                    cellphone: params.phone,
+                    cellphone: params.phone || profile?.whatsapp || undefined,
                 },
             };
 

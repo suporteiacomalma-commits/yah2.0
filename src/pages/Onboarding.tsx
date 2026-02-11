@@ -14,9 +14,14 @@ import {
   ArrowLeft,
   User,
   Building2,
+  Calendar,
+  Lightbulb,
+  PenTool,
+  TrendingUp,
+  Compass,
+  Rocket,
   Briefcase,
-  Target,
-  Rocket
+  Target
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,16 +44,18 @@ const stages = [
 ];
 
 const goals = [
-  { id: "create", label: "Criar minha marca", icon: Sparkles },
-  { id: "improve", label: "Melhorar presença", icon: Target },
-  { id: "reposition", label: "Reposicionar", icon: Rocket },
-  { id: "scale", label: "Escalar o negócio", icon: Briefcase },
+  { id: "organize_day", label: "Organizar meu dia", icon: Calendar },
+  { id: "structure_ideas", label: "Estruturar ideias", icon: Lightbulb },
+  { id: "create_content", label: "Criar conteúdo", icon: PenTool },
+  { id: "develop_brand", label: "Desenvolver a minha marca", icon: Rocket },
+  { id: "grow_business", label: "Crescer meu negócio", icon: TrendingUp },
+  { id: "exploring", label: "Ainda estou explorando", icon: Compass },
 ];
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [userName, setUserName] = useState("");
-  const [brandName, setBrandName] = useState("");
+  const [brandName, setBrandName] = useState("Minha Marca");
   const [sector, setSector] = useState("");
   const [businessStage, setBusinessStage] = useState("");
   const [mainGoal, setMainGoal] = useState("");
@@ -57,7 +64,7 @@ export default function Onboarding() {
   const { updateProfile } = useProfile();
   const navigate = useNavigate();
 
-  const totalSteps = 5;
+  const totalSteps = 3;
   const progress = (step / totalSteps) * 100;
 
   const handleNext = () => {
@@ -102,10 +109,8 @@ export default function Onboarding() {
   const canProceed = () => {
     switch (step) {
       case 1: return userName.trim().length > 0;
-      case 2: return brandName.trim().length > 0;
-      case 3: return sector.length > 0;
-      case 4: return businessStage.length > 0;
-      case 5: return mainGoal.length > 0;
+      case 2: return sector.length > 0;
+      case 3: return mainGoal.length > 0;
       default: return false;
     }
   };
@@ -160,31 +165,8 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* Step 2: Brand Name */}
+          {/* Step 2: Sector */}
           {step === 2 && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mb-4 glow-primary">
-                  <Building2 className="w-8 h-8 text-primary-foreground" />
-                </div>
-                <h2 className="text-2xl font-bold text-foreground">Qual o nome da sua marca?</h2>
-                <p className="text-muted-foreground">Este será o nome que vamos trabalhar</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="brand-name" className="text-foreground">Nome da marca</Label>
-                <Input
-                  id="brand-name"
-                  placeholder="Ex: Minha Empresa"
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                  className="text-lg h-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Sector */}
-          {step === 3 && (
             <div className="space-y-6 animate-fade-in">
               <div className="text-center space-y-2">
                 <div className="mx-auto w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mb-4 glow-primary">
@@ -213,38 +195,8 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* Step 4: Business Stage */}
-          {step === 4 && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mb-4 glow-primary">
-                  <Rocket className="w-8 h-8 text-primary-foreground" />
-                </div>
-                <h2 className="text-2xl font-bold text-foreground">Em qual estágio está seu negócio?</h2>
-                <p className="text-muted-foreground">Isso nos ajuda a personalizar sua jornada</p>
-              </div>
-              <div className="space-y-3">
-                {stages.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setBusinessStage(s.id)}
-                    className={cn(
-                      "w-full p-4 rounded-xl border-2 text-left transition-all duration-200",
-                      businessStage === s.id
-                        ? "border-primary bg-primary/10 neon-border-glow"
-                        : "border-border bg-secondary/30 hover:border-primary/50 hover:bg-secondary/50"
-                    )}
-                  >
-                    <p className="font-medium text-foreground">{s.label}</p>
-                    <p className="text-sm text-muted-foreground">{s.description}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 5: Main Goal */}
-          {step === 5 && (
+          {/* Step 3: Main Goal */}
+          {step === 3 && (
             <div className="space-y-6 animate-fade-in">
               <div className="text-center space-y-2">
                 <div className="mx-auto w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mb-4 glow-primary">

@@ -33,9 +33,12 @@ export default function PhasePage() {
   const firstFourCompleted = [1, 2, 3, 4].every(id => brand?.phases_completed?.includes(id));
 
   let isLocked = false;
-  if ([6, 7, 8].includes(phaseNumber)) {
-    isLocked = !firstFourCompleted && phaseNumber !== brand?.current_phase && !isCompleted;
+
+  // ALWAYS UNLOCK 4, 6, 7, 8 as per user request
+  if ([4, 6, 7, 8].includes(phaseNumber)) {
+    isLocked = false;
   } else {
+    // Original logic for other phases
     isLocked = phaseNumber > (brand?.current_phase || 1) && !isCompleted;
   }
 

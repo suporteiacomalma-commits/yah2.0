@@ -417,8 +417,17 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-3 relative">
+                            <Label className="text-base font-semibold text-white">1. Sua marca tem um nome? Conte pra mim qual é.</Label>
+                            <Input
+                                placeholder="Minha Marca"
+                                value={formData.name || ""}
+                                onChange={(e) => handleInputChange("name", e.target.value)}
+                                className="bg-background/50 border-border h-12 transition-all"
+                            />
+                        </div>
+                        <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-white">1. Qual é o seu nicho específico?</Label>
+                                <Label className="text-base font-semibold text-white">2. Qual é o seu nicho específico?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -442,7 +451,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-white">2. Qual é o produto/serviço que você quer posicionar?</Label>
+                                <Label className="text-base font-semibold text-white">3. Qual é o produto/serviço que você quer posicionar?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -465,7 +474,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                             />
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-base font-semibold text-white">3. Qual é o objetivo principal com sua marca?</Label>
+                            <Label className="text-base font-semibold text-white">4. Qual é o objetivo principal com sua marca?</Label>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {OBJETIVO_OPTIONS.map((opt) => (
                                     <div
@@ -526,7 +535,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                     <CardContent className="space-y-6">
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-white">4. Descreva a dor principal do seu público.</Label>
+                                <Label className="text-base font-semibold text-white">5. Descreva a dor principal do seu público.</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -550,7 +559,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-white">5. Qual sonho seu público tem?</Label>
+                                <Label className="text-base font-semibold text-white">6. Qual sonho seu público tem?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -574,7 +583,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-white">6. Qual transformação sua marca entrega (Antes → Depois)?</Label>
+                                <Label className="text-base font-semibold text-white">7. Qual transformação sua marca entrega (Antes → Depois)?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -598,7 +607,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-white">7. O que te torna diferente?</Label>
+                                <Label className="text-base font-semibold text-white">8. O que te torna diferente?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"

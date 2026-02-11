@@ -18,6 +18,7 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const { signIn, signUp, resetPassword, user } = useAuth();
@@ -65,6 +66,10 @@ export default function Auth() {
         toast.error("Nome é obrigatório");
         return;
       }
+      if (!whatsapp.trim()) {
+        toast.error("WhatsApp é obrigatório");
+        return;
+      }
     } catch (err) {
       if (err instanceof z.ZodError) {
         toast.error(err.errors[0].message);
@@ -73,7 +78,9 @@ export default function Auth() {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(email, password, fullName);
+    setIsLoading(true);
+    const { error } = await signUp(email, password, fullName, whatsapp);
+    setIsLoading(false);
     setIsLoading(false);
 
     if (error) {
@@ -232,6 +239,18 @@ export default function Auth() {
                     placeholder="Seu nome"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
+                    className="h-12 bg-secondary/30 border-border/50 focus:border-primary focus:ring-primary rounded-xl"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp-signup" className="text-foreground text-sm font-medium">WhatsApp</Label>
+                  <Input
+                    id="whatsapp-signup"
+                    type="tel"
+                    placeholder="(11) 99999-9999"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
                     className="h-12 bg-secondary/30 border-border/50 focus:border-primary focus:ring-primary rounded-xl"
                     required
                   />

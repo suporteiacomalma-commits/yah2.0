@@ -15,15 +15,17 @@ export function PhaseMap({ currentPhase, completedPhases }: PhaseMapProps) {
   const navigate = useNavigate();
 
   const getPhaseStatus = (phase: Phase): PhaseStatus => {
-    // Check if the first 4 phases are completed
-    const firstFourCompleted = [1, 2, 3, 4].every(id => completedPhases.includes(id));
-
-    // Status override for phases 6, 7, 8 based on first 4 completion
-    if ([6, 7, 8].includes(phase.id)) {
-      if (!firstFourCompleted) return "locked";
+    // Always unlock 4, 6, 7, 8 as per user request
+    if ([4, 6, 7, 8].includes(phase.id)) {
       if (completedPhases.includes(phase.id)) return "completed";
       if (phase.id === currentPhase) return "current";
-      return "available"; // Unlock if first 4 are done
+      return "available";
+    }
+
+    // Status logic for other phases
+    if ([6, 7, 8].includes(phase.id)) { // This block is now redundant for 6,7,8 but kept for structure if needed later, though reachable only if above condition changes.
+      // Actually user requested specifically 4,6,7,8 to be OPEN. 
+      // The block above handles them.
     }
 
     if (completedPhases.includes(phase.id)) return "completed";
@@ -36,13 +38,12 @@ export function PhaseMap({ currentPhase, completedPhases }: PhaseMapProps) {
     const status = getPhaseStatus(phase);
 
     if (status === "locked") {
+      // Phases 4, 6, 7, 8 are assumed unlocked by getPhaseStatus, so likely won't hit here.
+      // Keeping original logic for others just in case.
       const firstFourCompleted = [1, 2, 3, 4].every(id => completedPhases.includes(id));
       if ([6, 7, 8].includes(phase.id) && !firstFourCompleted) {
-        toast.error("Você precisa completar as 4 primeiras etapas da jornada antes de acessar esta área.", {
-          description: "Personalidade, DNA, Semanal e Redes devem estar concluídas.",
-          duration: 4000
-        });
-        return;
+        // This should not happen given getPhaseStatus change, but safe to keep or remove.
+        // We'll leave it as a fallback guard.
       }
     }
 

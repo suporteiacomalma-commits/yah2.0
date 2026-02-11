@@ -318,6 +318,54 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
 
     const [adjustingBlock, setAdjustingBlock] = useState<{ tab: string, index: number } | null>(null);
     const [adjustmentText, setAdjustmentText] = useState("");
+    const [isGeneratingHeadline, setIsGeneratingHeadline] = useState(false);
+
+    const handleGenerateHeadline = async (tab: DetailTab, blockIndex?: number) => {
+        const toastId = toast.loading("Gerando sugestão de título...");
+        setIsGeneratingHeadline(true);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            if (!apiKey) throw new Error("API Key não configurada");
+
+            const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
+            const block = (blockIndex === undefined || blockIndex === 0)
+                ? dayData
+                : dayData.extraBlocks[blockIndex - 1];
+
+            const prompt = `Gere 1 (UM) título curto, magnético e persuasivo para um ${tab === 'feed' ? 'Post de Feed' : 'Stories'} do Instagram.
+            Formato: ${block.format}
+            Intenção: ${block.intention}
+            DNA da Marca: ${brand?.dna_tese}
+            Contexto Atual: ${block.headline || "Sem contexto definido"}
+            
+            Retorne APENAS o texto do título, sem aspas, sem explicações.`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: "Expert em copywriting de headlines virais. Você cria ganchos impossíveis de ignorar." },
+                        { role: "user", content: prompt }
+                    ]
+                })
+            });
+
+            const data = await response.json();
+            const newHeadline = data.choices[0].message.content.replace(/^["']|["']$/g, ''); // Remove quotes if present
+            handleDataChange(tab, "headline", newHeadline, blockIndex);
+            toast.success("Título sugerido!", { id: toastId });
+        } catch (error: any) {
+            toast.error("Erro ao gerar título", { id: toastId });
+        } finally {
+            setIsGeneratingHeadline(false);
+        }
+    };
+
 
     const handleWriteScript = async (tab: DetailTab, blockIndex?: number, adjustment?: string) => {
         const toastId = toast.loading(adjustment ? "Ajustando roteiro..." : "Gerando roteiro detalhado...");
@@ -1458,7 +1506,19 @@ ${block.caption || 'Sem legenda.'}`;
                                 <div className="space-y-4">
 
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Título / Tema</Label>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Título / Tema</Label>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleGenerateHeadline(detailTab, bIdx)}
+                                                disabled={isGeneratingHeadline}
+                                                className="h-5 px-2 text-[9px] text-accent hover:text-accent hover:bg-accent/10"
+                                            >
+                                                {isGeneratingHeadline ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                                                {isGeneratingHeadline ? "Gerando..." : "Sugerir Opção"}
+                                            </Button>
+                                        </div>
                                         <Input
                                             placeholder={detailTab === 'feed' ? "Título do post..." : "Micro-headline / Gancho..."}
                                             value={block.headline || ""}
@@ -1518,12 +1578,20 @@ ${block.caption || 'Sem legenda.'}`;
                                             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Roteiro / Conteúdo</Label>
                                             <span className="text-[9px] text-muted-foreground">{block.notes?.length || 0} caracteres</span>
                                         </div>
-                                        <Textarea
-                                            placeholder="Descreve aqui o roteiro detalhado..."
-                                            className="min-h-[160px] bg-background/40 resize-none text-sm leading-relaxed"
-                                            value={block.notes || ""}
-                                            onChange={(e) => handleDataChange(detailTab, "notes", e.target.value, bIdx)}
-                                        />
+                                        <div className="relative">
+                                            {isWritingScript && adjustingBlock?.index === bIdx && adjustingBlock?.tab === detailTab && (
+                                                <div className="absolute inset-0 bg-accent/5 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center animate-in fade-in duration-300 rounded-lg">
+                                                    <Loader2 className="w-6 h-6 text-accent animate-spin mb-2" />
+                                                    <span className="text-[10px] font-bold text-accent uppercase tracking-widest text-center px-4">Yah está escrevendo seu roteiro estrategicamente...</span>
+                                                </div>
+                                            )}
+                                            <Textarea
+                                                placeholder="Descreve aqui o roteiro detalhado..."
+                                                className="min-h-[160px] bg-background/40 resize-none text-sm leading-relaxed"
+                                                value={block.notes || ""}
+                                                onChange={(e) => handleDataChange(detailTab, "notes", e.target.value, bIdx)}
+                                            />
+                                        </div>
                                     </div>
 
                                     {detailTab === 'feed' && (
@@ -1543,12 +1611,20 @@ ${block.caption || 'Sem legenda.'}`;
                                                     </Button>
                                                 </div>
                                             </div>
-                                            <Textarea
-                                                placeholder="Escreva ou gere a legenda aqui..."
-                                                className="min-h-[100px] bg-background/40 resize-none text-sm leading-relaxed"
-                                                value={block.caption || ""}
-                                                onChange={(e) => handleDataChange(detailTab, "caption", e.target.value, bIdx)}
-                                            />
+                                            <div className="relative">
+                                                {isWritingCaption && (
+                                                    <div className="absolute inset-0 bg-accent/5 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center animate-in fade-in duration-300 rounded-lg">
+                                                        <Loader2 className="w-5 h-5 text-accent animate-spin mb-2" />
+                                                        <span className="text-[9px] font-bold text-accent uppercase tracking-widest">Criando legenda persuasiva...</span>
+                                                    </div>
+                                                )}
+                                                <Textarea
+                                                    placeholder="Escreva ou gere a legenda aqui..."
+                                                    className="min-h-[100px] bg-background/40 resize-none text-sm leading-relaxed"
+                                                    value={block.caption || ""}
+                                                    onChange={(e) => handleDataChange(detailTab, "caption", e.target.value, bIdx)}
+                                                />
+                                            </div>
                                         </div>
                                     )}
 

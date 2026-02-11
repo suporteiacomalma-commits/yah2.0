@@ -605,28 +605,28 @@ export default function IdeiaInbox() {
             if (!apiKey) throw new Error("API Key não configurada");
 
             const brandContext = brand ? `
-                Niche: ${brand.dna_nicho || 'Não definido'}
-                Produto: ${brand.dna_produto || 'Não definido'}
-                Objetivo: ${brand.dna_objetivo || 'Não definido'}
-                Essência: ${brand.result_essencia || 'Não definida'}
-                Pilares: ${brand.dna_pilares?.map((p: any) => p.name || p).join(', ') || 'Não definidos'}
-            ` : '';
+                                                        Niche: ${brand.dna_nicho || 'Não definido'}
+                                                        Produto: ${brand.dna_produto || 'Não definido'}
+                                                        Objetivo: ${brand.dna_objetivo || 'Não definido'}
+                                                        Essência: ${brand.result_essencia || 'Não definida'}
+                                                        Pilares: ${brand.dna_pilares?.map((p: any) => p.name || p).join(', ') || 'Não definidos'}
+                                                        ` : '';
 
             const folderInstruction = forcedFolder
                 ? `O usuário JÁ selecionou a pasta: "${forcedFolder}". OBRIGATORIAMENTE use "suggested_destination": "${forcedFolder}" e ajuste a "category" para a mais compatível com esta pasta.`
                 : `Analise e escolha a melhor pasta baseada no conteúdo.`;
 
             const prompt = `Você é a Yah, uma assistente de estratégia para mentes atípicas.
-            Sua tarefa é analisar a ideia do usuário e organizá-la seguindo regras estritas.
+                                                        Sua tarefa é analisar a ideia do usuário e organizá-la seguindo regras estritas.
 
-            CONTEXTO DO USUÁRIO:
-            ${brandContext}
+                                                        CONTEXTO DO USUÁRIO:
+                                                        ${brandContext}
 
-            MODO: ${mode}
-            CONTEÚDO PARA ANÁLISE: "${content}"
-            INSTRUÇÃO DE PASTA: ${folderInstruction}
+                                                        MODO: ${mode}
+                                                        CONTEÚDO PARA ANÁLISE: "${content}"
+                                                        INSTRUÇÃO DE PASTA: ${folderInstruction}
 
-            REGRAS DE CATEGORIZAÇÃO (OBRIGATÓRIO ESCOLHER UMA):
+                                                        REGRAS DE CATEGORIZAÇÃO (OBRIGATÓRIO ESCOLHER UMA):
             - Conteúdo (conteudo) -> Pasta: "Conteúdo"
             - Meta (meta) -> Pasta: "Metas"
             - Insight (insight) -> Pasta: "Insights"
@@ -634,52 +634,52 @@ export default function IdeiaInbox() {
             - Projeto (projeto) -> Pasta: "Projeto"
             - Stand-by (standby) -> Pasta: "Stand-by"
 
-            IMPORTANTE: O campo "suggested_destination" DEVE ser exatamente o nome de uma das pastas acima. Nunca retorne "Sem Pasta".
+                                                        IMPORTANTE: O campo "suggested_destination" DEVE ser exatamente o nome de uma das pastas acima. Nunca retorne "Sem Pasta".
 
-            REGRAS DE SAÍDA POR CATEGORIA:
+                                                        REGRAS DE SAÍDA POR CATEGORIA:
 
-            1. Se categoria = "conteudo":
-               Gere "sugestao_conteudo" com: semana_ideal (1-4), dia_ideal, formato_feed, formato_stories, headline, micro_headline, intencao_conteudo (identificação, educação, etc), mini_roteiro (array de passos) e observacoes.
+                                                        1. Se categoria = "conteudo":
+                                                        Gere "sugestao_conteudo" com: semana_ideal (1-4), dia_ideal, formato_feed, formato_stories, headline, micro_headline, intencao_conteudo (identificação, educação, etc), mini_roteiro (array de passos) e observacoes.
 
-            2. Se categoria = "meta":
-               Gere "sugestao_meta" com: descricao_meta, unidade, valor_alvo, checklist_passos (3-7 passos) e sugestao_inicio_calendario.
+                                                        2. Se categoria = "meta":
+                                                        Gere "sugestao_meta" com: descricao_meta, unidade, valor_alvo, checklist_passos (3-7 passos) e sugestao_inicio_calendario.
 
-            3. Se categoria = "insight":
-               Gere "sugestao_insight" com: descricao_regra, como_influencia_yah (array de strings) e formatos_afetados (array).
+                                                        3. Se categoria = "insight":
+                                                        Gere "sugestao_insight" com: descricao_regra, como_influencia_yah (array de strings) e formatos_afetados (array).
 
-            4. Se categoria = "projeto":
-               Gere "sugestao_projeto" com os 10 campos estratégicos para planejamento de projeto:
-               - visao: Descrição da visão de futuro do projeto.
-               - objetivo: O que se pretende alcançar com clareza.
-               - estrutura: Como o projeto será organizado/fases.
-               - acoes: Lista de ações práticas imediatas.
-               - execucao: Plano prático para o dia a dia.
-               - organizacao: Processos para manter a ordem.
-               - recursos: O que é necessário (ferramentas, pessoas, investimento).
-               - comunicacao: Como será divulgado, vendido ou explicado.
-               - metricas: Como medir o sucesso e progresso.
-               - ajustes: Pontos de atenção e possíveis correções.
+                                                        4. Se categoria = "projeto":
+                                                        Gere "sugestao_projeto" com os 10 campos estratégicos para planejamento de projeto:
+                                                        - visao: Descrição da visão de futuro do projeto.
+                                                        - objetivo: O que se pretende alcançar com clareza.
+                                                        - estrutura: Como o projeto será organizado/fases.
+                                                        - acoes: Lista de ações práticas imediatas.
+                                                        - execucao: Plano prático para o dia a dia.
+                                                        - organizacao: Processos para manter a ordem.
+                                                        - recursos: O que é necessário (ferramentas, pessoas, investimento).
+                                                        - comunicacao: Como será divulgado, vendido ou explicado.
+                                                        - metricas: Como medir o sucesso e progresso.
+                                                        - ajustes: Pontos de atenção e possíveis correções.
 
-            5. Se categoria = "produto":
-               Gere "sugestao_produto" com os 10 campos estratégicos para definição de oferta:
-               - nome: Nome do Produto / Serviço.
-               - categoria_produto: Categoria do produto ou serviço.
-               - o_que_e: O que é (descrição curta).
-               - problema: Problema que resolve.
-               - solucao: Solução / Abordagem.
-               - entregaveis: Entregáveis / Componentes do serviço.
-               - publico_ideal: Público ideal.
-               - preco_entrega: Preço e forma de entrega.
-               - argumentos_valor: Array com exatamente 3 argumentos de valor.
-               - promessa: A promessa em uma frase.
+                                                        5. Se categoria = "produto":
+                                                        Gere "sugestao_produto" com os 10 campos estratégicos para definição de oferta:
+                                                        - nome: Nome do Produto / Serviço.
+                                                        - categoria_produto: Categoria do produto ou serviço.
+                                                        - o_que_e: O que é (descrição curta).
+                                                        - problema: Problema que resolve.
+                                                        - solucao: Solução / Abordagem.
+                                                        - entregaveis: Entregáveis / Componentes do serviço.
+                                                        - publico_ideal: Público ideal.
+                                                        - preco_entrega: Preço e forma de entrega.
+                                                        - argumentos_valor: Array com exatamente 3 argumentos de valor.
+                                                        - promessa: A promessa em uma frase.
 
-            MODO RAJADA:
-            Se modo = "rajada", separe o conteúdo em itens individuais. Cada item deve ter "id_interno", "trecho_original" e sua própria análise completa.
+                                                        MODO RAJADA:
+                                                        Se modo = "rajada", separe o conteúdo em itens individuais. Cada item deve ter "id_interno", "trecho_original" e sua própria análise completa.
 
-            FORMATO DE RETORNO (JSON):
-            {
-                "modo": "${mode}",
-                ${mode === 'rajada' ? '"itens": [ ... ]' : `
+                                                        FORMATO DE RETORNO (JSON):
+                                                        {
+                                                            "modo": "${mode}",
+                                                        ${mode === 'rajada' ? '"itens": [ ... ]' : `
                 "category": "conteudo" | "meta" | "insight" | "produto" | "projeto" | "standby",
                 "title": "string",
                 "summary": "string",
@@ -723,7 +723,7 @@ export default function IdeiaInbox() {
                 "marcar_standby": boolean
                 `}
             }
-            Retorne APENAS o JSON.`;
+                                                        Retorne APENAS o JSON.`;
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -775,19 +775,19 @@ export default function IdeiaInbox() {
         setGeneratingField(fieldKey);
         try {
             const prompt = `Você é a Yah, especialista em estratégia.
-            Gere uma sugestão curta, direta e estratégica para o campo "${fieldLabel}" de um projeto.
+                                                        Gere uma sugestão curta, direta e estratégica para o campo "${fieldLabel}" de um projeto.
 
-            TÍTULO DO PROJETO: ${title}
-            RESUMO/CONTEXTO: ${summary}
-            
-            OUTROS CAMPOS JÁ DEFINIDOS (use como contexto se necessário):
-            ${Object.entries(sugestao_projeto)
+                                                        TÍTULO DO PROJETO: ${title}
+                                                        RESUMO/CONTEXTO: ${summary}
+
+                                                        OUTROS CAMPOS JÁ DEFINIDOS (use como contexto se necessário):
+                                                        ${Object.entries(sugestao_projeto)
                     .filter(([key, val]) => key !== fieldKey && val)
                     .map(([key, val]) => `- ${key}: ${val}`)
                     .join('\n')}
 
-            Regra de ouro: Seja específico, não genérico. Use tom de voz encorajador mas profissional. 
-            Retorne APENAS o texto da sugestão para este campo específico, em no máximo 3 parágrafos curtos ou lista de tópicos.`;
+                                                        Regra de ouro: Seja específico, não genérico. Use tom de voz encorajador mas profissional.
+                                                        Retorne APENAS o texto da sugestão para este campo específico, em no máximo 3 parágrafos curtos ou lista de tópicos.`;
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -851,21 +851,21 @@ export default function IdeiaInbox() {
         setGeneratingField(targetFieldKey);
         try {
             const prompt = `Você é a Yah, especialista em estratégia.
-            Gere uma sugestão curta, direta e estratégica para o campo "${fieldLabel}" de um produto ou serviço.
+                                                        Gere uma sugestão curta, direta e estratégica para o campo "${fieldLabel}" de um produto ou serviço.
 
-            NOME DO PRODUTO: ${title}
-            RESUMO/CONTEXTO: ${summary}
-            
-            OUTROS CAMPOS JÁ DEFINIDOS:
-            ${Object.entries(sugestao_produto)
+                                                        NOME DO PRODUTO: ${title}
+                                                        RESUMO/CONTEXTO: ${summary}
+
+                                                        OUTROS CAMPOS JÁ DEFINIDOS:
+                                                        ${Object.entries(sugestao_produto)
                     .filter(([key, val]) => key !== 'custom_fields' && key !== fieldKey && val)
                     .map(([key, val]) => `- ${key}: ${val}`)
                     .join('\n')}
-            ${customFields.map((f: any) => `- ${f.label}: ${f.value}`).join('\n')}
+                                                        ${customFields.map((f: any) => `- ${f.label}: ${f.value}`).join('\n')}
 
-            Regra de ouro: Seja específico, não genérico. Use tom de voz encorajador mas profissional. 
-            Se for "Argumentos de Valor", retorne exatamente 3 argumentos em formato de lista.
-            Retorne APENAS o texto da sugestão para este campo específico.`;
+                                                        Regra de ouro: Seja específico, não genérico. Use tom de voz encorajador mas profissional.
+                                                        Se for "Argumentos de Valor", retorne exatamente 3 argumentos em formato de lista.
+                                                        Retorne APENAS o texto da sugestão para este campo específico.`;
 
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -1244,7 +1244,7 @@ export default function IdeiaInbox() {
     );
 
     const renderProcessing = () => (
-        <div className="flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-700">
+        <div className="flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-700 min-h-[400px]">
             <div className="relative">
                 <div className="w-24 h-24 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
                 <Brain className="w-10 h-10 text-primary absolute inset-0 m-auto animate-pulse" />
@@ -1252,11 +1252,14 @@ export default function IdeiaInbox() {
             <div className="space-y-4">
                 <h3 className="text-2xl font-bold">Yah está processando...</h3>
                 <p className="text-yellow-500 italic">Do pensamento → à estrutura.</p>
-            </div>
-            <div className="flex gap-2">
-                {[1, 2, 3].map(i => (
-                    <div key={i} className="w-2 h-2 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />
-                ))}
+                <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs uppercase tracking-widest animate-pulse">
+                    <span>Gerando insights estratégicos</span>
+                    <span className="flex gap-1">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="w-1 h-1 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />
+                        ))}
+                    </span>
+                </div>
             </div>
         </div>
     );
@@ -2330,7 +2333,13 @@ export default function IdeiaInbox() {
                                         { key: 'metricas', label: 'Métricas', icon: BarChart3 },
                                         { key: 'ajustes', label: 'Ajustes', icon: Settings2 }
                                     ].map((field) => (
-                                        <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm">
+                                        <div key={field.key} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm relative overflow-hidden">
+                                            {generatingField === field.key && (
+                                                <div className="absolute inset-0 bg-blue-500/5 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center animate-in fade-in duration-300">
+                                                    <Loader2 className="w-6 h-6 text-blue-500 animate-spin mb-2" />
+                                                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Sugerindo com IA...</span>
+                                                </div>
+                                            )}
                                             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                                                 <div className="flex items-center gap-2 w-full sm:w-auto max-w-full">
                                                     <field.icon className="w-4 h-4 text-blue-500/70 group-hover:text-blue-500 transition-colors shrink-0" />

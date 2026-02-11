@@ -398,7 +398,10 @@ Frase do usuário: "${textToUse}"`;
                     variant="ghost"
                     size="icon"
                     onClick={() => navigate("/")}
-                    className="fixed top-24 left-6 z-[100] md:top-6 h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md group"
+                    className={cn(
+                        "fixed top-24 left-6 z-[100] md:top-6 h-10 w-10 md:h-12 md:w-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md group",
+                        showModal && "hidden"
+                    )}
                 >
                     <ArrowLeft className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:-translate-x-1" />
                 </Button>
@@ -618,14 +621,24 @@ Frase do usuário: "${textToUse}"`;
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Quando?</Label>
-                                                <Input type="date" value={event.data} onChange={e => updateEvent(index, { data: e.target.value })} className="bg-white/10 border-white/10 h-10 rounded-xl px-3 md:px-4 font-bold text-sm text-white" />
+                                                <Input
+                                                    type="date"
+                                                    value={event.data}
+                                                    onChange={e => updateEvent(index, { data: e.target.value })}
+                                                    className="bg-white/10 border-white/10 h-11 rounded-xl px-4 font-bold text-sm text-white w-full appearance-none min-w-0"
+                                                />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Qual horário?</Label>
-                                                <Input type="time" value={event.hora || ""} onChange={e => updateEvent(index, { hora: e.target.value || null })} className="bg-white/10 border-white/10 h-10 rounded-xl px-3 md:px-4 font-bold text-sm text-white" />
+                                                <Input
+                                                    type="time"
+                                                    value={event.hora || ""}
+                                                    onChange={e => updateEvent(index, { hora: e.target.value || null })}
+                                                    className="bg-white/10 border-white/10 h-11 rounded-xl px-4 font-bold text-sm text-white w-full appearance-none min-w-0"
+                                                />
                                             </div>
                                         </div>
 

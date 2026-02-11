@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { useMicrophone } from "@/hooks/useMicrophone";
 import { CenterToast, useCenterToast } from "@/components/ui/center-toast";
 
 const LIFE_BLOCKS = [
@@ -47,9 +48,13 @@ export default function Assistant() {
 
     // UI States
     const [inputText, setInputText] = useState("");
-    const [recordingTime, setRecordingTime] = useState(0);
-    const [transcript, setTranscript] = useState("");
-    const [isListening, setIsListening] = useState(false);
+    const {
+        isListening,
+        transcript,
+        recordingTime,
+        startRecording: startRecordingHook,
+        stopRecording: stopRecordingHook
+    } = useMicrophone();
     const [isProcessing, setIsProcessing] = useState(false);
     const [isProcessingImage, setIsProcessingImage] = useState(false);
     const [showTextInput, setShowTextInput] = useState(false);
@@ -82,74 +87,19 @@ export default function Assistant() {
 
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const audioChunksRef = useRef<Blob[]>([]);
-    const timerRef = useRef<any>(null);
-    const recognitionRef = useRef<any>(null);
 
     // --- AUDIO HANDLING ---
     // --- AUDIO HANDLING ---
     const startRecording = async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream);
-            audioChunksRef.current = [];
-
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) audioChunksRef.current.push(e.data);
-            };
-
-            recorder.onstop = async () => {
-                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                if (blob.size > 0) {
-                    await transcribeAudio(blob);
-                }
-                stream.getTracks().forEach(track => track.stop());
-            };
-
-            recorder.start();
-            mediaRecorderRef.current = recorder;
-            setIsListening(true);
-            setRecordingTime(0);
-
-            timerRef.current = setInterval(() => {
-                setRecordingTime(prev => prev + 1);
-            }, 1000);
-
-            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                const rec = new SpeechRecognition();
-                rec.continuous = true;
-                rec.interimResults = true;
-                rec.lang = "pt-BR";
-                rec.onresult = (event: any) => {
-                    let interim = "";
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        interim += event.results[i][0].transcript;
-                    }
-                    setTranscript(interim);
-                };
-                rec.start();
-                recognitionRef.current = rec;
-            }
-
+            await startRecordingHook(transcribeAudio);
         } catch (error) {
-            console.error("Mic error:", error);
-            toast.error("Erro ao acessar microfone.");
+            console.error("Recording error:", error);
         }
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-            mediaRecorderRef.current.stop();
-        }
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-        }
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-        }
-        setIsListening(false);
+        stopRecordingHook();
     };
 
     const transcribeAudio = async (blob: Blob) => {
@@ -173,7 +123,9 @@ export default function Assistant() {
             const data = await res.json();
             const text = data.text;
             setInputText(text);
-            setShowCapturedCard(true); // Always show captured card after audio
+
+            // Auto-organize after transcription for a faster flow
+            await handleOrganize(text);
         } catch (error) {
             toast.error("Houve um erro ao entender o áudio.");
         } finally {
@@ -230,8 +182,9 @@ export default function Assistant() {
         }
     };
 
-    const handleOrganize = async () => {
-        if (!inputText.trim()) return;
+    const handleOrganize = async (overrideText?: string) => {
+        const textToUse = overrideText || inputText;
+        if (!textToUse.trim()) return;
 
         setIsProcessing(true);
         try {
@@ -268,7 +221,7 @@ Observações importantes:
 - Identifique múltiplos eventos se eles existirem na mesma frase.
 - Seja inteligente com o contexto.
 
-Frase do usuário: "${inputText}"`;
+Frase do usuário: "${textToUse}"`;
 
             const res = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -377,6 +330,32 @@ Frase do usuário: "${inputText}"`;
         }
     };
 
+    const renderProcessing = () => (
+        <div className="flex flex-col items-center justify-center space-y-8 animate-in fade-in zoom-in duration-500 py-12">
+            <div className="relative">
+                <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
+                    <Brain className="w-12 h-12 text-primary animate-bounce" />
+                </div>
+                <div className="absolute -inset-4 border-2 border-primary/20 rounded-full animate-ping opacity-50" />
+            </div>
+            <div className="text-center space-y-3">
+                <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">Yah está processando...</h3>
+                <p className="text-white/40 text-sm font-medium max-w-[200px] leading-relaxed">
+                    Extraindo inteligência e organizando seus eventos.
+                </p>
+                <div className="flex gap-1 justify-center">
+                    {[0, 1, 2].map((i) => (
+                        <div
+                            key={i}
+                            className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse"
+                            style={{ animationDelay: `${i * 0.2}s` }}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
     const renderRecording = () => (
         <div className="flex flex-col items-center justify-center text-center space-y-10 animate-in zoom-in-95 duration-300 w-full">
             <div className="relative">
@@ -433,6 +412,8 @@ Frase do usuário: "${inputText}"`;
                     <div className="flex flex-col items-center space-y-10 w-full max-w-2xl py-8">
                         {isListening ? (
                             renderRecording()
+                        ) : isProcessing && !showModal ? (
+                            renderProcessing()
                         ) : (
                             <>
                                 <div className="relative group cursor-pointer" onClick={startRecording}>
@@ -475,7 +456,7 @@ Frase do usuário: "${inputText}"`;
 
                                             <div className="mt-8 flex justify-end">
                                                 <Button
-                                                    onClick={handleOrganize}
+                                                    onClick={() => handleOrganize()}
                                                     disabled={isProcessing}
                                                     className="h-14 px-8 rounded-2xl bg-white text-black hover:bg-white/90 font-black text-lg transition-all flex items-center gap-3"
                                                 >
@@ -509,7 +490,7 @@ Frase do usuário: "${inputText}"`;
                                     <Button
                                         size="icon"
                                         className="shrink-0 rounded-2xl h-10 w-10 sm:h-12 sm:w-12 gradient-primary shadow-lg"
-                                        onClick={handleOrganize}
+                                        onClick={() => handleOrganize()}
                                         disabled={isProcessing}
                                     >
                                         {isProcessing ? (

@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/hooks/useBrand";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { useMicrophone } from "@/hooks/useMicrophone";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -383,12 +384,16 @@ export default function IdeiaInbox() {
 
     // State Management
     const [inboxState, setInboxState] = useState<InboxState>("initial");
-    const [isListening, setIsListening] = useState(false);
-    const [transcript, setTranscript] = useState("");
+    const {
+        isListening,
+        transcript,
+        recordingTime,
+        startRecording: startRecordingHook,
+        stopRecording: stopRecordingHook
+    } = useMicrophone();
     const [editingTranscript, setEditingTranscript] = useState("");
     const [isProcessing, setIsProcessing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<any>(null);
-    const [recordingTime, setRecordingTime] = useState(0);
     const [savedIdeas, setSavedIdeas] = useState<any[]>([]);
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [selectedIdea, setSelectedIdea] = useState<any>(null);
@@ -421,10 +426,6 @@ export default function IdeiaInbox() {
     };
 
     // Refs
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const audioChunksRef = useRef<Blob[]>([]);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
-    const recognitionRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -462,81 +463,16 @@ export default function IdeiaInbox() {
 
     // Recording Logic
     const startRecording = async () => {
+        setInboxState("recording");
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream);
-            audioChunksRef.current = [];
-
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) audioChunksRef.current.push(e.data);
-            };
-
-            recorder.onstop = async () => {
-                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                if (blob.size > 0) {
-                    await transcribeAudio(blob);
-                }
-                stream.getTracks().forEach(track => track.stop());
-            };
-
-            recorder.start();
-            mediaRecorderRef.current = recorder;
-            setIsListening(true);
-            setInboxState("recording");
-            setRecordingTime(0);
-
-            timerRef.current = setInterval(() => {
-                setRecordingTime(prev => {
-                    if (prev >= 60 && inboxState !== "burst_mode") {
-                        setInboxState("burst_mode");
-                        toast.info("Modo Rajada ativado: Continue falando!");
-                    }
-                    return prev + 1;
-                });
-            }, 1000);
-
-            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                const rec = new SpeechRecognition();
-                rec.continuous = true;
-                rec.interimResults = true;
-                rec.lang = "pt-BR";
-                rec.onresult = (event: any) => {
-                    let interim = "";
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        interim += event.results[i][0].transcript;
-                    }
-                    setTranscript(interim);
-                };
-                rec.start();
-                recognitionRef.current = rec;
-            }
-
+            await startRecordingHook(transcribeAudio);
         } catch (error) {
-            console.error("Mic error:", error);
-            toast.error("Erro ao acessar microfone.");
+            setInboxState("initial");
         }
     };
 
     const stopRecording = () => {
-        // Cleanup MediaRecorder
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-            // Remove onstop handler to prevent auto-transcription if we already have text
-            mediaRecorderRef.current.onstop = null;
-            mediaRecorderRef.current.stop();
-        }
-
-        // Cleanup Timer
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-        }
-
-        // Cleanup SpeechRecognition
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-        }
-
-        setIsListening(false);
+        stopRecordingHook();
         setInboxState("processing");
 
         // Use SpeechRecognition result if available, otherwise fallback to silence/error handling
@@ -545,8 +481,11 @@ export default function IdeiaInbox() {
                 setEditingTranscript(transcript);
                 analyzeIdea(transcript, 'normal', manualFolder);
             } else {
-                setInboxState("initial");
-                toast.error("Não entendi o que você disse.");
+                // If Whisper hasn't finished (transcribeAudio), we check if we have localized transcript
+                if (inboxState === "processing" && !transcript) {
+                    setInboxState("initial");
+                    toast.error("Não entendi o que você disse.");
+                }
             }
         }, 500);
     };
@@ -572,8 +511,11 @@ export default function IdeiaInbox() {
             if (!response.ok) throw new Error("Whisper failed");
 
             const data = await response.json();
-            setEditingTranscript(data.text);
-            setInboxState("review");
+            const text = data.text;
+            setEditingTranscript(text);
+
+            // Auto-analyze after audio transcription
+            await analyzeIdea(text, 'normal', manualFolder);
         } catch (error: any) {
             console.error("Transcription error:", error);
             toast.error("Erro na transcrição: " + error.message);

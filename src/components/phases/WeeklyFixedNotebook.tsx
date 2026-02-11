@@ -217,60 +217,19 @@ export function WeeklyFixedNotebook() {
         const toastId = toast.loading("Gerando estrutura de 4 semanas com IA... Isso pode levar alguns segundos.");
         setIsGenerating(true);
         try {
+            // Retrieve API Key from settings (fallback for Edge Function)
             const apiKey = getSetting("openai_api_key")?.value;
-            if (!apiKey) throw new Error("API Key não configurada");
 
-            const prompt = `Você é um Estrategista de Conteúdo sênior.
-      OBJETIVO: Gerar uma estrutura de 4 semanas de conteúdo para Instagram.
-      
-      ESTRUTURA OBRIGATÓRIA DO JSON:
-      Gere um objeto JSON com a chave "weeks" que contenha uma lista de 4 objetos (um para cada semana).
-      Cada semana deve ter chaves numéricas de 0 a 6 (representando Domingo a Sábado).
-      Exemplo de mapeamento: 0: Domingo, 1: Segunda, 2: Terça, 3: Quarta, 4: Quinta, 5: Sexta, 6: Sábado.
-      
-      REGRAS CRÍTICAS DE FREQUÊNCIA:
-      - Frequência: ${routineData.routine_posts_per_week} posts por semana.
-      - Dias de Postagem PERMITIDOS: ${routineData.routine_posting_days?.join(", ")}.
-      - Importante: Gere conteúdo APENAS para os dias listados em "Dias de Postagem".
-      - Para os dias NÃO listados, retorne os objetos feed e stories vazios ou nulos.
-      
-      CONTEÚDO PARA CADA DIA ATIVO (JSON):
-      - feed: { format, intention, headline, instruction, status: 'planned', notes: '' }
-        IMPORTANTE: 'format' do feed DEVE ser EXATAMENTE um destes: Carrossel, Reels, Foto, Alternar.
-      - stories: { format, intention, headline, instruction, status: 'planned', notes: '' }
-        IMPORTANTE: 'format' do stories DEVE ser EXATAMENTE um destes: Caixa, Diário, Sequência, Conversa.
-      
-      CONTEXTO DA MARCA:
-      Nome: ${brand?.name}
-      Setor: ${brand?.sector}
-      DNA: ${brand?.dna_tese}
-      Personalidade: ${brand?.result_essencia}
-      Intenções Preferidas: ${JSON.stringify(routineData.routine_intentions_prefs)}
-      Formatos Preferidos: ${JSON.stringify(routineData.routine_feed_format_prefs)}
-      Horários de Postagem: ${JSON.stringify(routineData.routine_fixed_hours)}
-      
-      Use tons de voz: ${brand?.user_tone_selected?.join(", ")}.
-      As instruções devem ser curtas e diretas ao ponto.
-      SAÍDA EXCLUSIVAMENTE EM JSON.`;
-
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [
-                        { role: "system", content: "Expert em branding e estratégia de conteúdo. Saída sempre em JSON com a chave 'weeks'." },
-                        { role: "user", content: prompt }
-                    ],
-                    response_format: { type: "json_object" }
-                })
+            // Call Supabase Edge Function
+            const { data: result, error } = await supabase.functions.invoke('generate-weekly-structure', {
+                body: {
+                    brand,
+                    routine: routineData,
+                    apiKey // Pass the key to the function
+                }
             });
 
-            const data = await response.json();
-            let result = JSON.parse(data.choices[0].message.content);
+            if (error) throw error;
 
             if (!result || !result.weeks || !Array.isArray(result.weeks)) {
                 console.error("AI response invalid:", result);
@@ -328,7 +287,8 @@ export function WeeklyFixedNotebook() {
             setScreen("vision");
             toast.success("Estratégia semanal gerada com sucesso!", { id: toastId });
         } catch (error: any) {
-            toast.error("Erro ao gerar: " + error.message, { id: toastId });
+            console.error("Erro detalhado:", error);
+            toast.error("Erro ao gerar: " + (error.message || "Erro desconhecido"), { id: toastId });
         } finally {
             setIsGenerating(false);
         }
@@ -1111,7 +1071,23 @@ ${block.caption || 'Sem legenda.'}`;
 
     const renderRoutine = () => {
         return (
-            <div className="space-y-8 animate-in slide-in-from-right-4 duration-500 max-w-2xl mx-auto">
+            <div className="space-y-8 animate-in slide-in-from-right-4 duration-500 max-w-2xl mx-auto relative">
+                {isGenerating && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                        <div className="bg-[#1E1E1E] border border-[#B6BC45]/30 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 mx-4 animate-in fade-in zoom-in duration-300">
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-[#B6BC45]/20 blur-xl rounded-full" />
+                                <Loader2 className="w-16 h-16 text-[#B6BC45] animate-spin mx-auto relative z-10" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-bold text-[#EEEDE9]">Gerando sua estrutura de 4 semanas...</h3>
+                                <p className="text-sm text-[#999] leading-relaxed">
+                                    Por favor, <span className="text-[#B6BC45] font-semibold">não saia desta tela ou feche o app</span> para garantir que tudo seja gerado corretamente.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div className="space-y-2">
                     <Button variant="ghost" size="sm" onClick={() => setScreen("vision")} className="mb-2">
                         <ChevronLeft className="w-4 h-4 mr-1" /> Voltar

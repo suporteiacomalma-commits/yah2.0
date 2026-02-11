@@ -126,7 +126,7 @@ const DAILY_AI_TIPS: Record<number, { title: string; topic: string; format: stri
     }
 };
 
-export function WeeklyFixedNotebook() {
+export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void }) {
     const { user } = useAuth();
     const { brand, updateBrand } = useBrand();
     const { getSetting } = useSystemSettings();
@@ -203,15 +203,27 @@ export function WeeklyFixedNotebook() {
         }
     };
 
-    const saveWeeklyData = async () => {
+    const saveWeeklyData = async (silent: boolean = false) => {
         try {
             await updateBrand.mutateAsync({ updates: { weekly_structure_data: weeklyData } });
-            toast.success("Ajustes salvos!");
+            if (!silent) toast.success("Ajustes salvos!");
             isDirty.current = false;
         } catch (error) {
-            toast.error("Erro ao salvar ajustes");
+            if (!silent) toast.error("Erro ao salvar ajustes");
         }
     };
+
+    // Auto-save effect
+    useEffect(() => {
+        if (!isDirty.current) return;
+
+        const timeoutId = setTimeout(() => {
+            saveWeeklyData(true);
+        }, 2000);
+
+        return () => clearTimeout(timeoutId);
+    }, [weeklyData]);
+
 
     const generateWeeklyStructure = async () => {
         const toastId = toast.loading("Gerando estrutura de 4 semanas com IA... Isso pode levar alguns segundos.");
@@ -258,7 +270,9 @@ export function WeeklyFixedNotebook() {
                                 headline: aiContent.feed?.headline || 'Título pendente...',
                                 instruction: aiContent.feed?.instruction || 'Crie um post engajador.',
                                 status: 'planned',
-                                notes: ''
+                                notes: '',
+                                time: aiContent.feed?.time || routineData.routine_fixed_hours?.[0] || '',
+                                link: aiContent.feed?.link || ''
                             },
                             stories: {
                                 format: aiContent.stories?.format || 'Sequência',
@@ -266,7 +280,9 @@ export function WeeklyFixedNotebook() {
                                 headline: aiContent.stories?.headline || 'Headline pendente...',
                                 instruction: aiContent.stories?.instruction || 'Compartilhe nos stories.',
                                 status: 'planned',
-                                notes: ''
+                                notes: '',
+                                time: aiContent.stories?.time || routineData.routine_fixed_hours?.[0] || '',
+                                link: aiContent.stories?.link || ''
                             }
                         };
                     } else {
@@ -286,6 +302,12 @@ export function WeeklyFixedNotebook() {
             setWeeklyData(finalWeeks);
             setScreen("vision");
             toast.success("Estratégia semanal gerada com sucesso!", { id: toastId });
+
+            if (onComplete) {
+                setTimeout(() => {
+                    onComplete();
+                }, 1500);
+            }
         } catch (error: any) {
             console.error("Erro detalhado:", error);
             toast.error("Erro ao gerar: " + (error.message || "Erro desconhecido"), { id: toastId });
@@ -339,7 +361,7 @@ export function WeeklyFixedNotebook() {
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        { role: "system", content: "Expert em copywriting e roteirização para redes sociais. Você foca em manter a voz da marca e a estratégia do conteúdo." },
+                        { role: "system", content: "Expert em copywriting e roteirização para redes sociais. Você foca em manter a voz da marca e a estratégia do conteúdo. NÃO use markdown, negrito (**), itálico ou qualquer formatação especial. Apenas texto puro e direto." },
                         { role: "user", content: prompt }
                     ]
                 })
@@ -1406,7 +1428,7 @@ ${block.caption || 'Sem legenda.'}`;
                             </PopoverContent>
                         </Popover>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={saveWeeklyData} className="text-accent"><Save className="w-4 h-4 mr-1" /> Salvar</Button>
+                    <Button variant="ghost" size="sm" onClick={() => saveWeeklyData()} className="text-accent"><Save className="w-4 h-4 mr-1" /> Salvar</Button>
                 </div>
 
                 <div className="space-y-8">

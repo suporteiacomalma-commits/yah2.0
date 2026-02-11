@@ -39,10 +39,13 @@ Deno.serve(async (req) => {
       - Para os dias NÃO listados, retorne os objetos feed e stories vazios ou nulos.
       
       CONTEÚDO PARA CADA DIA ATIVO (JSON):
-      - feed: { format, intention, headline, instruction, status: 'planned', notes: '' }
+      - feed: { format, intention, headline, instruction, time, link, status: 'planned', notes: '' }
         IMPORTANTE: 'format' do feed DEVE ser EXATAMENTE um destes: Carrossel, Reels, Foto, Alternar.
-      - stories: { format, intention, headline, instruction, status: 'planned', notes: '' }
+        'time': Sugira um horário da lista de 'Horários de Postagem'.
+        'link': Deixe vazio ou sugira um link de referência se houver contexto.
+      - stories: { format, intention, headline, instruction, time, link, status: 'planned', notes: '' }
         IMPORTANTE: 'format' do stories DEVE ser EXATAMENTE um destes: Caixa, Diário, Sequência, Conversa.
+        'time': Sugira um horário da lista de 'Horários de Postagem'.
       
       CONTEXTO DA MARCA:
       Nome: ${brand?.name}

@@ -113,7 +113,7 @@ export default function PhasePage() {
             ) : phaseNumber === 2 ? (
               <BrandDNANotebook />
             ) : phaseNumber === 3 ? (
-              <WeeklyFixedNotebook />
+              <WeeklyFixedNotebook onComplete={handleComplete} />
             ) : phaseNumber === 4 ? (
               <SocialOptimization />
             ) : phaseNumber === 5 ? (
@@ -138,7 +138,7 @@ export default function PhasePage() {
           </div>
 
           {/* Complete Button */}
-          {!isCompleted && phaseNumber !== 6 && phaseNumber !== 7 && phaseNumber !== 8 && (
+          {!isCompleted && phaseNumber !== 3 && phaseNumber !== 6 && phaseNumber !== 7 && phaseNumber !== 8 && (
             <div className="flex justify-end animate-fade-in" style={{ animationDelay: "0.2s" }}>
               <Button
                 onClick={handleComplete}

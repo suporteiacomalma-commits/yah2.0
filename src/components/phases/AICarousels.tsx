@@ -1406,24 +1406,46 @@ SEMPRE:
 
     // Unified helper for sharing or downloading
     const shareOrDownload = async (files: File[], fallbackName: string) => {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        console.log(`[Export] Device Mobile: ${isMobile}, Files: ${files.length}`);
+
         // Try native sharing first (best for Mobile "Save to Gallery")
-        if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+        if (navigator.share) {
             try {
-                await navigator.share({
-                    files: files,
-                    title: carousel.topic || 'Carrossel Yah 2.0',
-                    text: 'Meu carrossel criado com Yah 2.0'
-                });
-                return true; // Share successful
+                const canShare = navigator.canShare && navigator.canShare({ files });
+                console.log(`[Export] navigator.canShare: ${canShare}`);
+
+                if (canShare) {
+                    await navigator.share({
+                        files: files,
+                        title: carousel.topic || 'Carrossel Yah 2.0',
+                        text: 'Meu carrossel criado com Yah 2.0'
+                    });
+                    return true;
+                } else if (isMobile && files.length > 1) {
+                    // If we are on mobile but can't share all at once, try sharing 5 by 5
+                    console.warn("[Export] Batch share not supported, trying smaller batches...");
+                    const mid = Math.ceil(files.length / 2);
+                    const batch1 = files.slice(0, mid);
+                    const batch2 = files.slice(mid);
+
+                    toast.info("Compartilhando em 2 blocos para compatibilidade...");
+
+                    await navigator.share({ files: batch1, title: 'Parte 1' });
+                    await new Promise(r => setTimeout(r, 500));
+                    await navigator.share({ files: batch2, title: 'Parte 2' });
+                    return true;
+                }
             } catch (error: any) {
-                // Ignore AbortError (user cancelled share sheet)
-                if (error.name === 'AbortError') return true;
-                console.warn("Share failed, falling back to download", error);
+                if (error.name === 'AbortError') {
+                    console.log("[Export] User cancelled share.");
+                    return true;
+                }
+                console.error("[Export] Share failed:", error);
             }
         }
 
         // Fallback: Direct Download
-        // If single file, download directly
         if (files.length === 1) {
             const url = URL.createObjectURL(files[0]);
             const link = document.createElement("a");
@@ -1433,10 +1455,9 @@ SEMPRE:
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            return false; // Downloaded, not shared
+            return false;
         }
 
-        // Return false to let caller handle ZIP or other multi-file fallbacks
         return false;
     };
 

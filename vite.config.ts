@@ -7,12 +7,21 @@ import { VitePWA } from 'vite-plugin-pwa';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "::",
+    host: "0.0.0.0",
     port: 8080,
+    strictPort: true,
+    cors: true,
+    hmr: {
+      clientPort: 8080, // Force client to connect to same port
+    },
+    allowedHosts: ["all", "192.168.1.101", "localhost", "127.0.0.1"],
+  },
+  build: {
+    target: 'es2015', // Support older mobile browsers
   },
   plugins: [
     react(),
-    mode === "development" && componentTagger(),
+    // mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icons/*.png'],

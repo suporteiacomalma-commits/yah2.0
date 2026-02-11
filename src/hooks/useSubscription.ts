@@ -108,6 +108,7 @@ export function useSubscription() {
         isLoading,
         refetch,
         isPremium: subscription?.plan === 'premium',
+        isTrial: subscription?.plan === 'trial',
         isAdmin: subscription?.isAdmin,
         daysRemaining: subscription?.daysRemaining,
         isExpired: subscription?.isExpired,

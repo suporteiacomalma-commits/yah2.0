@@ -46,7 +46,7 @@ export const DashboardService = {
             throw error;
         }
 
-        const stats = data as DashboardStats;
+        const stats = data as unknown as DashboardStats;
 
         return {
             ...stats,

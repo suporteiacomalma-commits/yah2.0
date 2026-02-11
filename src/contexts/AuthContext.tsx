@@ -20,21 +20,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Debug log for mobile
+    const log = (msg: string) => {
+      console.log(msg);
+      // if ((window as any).__debugLog) (window as any).__debugLog(msg);
+    };
+
+    log("AuthProvider mounting...");
+
+    // Timeout fail-safe: if Supabase takes too long, stop loading
+    const timeoutTimer = setTimeout(() => {
+      if (loading) {
+        log("Auth timeout reached (5s). Forcing loading=false.");
+        setLoading(false);
+      }
+    }, 5000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        log(`Auth event: ${event}`);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        clearTimeout(timeoutTimer);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) log(`getSession error: ${error.message}`);
+      else log(`getSession success: ${session ? 'User found' : 'No user'}`);
+
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      clearTimeout(timeoutTimer);
+    }).catch(err => {
+      log(`getSession exception: ${err}`);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeoutTimer);
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {

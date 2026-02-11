@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useBrand } from "@/hooks/useBrand";
 import { Loader2 } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { DashboardService } from "@/services/dashboard-service";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth"; // Corrected from Login/Register
 import Onboarding from "./pages/Onboarding";
@@ -22,7 +24,37 @@ import ExploreMap from "./pages/ExploreMap";
 import NotFound from "./pages/NotFound";
 import { InstallPrompt } from "./components/pwa/InstallPrompt";
 // import { DebugOverlay, debugLog } from "./lib/mobile-debug";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+
+// Usage Tracker Component
+function UsageTracker() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const lastPathRef = useRef(location.pathname);
+  const timeActiveRef = useRef(0);
+
+  // Track screen views
+  useEffect(() => {
+    if (user && location.pathname !== lastPathRef.current) {
+      DashboardService.logActivity(0, 1);
+      lastPathRef.current = location.pathname;
+    }
+  }, [location, user]);
+
+  // Track active time (every 5 minutes)
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      // Log 5 minutes of activity
+      DashboardService.logActivity(5, 0);
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  return null;
+}
 
 // Re-defining inline components to avoid import errors
 function ProtectedRouteInline({ children, requireAdmin }: { children: React.ReactNode, requireAdmin?: boolean }) {
@@ -86,77 +118,80 @@ const AppRoutes = () => {
   const { user } = useAuth();
 
   return (
-    <Routes>
-      <Route path="/" element={
-        user ? <Navigate to="/dashboard" replace /> : <Navigate to="/auth" replace />
-      } />
+    <>
+      <UsageTracker />
+      <Routes>
+        <Route path="/" element={
+          user ? <Navigate to="/dashboard" replace /> : <Navigate to="/auth" replace />
+        } />
 
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/login" element={<Navigate to="/auth" replace />} />
-      <Route path="/register" element={<Navigate to="/auth" replace />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/login" element={<Navigate to="/auth" replace />} />
+        <Route path="/register" element={<Navigate to="/auth" replace />} />
 
-      <Route path="/onboarding/*" element={
-        <OnboardingRoute>
-          <Onboarding />
-        </OnboardingRoute>
-      } />
+        <Route path="/onboarding/*" element={
+          <OnboardingRoute>
+            <Onboarding />
+          </OnboardingRoute>
+        } />
 
-      <Route path="/dashboard" element={
-        <ProtectedRouteInline>
-          <Dashboard />
-        </ProtectedRouteInline>
-      } />
+        <Route path="/dashboard" element={
+          <ProtectedRouteInline>
+            <Dashboard />
+          </ProtectedRouteInline>
+        } />
 
-      <Route path="/profile" element={
-        <ProtectedRouteInline>
-          <Profile />
-        </ProtectedRouteInline>
-      } />
+        <Route path="/profile" element={
+          <ProtectedRouteInline>
+            <Profile />
+          </ProtectedRouteInline>
+        } />
 
-      <Route path="/phase/:phaseId/*" element={
-        <ProtectedRouteInline>
-          <PhasePage />
-        </ProtectedRouteInline>
-      } />
+        <Route path="/phase/:phaseId/*" element={
+          <ProtectedRouteInline>
+            <PhasePage />
+          </ProtectedRouteInline>
+        } />
 
-      <Route path="/ideia-inbox" element={
-        <ProtectedRouteInline>
-          <IdeiaInbox />
-        </ProtectedRouteInline>
-      } />
+        <Route path="/ideia-inbox" element={
+          <ProtectedRouteInline>
+            <IdeiaInbox />
+          </ProtectedRouteInline>
+        } />
 
-      <Route path="/welcome" element={
-        <ProtectedRouteInline>
-          <Welcome />
-        </ProtectedRouteInline>
-      } />
+        <Route path="/welcome" element={
+          <ProtectedRouteInline>
+            <Welcome />
+          </ProtectedRouteInline>
+        } />
 
-      <Route path="/assistant" element={
-        <ProtectedRouteInline>
-          <Assistant />
-        </ProtectedRouteInline>
-      } />
+        <Route path="/assistant" element={
+          <ProtectedRouteInline>
+            <Assistant />
+          </ProtectedRouteInline>
+        } />
 
-      <Route path="/calendar" element={
-        <ProtectedRouteInline>
-          <Calendar />
-        </ProtectedRouteInline>
-      } />
+        <Route path="/calendar" element={
+          <ProtectedRouteInline>
+            <Calendar />
+          </ProtectedRouteInline>
+        } />
 
-      <Route path="/explore-map" element={
-        <ProtectedRouteInline>
-          <ExploreMap />
-        </ProtectedRouteInline>
-      } />
+        <Route path="/explore-map" element={
+          <ProtectedRouteInline>
+            <ExploreMap />
+          </ProtectedRouteInline>
+        } />
 
-      <Route path="/admin/*" element={
-        <AdminRoute>
-          <Admin />
-        </AdminRoute>
-      } />
+        <Route path="/admin/*" element={
+          <AdminRoute>
+            <Admin />
+          </AdminRoute>
+        } />
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 };
 

@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { MinimalHeader } from "./MinimalHeader";
-import { TrialBanner } from "./TrialBanner";
+
 
 interface MinimalLayoutProps {
   children: ReactNode;
@@ -17,7 +17,7 @@ export function MinimalLayout({ children, brandName }: MinimalLayoutProps) {
         isPurchaseOpen={isPurchaseOpen}
         setIsPurchaseOpen={setIsPurchaseOpen}
       />
-      <TrialBanner onUpgradeClick={() => setIsPurchaseOpen(true)} />
+
       <main className="flex-1 flex flex-col">
         {children}
       </main>

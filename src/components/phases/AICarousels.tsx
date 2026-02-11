@@ -1436,7 +1436,7 @@ SEMPRE:
             return false; // Downloaded, not shared
         }
 
-        // If multiple files, zip them (handled by caller or here? keeping existing zip logic in caller for now to minimize refactor risk of complex zip logic)
+        // Return false to let caller handle ZIP or other multi-file fallbacks
         return false;
     };
 
@@ -1561,14 +1561,16 @@ SEMPRE:
     const handleExport = async () => {
         if (!carousel.slides?.length) return;
         setIsExporting(true);
-        const toastId = toast.loading("Preparando imagens para exportação...");
+        const toastId = toast.loading("Preparando carrossel completo...");
 
         try {
             const files: File[] = [];
 
-            // 1. Preload everything for all slides (Optimization for sequential capture)
-            toast.loading("Otimizando imagens para celular...", { id: toastId });
+            // 1. Preload everything for all slides
+            toast.loading("Otimizando imagens e fontes...", { id: toastId });
             await preloadAllSlideImages();
+            const fontEmbedCss = await getFontEmbedCSS(GOOGLE_FONTS_URL);
+            await preloadFonts(["Playfair Display", "Inter", "Montserrat", "Poppins", "Bodoni Moda", "Cormorant Garamond"]);
 
             // 2. Capture all slides
             for (let i = 0; i < carousel.slides.length; i++) {
@@ -1577,22 +1579,12 @@ SEMPRE:
                     toast.loading(`Gerando slide ${i + 1} de ${carousel.slides.length}...`, { id: toastId });
 
                     // Extra delay for rendering stability
-                    await new Promise(resolve => setTimeout(resolve, 400));
-
-                    // Calculate Pixel Ratio to ensure 1080px width output
-                    const clientWidth = el.clientWidth;
-                    const clientHeight = el.clientHeight;
-                    const targetWidth = 1080;
-                    const ratio = targetWidth / clientWidth;
-
-                    // Embed fonts manually for robustness
-                    const fontEmbedCss = await getFontEmbedCSS(GOOGLE_FONTS_URL);
-                    await preloadFonts(["Playfair Display", "Inter", "Montserrat", "Poppins"]); // Preload common fonts
+                    await new Promise(resolve => setTimeout(resolve, 300));
 
                     const captureProps = {
-                        width: clientWidth,
-                        height: clientHeight,
-                        pixelRatio: ratio,
+                        width: 1080,
+                        height: 1350,
+                        pixelRatio: 1,
                         fontEmbedCSS: fontEmbedCss,
                         cacheBust: true,
                         skipAutoScale: true,
@@ -1605,14 +1597,14 @@ SEMPRE:
                         } as any
                     };
 
-                    // Safari "warm-up" call
+                    // Initial call to warm up Safari/Mobile
                     await toPng(el, captureProps);
                     await new Promise(resolve => setTimeout(resolve, 150));
 
                     const dataUrl = await toPng(el, captureProps);
-
                     const res = await fetch(dataUrl);
                     const blob = await res.blob();
+
                     const cleanTopic = carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah';
                     const filename = `slide_${String(i + 1).padStart(2, '0')}_${cleanTopic}.png`;
 
@@ -1622,14 +1614,14 @@ SEMPRE:
 
             if (files.length === 0) throw new Error("Nenhum slide gerado.");
 
-            // 2. Try Share or Download
-            // Note: navigator.share with multiple info is supported on recent mobile OS
+            // 3. Try Native Share (Best for Mobile Gallery)
+            toast.loading("Enviando para galeria...", { id: toastId });
             const shared = await shareOrDownload(files, "carrossel.zip");
 
             if (shared) {
-                toast.success("Salvo! Verifique sua galeria.", { id: toastId });
+                toast.success("Pronto! Verifique sua galeria.", { id: toastId });
             } else {
-                // 3. Fallback to ZIP download
+                // 4. Fallback to ZIP download for Desktop
                 toast.loading("Gerando arquivo ZIP...", { id: toastId });
                 const zip = new JSZip();
                 files.forEach(f => zip.file(f.name, f));
@@ -1645,12 +1637,12 @@ SEMPRE:
                 document.body.removeChild(link);
                 URL.revokeObjectURL(zipUrl);
 
-                toast.success("Download ZIP iniciado!", { id: toastId });
+                toast.success("Carrossel baixado como ZIP!", { id: toastId });
             }
 
         } catch (error: any) {
             console.error(error);
-            toast.error("Erro ao exportar: " + error.message, { id: toastId });
+            toast.error("Erro ao exportar carrossel: " + error.message, { id: toastId });
         } finally {
             setIsExporting(false);
         }
@@ -1893,11 +1885,11 @@ SEMPRE:
                                                 )}
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4 pt-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                                                 <div className="space-y-2">
                                                     <Label className="text-[10px] font-bold text-muted-foreground ml-1">Fonte</Label>
                                                     <Select value={carousel.slides[currentSlide].font} onValueChange={(v) => updateSlide(currentSlide, { font: v })}>
-                                                        <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs">
+                                                        <SelectTrigger className="h-12 bg-white/5 border-white/5 rounded-xl text-xs">
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-slate-900 border-white/10 text-white max-h-[300px]">
@@ -1952,11 +1944,11 @@ SEMPRE:
                                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estilo do Subtítulo</Label>
                                                     </div>
 
-                                                    <div className="grid grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                         <div className="space-y-2">
                                                             <Label className="text-[10px] font-bold text-muted-foreground ml-1">Fonte</Label>
                                                             <Select value={carousel.slides[currentSlide].secondaryFont} onValueChange={(v) => updateSlide(currentSlide, { secondaryFont: v })}>
-                                                                <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs">
+                                                                <SelectTrigger className="h-12 bg-white/5 border-white/5 rounded-xl text-xs">
                                                                     <SelectValue />
                                                                 </SelectTrigger>
                                                                 <SelectContent className="bg-slate-900 border-white/10 text-white max-h-[300px]">
@@ -2112,27 +2104,28 @@ SEMPRE:
                                                     />
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Bloco</Label>
-                                                        <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-xl border border-white/5">
+                                                        <div className="flex items-center gap-2 bg-white/5 p-2 rounded-xl border border-white/5 min-h-[48px]">
                                                             <input
                                                                 type="color"
                                                                 value={carousel.slides[currentSlide].boxBgColor || "#000000"}
                                                                 onChange={(e) => updateSlide(currentSlide, { boxBgColor: e.target.value })}
-                                                                className="w-8 h-8 rounded-lg bg-transparent cursor-pointer"
+                                                                className="w-10 h-10 rounded-lg bg-transparent cursor-pointer"
                                                             />
-                                                            <span className="text-[10px] font-mono text-white/50">{carousel.slides[currentSlide].boxBgColor || "#000000"}</span>
+                                                            <span className="text-xs font-mono text-white/70">{carousel.slides[currentSlide].boxBgColor || "#000000"}</span>
                                                         </div>
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-bold text-muted-foreground ml-1">Transparência</Label>
-                                                        <div className="pt-2 px-1">
+                                                        <div className="pt-2 px-1 h-[48px] flex items-center">
                                                             <Slider
                                                                 value={[(carousel.slides[currentSlide].boxOpacity ?? 0.8) * 100]}
                                                                 max={100}
                                                                 step={1}
                                                                 onValueChange={(v) => updateSlide(currentSlide, { boxOpacity: v[0] / 100 })}
+                                                                className="py-1"
                                                             />
                                                         </div>
                                                     </div>
@@ -2159,11 +2152,11 @@ SEMPRE:
                                                 <h3 className="text-xs font-black uppercase tracking-widest text-white/70">Layout & Cores</h3>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div className="space-y-2">
                                                     <Label className="text-[10px] font-bold text-muted-foreground ml-1">Posição Texto</Label>
                                                     <Select value={carousel.slides[currentSlide].textPosition} onValueChange={(v: any) => updateSlide(currentSlide, { textPosition: v })}>
-                                                        <SelectTrigger className="h-10 bg-white/5 border-white/5 rounded-xl text-xs uppercase font-bold">
+                                                        <SelectTrigger className="h-12 bg-white/5 border-white/5 rounded-xl text-xs uppercase font-bold">
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-slate-900 border-white/10 text-white">
@@ -2173,11 +2166,14 @@ SEMPRE:
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label className="text-[10px] font-bold text-muted-foreground ml-1">Cor do Título</Label>
-                                                    <input
-                                                        type="color" value={carousel.slides[currentSlide].textColor}
-                                                        onChange={(e) => updateSlide(currentSlide, { textColor: e.target.value })}
-                                                        className="w-full h-10 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
-                                                    />
+                                                    <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/5 min-h-[48px]">
+                                                        <input
+                                                            type="color" value={carousel.slides[currentSlide].textColor}
+                                                            onChange={(e) => updateSlide(currentSlide, { textColor: e.target.value })}
+                                                            className="flex-1 h-10 bg-transparent border-none cursor-pointer p-0.5 rounded-lg"
+                                                        />
+                                                        <span className="text-[10px] font-mono text-white/50 pr-2">{carousel.slides[currentSlide].textColor}</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -2322,12 +2318,6 @@ SEMPRE:
                                         </DialogContent>
                                     </Dialog>
 
-                                    <button
-                                        onClick={() => setShowGenModal(true)}
-                                        className="h-14 px-8 sm:px-10 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 font-bold uppercase text-[10px] sm:text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all w-full sm:w-auto"
-                                    >
-                                        Criar novo carrossel
-                                    </button>
                                 </div>
                             </div>
 

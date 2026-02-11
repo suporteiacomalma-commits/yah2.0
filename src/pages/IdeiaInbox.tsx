@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CerebroEvent } from "@/components/calendar/types";
 
 type InboxState =
@@ -41,7 +42,7 @@ const FOLDERS = [
     { name: "Conteúdo", emoji: "✍️", description: "Ideias de posts e campanhas", color: "#A855F7" },
     { name: "Metas", emoji: "🎯", description: "Objetivos com progresso", color: "#EC4899" },
     { name: "Insights", emoji: "💡", description: "Aprendizados estratégicos", color: "#EAB308" },
-    { name: "Produto / serviço", emoji: "🚀", description: "Defina claramente o que você oferece e como entrega.", color: "#22D3EE" },
+    { name: "Produto / serviço", emoji: "🚀", description: "Construa e refina sua oferta", color: "#22D3EE" },
     { name: "Projeto", emoji: "📂", description: "Iniciativas e eventos", color: "#3B82F6" },
     { name: "Stand-by", emoji: "🕒", description: "Ideias para o futuro", color: "#8B5CF6" }
 ];
@@ -218,9 +219,28 @@ const InboxActivityCalendar = ({ type = 'meta', brandId }: { type?: 'meta' | 'pr
         );
     };
 
-    const selectedDayActivities = activities.filter(a =>
-        selectedDate && isActivityOnDay(a, selectedDate)
-    );
+    const handleToggleStatus = async (realId: string, currentStatus: string) => {
+        const newStatus = currentStatus === "Concluído" ? "Pendente" : "Concluído";
+        try {
+            const { error } = await (supabase as any)
+                .from("eventos_do_cerebro")
+                .update({ status: newStatus })
+                .eq("id", realId);
+            if (error) throw error;
+            setActivities(prev => prev.map(a => a.id === realId ? { ...a, status: newStatus } : a));
+        } catch (error) {
+            console.error("Error toggling status:", error);
+            toast.error("Erro ao atualizar status");
+        }
+    };
+
+    const selectedDayActivities = activities
+        .filter(a => selectedDate && isActivityOnDay(a, selectedDate))
+        .sort((a, b) => {
+            if (!a.hora) return 1;
+            if (!b.hora) return -1;
+            return a.hora.localeCompare(b.hora);
+        });
 
     const modifiers = {
         hasActivity: (day: Date) => activities.some(a => isActivityOnDay(a, day))
@@ -271,11 +291,28 @@ const InboxActivityCalendar = ({ type = 'meta', brandId }: { type?: 'meta' | 'pr
                         {selectedDayActivities.length > 0 ? (
                             selectedDayActivities.map((activity) => {
                                 const timeStr = activity.hora ? activity.hora.substring(0, 5) : "";
+                                const isCompleted = activity.status === "Concluído";
                                 return (
-                                    <div key={activity.id} className="flex items-center gap-3 p-2 rounded-xl bg-white/5 border border-white/5 group hover:bg-white/[0.08] transition-all">
-                                        <div className={cn("w-1.5 h-1.5 rounded-full", colors.bg)} />
-                                        <span className="text-xs text-foreground/80 flex-1 truncate">{activity.titulo}</span>
-                                        {timeStr && <span className="text-[9px] text-muted-foreground font-mono">{timeStr}</span>}
+                                    <div key={activity.id} className={cn(
+                                        "flex items-center gap-3 p-2.5 rounded-xl bg-white/5 border border-white/5 group hover:bg-white/[0.08] transition-all",
+                                        isCompleted && "opacity-60"
+                                    )}>
+                                        <Checkbox
+                                            checked={isCompleted}
+                                            onCheckedChange={() => handleToggleStatus(activity.id, activity.status)}
+                                            className={cn("border-white/20", isCompleted && "bg-current")}
+                                        />
+                                        <div className="flex-1 flex flex-col min-w-0">
+                                            <span className={cn("text-xs text-foreground/80 font-medium truncate", isCompleted && "line-through")}>
+                                                {activity.titulo}
+                                            </span>
+                                            {timeStr && (
+                                                <div className="flex items-center gap-1 text-[9px] text-muted-foreground font-bold tracking-tight">
+                                                    <Clock className="w-2.5 h-2.5" />
+                                                    {timeStr}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 );
                             })
@@ -565,6 +602,7 @@ export default function IdeiaInbox() {
                                                         ${brandContext}
 
                                                         MODO: ${mode}
+                                                        DATA ATUAL: ${format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                                                         CONTEÚDO PARA ANÁLISE: "${content}"
                                                         INSTRUÇÃO DE PASTA: ${folderInstruction}
 
@@ -584,7 +622,7 @@ export default function IdeiaInbox() {
                                                         Gere "sugestao_conteudo" com: semana_ideal (1-4), dia_ideal, formato_feed, formato_stories, headline, micro_headline, intencao_conteudo (identificação, educação, etc), mini_roteiro (array de passos) e observacoes.
 
                                                         2. Se categoria = "meta":
-                                                        Gere "sugestao_meta" com: descricao_meta, unidade, valor_alvo, checklist_passos (3-7 passos) e sugestao_inicio_calendario.
+                                                        Gere "sugestao_meta" com: descricao_meta, unidade, valor_alvo, checklist_passos (3-7 passos) e sugestao_inicio_calendario (sempre exatamente 1 semana - 7 dias - após a DATA ATUAL fornecida, no formato "Início: DD de Mês de YYYY").
 
                                                         3. Se categoria = "insight":
                                                         Gere "sugestao_insight" com: descricao_regra, como_influencia_yah (array de strings) e formatos_afetados (array).
@@ -1172,10 +1210,102 @@ export default function IdeiaInbox() {
         const idea = editingIdea || selectedIdea;
         if (!idea) return;
 
-        const title = idea.metadata?.title || "Minha Ideia";
-        const content = idea.content || "";
-        const text = `*${title}*\n\n${content}`;
-        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        const meta = idea.metadata || {};
+        const title = meta.title || "Minha Ideia";
+        const category = idea.category;
+
+        let message = `🚀 *${title}*\n`;
+        message += `--------------------------\n\n`;
+
+        if (idea.content) {
+            message += `💡 *IDEIA ORIGINAL:*\n${idea.content}\n\n`;
+        }
+
+        if (category === "conteudo" && meta.sugestao_conteudo) {
+            const sc = meta.sugestao_conteudo;
+            message += `*ESTRATÉGIA DE CONTEÚDO:*\n`;
+            if (sc.headline) message += `📌 *Headline:* ${sc.headline}\n`;
+            if (sc.semana_ideal) message += `📅 *Semana:* ${sc.semana_ideal} | *Dia:* ${sc.dia_ideal || 'Flexível'}\n`;
+            if (sc.formato_feed) message += `📱 *Feed:* ${sc.formato_feed}\n`;
+            if (sc.formato_stories) message += `🎞️ *Stories:* ${sc.formato_stories}\n`;
+            if (sc.intencao_conteudo) message += `🎯 *Intenção:* ${sc.intencao_conteudo}\n`;
+
+            if (sc.mini_roteiro && Array.isArray(sc.mini_roteiro)) {
+                message += `\n📝 *ROTEIRO / PASSOS:*\n`;
+                sc.mini_roteiro.forEach((step: string, i: number) => {
+                    message += `${i + 1}. ${step}\n`;
+                });
+            }
+            if (sc.observacoes) message += `\n✨ *Notas:* ${sc.observacoes}\n`;
+        }
+        else if (category === "meta" && meta.sugestao_meta) {
+            const sm = meta.sugestao_meta;
+            message += `*PLANEJAMENTO DA META:*\n`;
+            if (sm.descricao_meta) message += `🎯 *O que:* ${sm.descricao_meta}\n`;
+            if (sm.valor_alvo) message += `📈 *Alvo:* ${sm.valor_alvo} ${sm.unidade || ''}\n`;
+            if (sm.sugestao_inicio_calendario) message += `📅 *Previsão:* ${sm.sugestao_inicio_calendario}\n`;
+
+            if (sm.checklist_passos && Array.isArray(sm.checklist_passos)) {
+                message += `\n✅ *CHECKLIST:*\n`;
+                sm.checklist_passos.forEach((step: string) => {
+                    message += `- ${step}\n`;
+                });
+            }
+        }
+        else if (category === "projeto" && meta.sugestao_projeto) {
+            const sp = meta.sugestao_projeto;
+            message += `*PROJETO ESTRATÉGICO:*\n`;
+            const fields = [
+                { k: 'visao', l: 'Visão' }, { k: 'objetivo', l: 'Objetivo' },
+                { k: 'estrutura', l: 'Estrutura' }, { k: 'acoes', l: 'Ações' },
+                { k: 'execucao', l: 'Execução' }, { k: 'recursos', l: 'Recursos' },
+                { k: 'comunicacao', l: 'Comunicação' }, { k: 'metricas', l: 'Métricas' },
+                { k: 'ajustes', l: 'Ajustes' }
+            ];
+            fields.forEach(f => {
+                if (sp[f.k]) message += `🔹 *${f.l}:* ${sp[f.k]}\n\n`;
+            });
+        }
+        else if (category === "produto" && meta.sugestao_produto) {
+            const sp = meta.sugestao_produto;
+            message += `*BATERIA DE PRODUTO/OFERTA:*\n`;
+            const fields = [
+                { k: 'nome', l: 'Nome' }, { k: 'categoria_produto', l: 'Categoria' },
+                { k: 'o_que_e', l: 'O que é' }, { k: 'problema', l: 'Problema' },
+                { k: 'solucao', l: 'Solução' }, { k: 'entregaveis', l: 'Entregáveis' },
+                { k: 'publico_ideal', l: 'Público' }, { k: 'preco_entrega', l: 'Preço/Entrega' },
+                { k: 'promessa', l: 'Promessa' }
+            ];
+            fields.forEach(f => {
+                if (sp[f.k]) message += `💎 *${f.l}:* ${sp[f.k]}\n\n`;
+            });
+        }
+        else if (category === "insight" && meta.sugestao_insight) {
+            const si = meta.sugestao_insight;
+            message += `*INSIGHT ESTRATÉGICO:*\n`;
+            if (si.descricao_regra) message += `💡 *Regra:* ${si.descricao_regra}\n\n`;
+            if (si.como_influencia_yah) {
+                message += `🧠 *Influência:* ${Array.isArray(si.como_influencia_yah) ? si.como_influencia_yah.join(', ') : si.como_influencia_yah}\n`;
+            }
+        }
+
+        // Add Custom Fields if they exist (for Projects, Products, Metas, etc)
+        const customFields = (meta.sugestao_projeto?.custom_fields ||
+            meta.sugestao_meta?.custom_fields ||
+            meta.sugestao_produto?.custom_fields || []);
+
+        if (customFields.length > 0) {
+            message += `\n➕ *CAMPOS ADICIONAIS:*\n`;
+            customFields.forEach((field: any) => {
+                if (field.title && field.content) {
+                    message += `*${field.title}:*\n${field.content}\n\n`;
+                }
+            });
+        }
+
+        message += `\n_Compartilhado via Yah_`;
+
+        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };
 
@@ -1438,6 +1568,67 @@ export default function IdeiaInbox() {
                                             />
                                         </div>
                                     ))}
+
+                                    {((analysisResult.sugestao_projeto as any)?.custom_fields || []).map((field: any, idx: number) => (
+                                        <div key={field.id} className="space-y-3 p-4 sm:p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <input
+                                                    className="bg-transparent border-none focus:ring-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500 transition-colors px-0 w-full"
+                                                    value={field.title}
+                                                    placeholder="TÍTULO DO CAMPO"
+                                                    onChange={(e) => {
+                                                        const newFields = [...((analysisResult.sugestao_projeto as any).custom_fields || [])];
+                                                        newFields[idx].title = e.target.value.toUpperCase();
+                                                        setAnalysisResult({
+                                                            ...analysisResult,
+                                                            sugestao_projeto: { ...analysisResult.sugestao_projeto, custom_fields: newFields }
+                                                        });
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const newFields = (analysisResult.sugestao_projeto as any).custom_fields.filter((_: any, i: number) => i !== idx);
+                                                        setAnalysisResult({
+                                                            ...analysisResult,
+                                                            sugestao_projeto: { ...analysisResult.sugestao_projeto, custom_fields: newFields }
+                                                        });
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+                                                >
+                                                    <X className="w-3 h-3 text-muted-foreground" />
+                                                </button>
+                                            </div>
+                                            <AutoHeightTextarea
+                                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-blue-500/20 rounded-lg text-sm leading-relaxed px-0 text-foreground/90 transition-all font-medium"
+                                                placeholder="Digite o conteúdo..."
+                                                value={field.content}
+                                                onChange={(e: any) => {
+                                                    const newFields = [...((analysisResult.sugestao_projeto as any).custom_fields || [])];
+                                                    newFields[idx].content = e.target.value;
+                                                    setAnalysisResult({
+                                                        ...analysisResult,
+                                                        sugestao_projeto: { ...analysisResult.sugestao_projeto, custom_fields: newFields }
+                                                    });
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <div className="pt-2">
+                                        <button
+                                            onClick={() => {
+                                                const currentFields = (analysisResult.sugestao_projeto as any)?.custom_fields || [];
+                                                const newFields = [...currentFields, { id: Date.now(), title: "NOVO CAMPO ESTRATÉGICO", content: "" }];
+                                                setAnalysisResult({
+                                                    ...analysisResult,
+                                                    sugestao_projeto: { ...analysisResult.sugestao_projeto, custom_fields: newFields }
+                                                });
+                                            }}
+                                            className="text-xs text-blue-500 hover:text-blue-400 font-medium flex items-center gap-1 transition-colors"
+                                        >
+                                            <Plus className="w-3 h-3" /> Adicionar campo extra
+                                        </button>
+                                    </div>
                                 </div>
                                 <InboxActivityCalendar type="projeto" brandId={brand?.id} />
                             </div>
@@ -1942,8 +2133,8 @@ export default function IdeiaInbox() {
                                 onClick={() => { setSelectedFolder(f.name); setInboxState("folder_detail"); }}
                                 className="h-40 rounded-[32px] flex flex-col items-start p-6 border-white/5 hover:border-primary/40 bg-card/40 hover:bg-card transition-all group shadow-2xl relative overflow-hidden text-left"
                             >
-                                <div className="flex justify-between w-full items-start mb-4">
-                                    <div className="w-12 h-12 flex items-center justify-center">
+                                <div className="flex justify-between w-full items-start mb-2">
+                                    <div className="w-12 h-12 flex items-center justify-start">
                                         <span className="text-2xl md:text-3xl filter drop-shadow-md group-hover:scale-110 transition-transform select-none">{f.emoji}</span>
                                     </div>
                                     <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-muted-foreground">
@@ -2319,6 +2510,83 @@ export default function IdeiaInbox() {
                                             />
                                         </div>
                                     ))}
+
+                                    {((meta.sugestao_projeto as any)?.custom_fields || []).map((field: any, idx: number) => (
+                                        <div key={field.id} className="space-y-3 p-6 rounded-[24px] bg-white/[0.03] border border-white/5 hover:border-blue-500/30 transition-all group shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <input
+                                                    className="bg-transparent border-none focus:ring-0 text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-blue-500 transition-colors px-0 w-full"
+                                                    value={field.title}
+                                                    placeholder="TÍTULO DO CAMPO"
+                                                    onChange={(e) => {
+                                                        const newFields = [...((meta.sugestao_projeto as any).custom_fields || [])];
+                                                        newFields[idx].title = e.target.value.toUpperCase();
+                                                        const updated = {
+                                                            ...currentIdea,
+                                                            metadata: {
+                                                                ...meta,
+                                                                sugestao_projeto: { ...meta.sugestao_projeto, custom_fields: newFields }
+                                                            }
+                                                        };
+                                                        setEditingIdea(updated);
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const newFields = (meta.sugestao_projeto as any).custom_fields.filter((_: any, i: number) => i !== idx);
+                                                        const updated = {
+                                                            ...currentIdea,
+                                                            metadata: {
+                                                                ...meta,
+                                                                sugestao_projeto: { ...meta.sugestao_projeto, custom_fields: newFields }
+                                                            }
+                                                        };
+                                                        setEditingIdea(updated);
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+                                                >
+                                                    <X className="w-3 h-3 text-muted-foreground" />
+                                                </button>
+                                            </div>
+                                            <AutoHeightTextarea
+                                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-blue-500/20 rounded-lg text-base leading-relaxed px-0 text-foreground/90 transition-all font-medium"
+                                                placeholder="Digite o conteúdo..."
+                                                value={field.content}
+                                                onChange={(e: any) => {
+                                                    const newFields = [...((meta.sugestao_projeto as any).custom_fields || [])];
+                                                    newFields[idx].content = e.target.value;
+                                                    const updated = {
+                                                        ...currentIdea,
+                                                        metadata: {
+                                                            ...meta,
+                                                            sugestao_projeto: { ...meta.sugestao_projeto, custom_fields: newFields }
+                                                        }
+                                                    };
+                                                    setEditingIdea(updated);
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <div className="pt-2">
+                                        <button
+                                            onClick={() => {
+                                                const currentFields = (meta.sugestao_projeto as any)?.custom_fields || [];
+                                                const newFields = [...currentFields, { id: Date.now(), title: "NOVO CAMPO ESTRATÉGICO", content: "" }];
+                                                const updated = {
+                                                    ...currentIdea,
+                                                    metadata: {
+                                                        ...meta,
+                                                        sugestao_projeto: { ...meta.sugestao_projeto, custom_fields: newFields }
+                                                    }
+                                                };
+                                                setEditingIdea(updated);
+                                            }}
+                                            className="text-xs text-blue-500 hover:text-blue-400 font-medium flex items-center gap-1 transition-colors"
+                                        >
+                                            <Plus className="w-3 h-3" /> Adicionar campo extra
+                                        </button>
+                                    </div>
                                 </div>
                                 <InboxActivityCalendar type="projeto" brandId={brand?.id} />
                             </div>
@@ -2484,6 +2752,81 @@ export default function IdeiaInbox() {
                                                 setEditingIdea(updated);
                                             }}
                                         />
+                                    </div>
+
+                                    {meta.sugestao_meta.custom_fields?.map((field: any, idx: number) => (
+                                        <div key={field.id} className="space-y-1 py-4 border-b border-white/5 group">
+                                            <div className="flex items-center justify-between">
+                                                <input
+                                                    className="bg-transparent border-none focus:ring-0 text-[10px] font-black uppercase tracking-widest opacity-50 px-0 w-full"
+                                                    value={field.title}
+                                                    onChange={(e) => {
+                                                        const newFields = [...(meta.sugestao_meta.custom_fields || [])];
+                                                        newFields[idx].title = e.target.value;
+                                                        const updated = {
+                                                            ...currentIdea,
+                                                            metadata: {
+                                                                ...meta,
+                                                                sugestao_meta: { ...meta.sugestao_meta, custom_fields: newFields }
+                                                            }
+                                                        };
+                                                        setEditingIdea(updated);
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        const newFields = meta.sugestao_meta.custom_fields.filter((_: any, i: number) => i !== idx);
+                                                        const updated = {
+                                                            ...currentIdea,
+                                                            metadata: {
+                                                                ...meta,
+                                                                sugestao_meta: { ...meta.sugestao_meta, custom_fields: newFields }
+                                                            }
+                                                        };
+                                                        setEditingIdea(updated);
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
+                                                >
+                                                    <X className="w-3 h-3 text-muted-foreground" />
+                                                </button>
+                                            </div>
+                                            <AutoHeightTextarea
+                                                className="w-full bg-transparent border-none focus:ring-1 focus:ring-emerald-500/20 rounded-lg text-sm leading-relaxed px-0"
+                                                placeholder="Digite o conteúdo..."
+                                                value={field.content}
+                                                onChange={(e: any) => {
+                                                    const newFields = [...(meta.sugestao_meta.custom_fields || [])];
+                                                    newFields[idx].content = e.target.value;
+                                                    const updated = {
+                                                        ...currentIdea,
+                                                        metadata: {
+                                                            ...meta,
+                                                            sugestao_meta: { ...meta.sugestao_meta, custom_fields: newFields }
+                                                        }
+                                                    };
+                                                    setEditingIdea(updated);
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <div className="pt-2">
+                                        <button
+                                            onClick={() => {
+                                                const newFields = [...(meta.sugestao_meta.custom_fields || []), { id: Date.now(), title: "Novo Campo", content: "" }];
+                                                const updated = {
+                                                    ...currentIdea,
+                                                    metadata: {
+                                                        ...meta,
+                                                        sugestao_meta: { ...meta.sugestao_meta, custom_fields: newFields }
+                                                    }
+                                                };
+                                                setEditingIdea(updated);
+                                            }}
+                                            className="text-xs text-emerald-500 hover:text-emerald-400 font-medium flex items-center gap-1 transition-colors"
+                                        >
+                                            <Plus className="w-3 h-3" /> Adicionar campo extra
+                                        </button>
                                     </div>
                                     <InboxActivityCalendar type="meta" brandId={brand?.id} />
                                 </div>
@@ -2859,12 +3202,6 @@ export default function IdeiaInbox() {
                                 {inboxState === "initial" ? "Painel" : inboxState === "folder_detail" ? "Pastas" : "Voltar"}
                             </span>
                         </Button>
-                        <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setInboxState("initial")}>
-                            <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/20 transition-all">
-                                <Lightbulb className="w-5 h-5 text-amber-500" />
-                            </div>
-                            <h1 className="text-2xl font-black italic tracking-tighter text-foreground selection:bg-amber-500/30">Ideia Inbox</h1>
-                        </div>
                     </div>
 
                     {/* Main Content Area */}

@@ -238,7 +238,13 @@ export function ActivityCalendar() {
   }
 
   const selectedDateEvents = selectedDate
-    ? filteredEvents.filter(e => isSameDay(new Date(e.data + 'T12:00:00'), selectedDate))
+    ? filteredEvents
+      .filter(e => isSameDay(new Date(e.data + 'T12:00:00'), selectedDate))
+      .sort((a, b) => {
+        if (!a.hora) return 1;
+        if (!b.hora) return -1;
+        return a.hora.localeCompare(b.hora);
+      })
     : [];
 
   return (

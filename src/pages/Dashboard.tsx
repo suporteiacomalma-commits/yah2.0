@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/hooks/useBrand";
 import { useProfile } from "@/hooks/useProfile";
 import { phases } from "@/lib/phases";
-import { Loader2, Mic, Lightbulb, Check, Map, CalendarDays, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Mic, Lightbulb, Check, Map, CalendarDays, Sparkles, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,7 +86,13 @@ export default function Dashboard() {
       );
 
       // Filter for exactly today's instances
-      const todayTasks = expanded.filter(t => t.data === todayStr);
+      const todayTasks = expanded
+        .filter(t => t.data === todayStr)
+        .sort((a, b) => {
+          if (!a.hora) return 1;
+          if (!b.hora) return -1;
+          return a.hora.localeCompare(b.hora);
+        });
       setTodaysTasks(todayTasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -275,7 +281,7 @@ export default function Dashboard() {
           {/* Seu Dia Hoje */}
           <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[12px] font-bold text-[#EEEDE9] uppercase tracking-widest">SEU DIA HOJE</h2>
+              <h2 className="text-[12px] font-bold text-[#B6BC45] uppercase tracking-widest">SEU DIA HOJE</h2>
               <span className="text-[14px] text-[#999] font-medium">{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</span>
             </div>
 
@@ -288,6 +294,8 @@ export default function Dashboard() {
                 <div className="space-y-1">
                   {todaysTasks.map((task) => {
                     const isCompleted = task.status === "Concluído";
+                    const timeStr = task.hora ? task.hora.substring(0, 5) : "";
+
                     return (
                       <div
                         key={task.id}
@@ -300,12 +308,20 @@ export default function Dashboard() {
                         )}>
                           {isCompleted && <Check className="w-3.5 h-3.5 text-[#141414] stroke-[4]" />}
                         </div>
-                        <span className={cn(
-                          "text-[15px] text-[#EEEDE9] flex-1 font-medium transition-all duration-300",
-                          isCompleted && "line-through text-[#999] opacity-80"
-                        )}>
-                          {task.titulo}
-                        </span>
+                        <div className="flex-1 flex flex-col min-w-0">
+                          <span className={cn(
+                            "text-[15px] text-[#EEEDE9] font-medium transition-all duration-300 truncate",
+                            isCompleted && "line-through text-[#999] opacity-80"
+                          )}>
+                            {task.titulo}
+                          </span>
+                          {timeStr && (
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#999] font-semibold mt-0.5">
+                              <Clock className="w-3 h-3 text-[#B6BC45]" />
+                              {timeStr}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}

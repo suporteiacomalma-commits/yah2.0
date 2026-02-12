@@ -1653,8 +1653,6 @@ SEMPRE:
     const handleConfirmShare = async () => {
         if (!generatedFiles.length) return;
 
-        toast.loading("Abrindo compartilhamento...", { duration: 1000 });
-
         // This is now a DIRECT user interaction, so navigator.share works
         const shared = await shareOrDownload(generatedFiles, "carrossel.zip");
 

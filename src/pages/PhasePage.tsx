@@ -55,10 +55,10 @@ export default function PhasePage() {
 
   return (
     <MinimalLayout brandName={brand?.name}>
-      <div className="flex-1 p-6 md:p-8">
+      <div className={cn("flex-1", phaseNumber !== 7 && "p-6 md:p-8")}>
         <div className={cn(
           "mx-auto w-full",
-          (phaseNumber === 4 || phaseNumber === 7 || phaseNumber === 8) ? "max-w-4xl" : "max-w-3xl"
+          phaseNumber === 7 ? "max-w-none" : ((phaseNumber === 4 || phaseNumber === 8) ? "max-w-4xl" : "max-w-3xl")
         )}>
           {/* Back Button */}
           <Button
@@ -73,10 +73,13 @@ export default function PhasePage() {
                 navigate("/dashboard");
               }
             }}
-            className="mb-6"
+            className={cn(
+              "mb-6",
+              phaseNumber === 7 && "fixed top-20 left-4 z-50 bg-black/60 backdrop-blur-md border border-white/10 shadow-lg hover:bg-black/80 text-white rounded-full p-2 h-9 w-9 flex items-center justify-center transition-all hover:scale-105"
+            )}
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+            <ArrowLeft className={cn("w-4 h-4", phaseNumber !== 7 && "mr-2")} />
+            {phaseNumber !== 7 && "Voltar"}
           </Button>
 
           {/* Phase Header */}
@@ -107,7 +110,7 @@ export default function PhasePage() {
           )}
 
           {/* Phase Content */}
-          <div className="bg-card border border-border rounded-2xl p-6 md:p-8 mb-8 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          <div className={cn("animate-fade-in", phaseNumber !== 7 && "bg-card border border-border rounded-2xl p-6 md:p-8 mb-8")} style={{ animationDelay: "0.1s" }}>
             {phaseNumber === 1 ? (
               <PersonalityNotebook />
             ) : phaseNumber === 2 ? (

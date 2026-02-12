@@ -35,6 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { toPng } from "html-to-image";
@@ -148,9 +149,14 @@ interface AICarouselsProps {
 export function AICarousels({ onBackClick }: AICarouselsProps = {}) {
     const { brand } = useBrand();
     const { getSetting } = useSystemSettings();
+    const navigate = useNavigate();
+
+    // UI State
+    const [currentSlide, setCurrentSlide] = useState(0);
     const [isGenerating, setIsGenerating] = useState(false);
-    const [isExporting, setIsExporting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [showGenModal, setShowGenModal] = useState(false);
     const [isFontsReady, setIsFontsReady] = useState(false); // New: Stability lock
 
@@ -199,7 +205,6 @@ export function AICarousels({ onBackClick }: AICarouselsProps = {}) {
         return () => console.log('💀 AICarousels COMPONENT UNMOUNTED');
     }, []);
 
-    const [currentSlide, setCurrentSlide] = useState(0);
     const [history, setHistory] = useState<AICarousel[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [useTrainedContent, setUseTrainedContent] = useState(false);
@@ -216,6 +221,12 @@ export function AICarousels({ onBackClick }: AICarouselsProps = {}) {
 
     // Smart Back Navigation Handler
     const handleBackClick = () => {
+        if (hasUnsavedChanges) {
+            if (!window.confirm("Você tem alterações não salvas. Deseja realmente sair e perder o progresso?")) {
+                return;
+            }
+        }
+
         if (carousel.slides && carousel.slides.length > 0) {
             // If in editing mode, clear carousel to return to home screen
             setCarousel({
@@ -227,11 +238,36 @@ export function AICarousels({ onBackClick }: AICarouselsProps = {}) {
                 slides: []
             });
             setCurrentSlide(0);
+            setHasUnsavedChanges(false);
         } else {
             // If in home screen, call parent's onBackClick to return to dashboard
-            onBackClick?.();
+            if (onBackClick) {
+                onBackClick();
+            } else {
+                navigate("/dashboard");
+            }
         }
     };
+
+    // Global Back Handler & BeforeUnload
+    useEffect(() => {
+        // Attach to window for PhasePage to find
+        (window as any).__carouselBackHandler = handleBackClick;
+
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = ""; // Legacy requirement for some browsers
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+
+        return () => {
+            delete (window as any).__carouselBackHandler;
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [hasUnsavedChanges, carousel.slides, onBackClick]); // Dependencies crucial for closure
 
     useEffect(() => {
         const checkFonts = async () => {
@@ -1340,6 +1376,7 @@ SEMPRE:
     };
 
     const updateSlide = (idx: number, updates: Partial<CarouselSlide>) => {
+        setHasUnsavedChanges(true);
         setCarousel(prev => {
             const newSlides = [...(prev.slides || [])];
             newSlides[idx] = { ...newSlides[idx], ...updates };
@@ -1374,6 +1411,117 @@ SEMPRE:
         // We trigger save manually or let user click save
     };
 
+    // --- Carousel Styles System ---
+    const [showSaveStyleDialog, setShowSaveStyleDialog] = useState(false);
+    const [showStylesList, setShowStylesList] = useState(false);
+    const [newStyleName, setNewStyleName] = useState("");
+    const [savedStyles, setSavedStyles] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (brand?.user_id) {
+            fetchSavedStyles();
+        }
+    }, [brand?.user_id]);
+
+    const fetchSavedStyles = async () => {
+        const { data, error } = await (supabase as any)
+            .from('carousel_styles')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (data) setSavedStyles(data);
+    };
+
+    const handleSaveStyle = async () => {
+        if (!carousel.slides?.[currentSlide] || !brand?.user_id) return;
+
+        try {
+            const currentStyle = {
+                font: carousel.slides[currentSlide].font,
+                fontSize: carousel.slides[currentSlide].fontSize,
+                alignment: carousel.slides[currentSlide].alignment,
+                isBold: carousel.slides[currentSlide].isBold,
+                isItalic: carousel.slides[currentSlide].isItalic,
+                textColor: carousel.slides[currentSlide].textColor,
+                secondaryTextColor: carousel.slides[currentSlide].secondaryTextColor,
+                lineHeight: carousel.slides[currentSlide].lineHeight,
+                textPosition: carousel.slides[currentSlide].textPosition,
+                overlayColor: carousel.slides[currentSlide].overlayColor,
+                overlayOpacity: carousel.slides[currentSlide].overlayOpacity,
+                boxBgColor: carousel.slides[currentSlide].boxBgColor,
+                boxOpacity: carousel.slides[currentSlide].boxOpacity,
+                boxPadding: carousel.slides[currentSlide].boxPadding,
+                secondaryFont: carousel.slides[currentSlide].secondaryFont,
+                secondaryFontSize: carousel.slides[currentSlide].secondaryFontSize,
+                secondaryLineHeight: carousel.slides[currentSlide].secondaryLineHeight,
+                secondaryIsBold: carousel.slides[currentSlide].secondaryIsBold,
+                secondaryIsItalic: carousel.slides[currentSlide].secondaryIsItalic,
+                secondaryUppercase: carousel.slides[currentSlide].secondaryUppercase,
+                bgColor: carousel.slides[currentSlide].bgColor
+            };
+
+            const { error }: any = await (supabase as any)
+                .from('carousel_styles')
+                .insert({
+                    brand_id: brand.id,
+                    user_id: brand.user_id,
+                    name: newStyleName,
+                    style_config: currentStyle
+                });
+
+            if (error) throw error;
+
+            toast.success("Estilo salvo com sucesso!");
+            setShowSaveStyleDialog(false);
+            setNewStyleName("");
+            fetchSavedStyles();
+        } catch (error: any) {
+            toast.error("Erro ao salvar estilo: " + error.message);
+        }
+    };
+
+    const handleDeleteStyle = async (styleId: string) => {
+        try {
+            const { error }: any = await (supabase as any)
+                .from('carousel_styles')
+                .delete()
+                .eq('id', styleId);
+
+            if (error) throw error;
+
+            toast.success("Estilo excluído com sucesso!");
+            fetchSavedStyles();
+        } catch (error: any) {
+            toast.error("Erro ao excluir estilo: " + error.message);
+        }
+    };
+
+    const handleApplySavedStyle = (style: any) => {
+        if (!style.style_config) return;
+
+        if (hasUnsavedChanges) {
+            if (!window.confirm("Aplicar este estilo substituirá suas configurações atuais não salvas. Continuar?")) {
+                return;
+            }
+        }
+
+        setCarousel(prev => {
+            if (!prev.slides) return prev;
+            const newSlides = prev.slides.map(s => ({
+                ...s,
+                ...style.style_config,
+                // Preserve content and images
+                text: s.text,
+                secondaryText: s.secondaryText,
+                bgImage: s.bgImage,
+            }));
+            return { ...prev, slides: newSlides };
+        });
+
+        setShowStylesList(false);
+        toast.success(`Estilo "${style.name}" aplicado!`);
+    };
+
     const handleSave = async () => {
         if (!brand || !carousel.slides?.length) return;
         setIsSaving(true);
@@ -1393,10 +1541,30 @@ SEMPRE:
                 .select()
                 .single();
             if (error) throw error;
-            if (data) setCarousel(prev => ({ ...prev, id: data.id }));
 
-            fetchHistory(); // Refresh history
+            if (data) {
+                setCarousel(prev => ({ ...prev, id: data.id }));
+
+                // Optimistic Update: Update history locally instead of refetching
+                setHistory(prev => {
+                    const exists = prev.find(h => h.id === data.id);
+                    if (exists) {
+                        const others = prev.filter(h => h.id !== data.id);
+                        return [{ ...exists, ...data }, ...others];
+                    } else {
+                        return [data, ...prev];
+                    }
+                });
+            }
+
+            // fetchHistory(); // Removed to improve performance
             toast.success("Carrossel salvo com sucesso!");
+            setHasUnsavedChanges(false);
+
+            // Trigger Save Style Dialog
+            setNewStyleName(carousel.topic || "Novo Estilo");
+            setShowSaveStyleDialog(true);
+
         } catch (error: any) {
             toast.error("Erro ao salvar: " + error.message);
         } finally {
@@ -1412,9 +1580,19 @@ SEMPRE:
         // Try native sharing first (best for Mobile "Save to Gallery")
         if (navigator.share) {
             try {
-                const canShare = navigator.canShare && navigator.canShare({ files });
-                console.log(`[Export] navigator.canShare: ${canShare}`);
+                // On mobile, force attempt to share all files even if canShare is strict
+                // This adheres to user request to avoid ZIPs and use system dialog
+                if (isMobile) {
+                    await navigator.share({
+                        files: files,
+                        title: carousel.topic || 'Carrossel Yah 2.0',
+                        text: 'Meu carrossel criado com Yah 2.0'
+                    });
+                    return true;
+                }
 
+                // Desktop/Other logic
+                const canShare = navigator.canShare && navigator.canShare({ files });
                 if (canShare) {
                     await navigator.share({
                         files: files,
@@ -1422,26 +1600,18 @@ SEMPRE:
                         text: 'Meu carrossel criado com Yah 2.0'
                     });
                     return true;
-                } else if (isMobile && files.length > 1) {
-                    // If we are on mobile but can't share all at once, try sharing 5 by 5
-                    console.warn("[Export] Batch share not supported, trying smaller batches...");
-                    const mid = Math.ceil(files.length / 2);
-                    const batch1 = files.slice(0, mid);
-                    const batch2 = files.slice(mid);
-
-                    toast.info("Compartilhando em 2 blocos para compatibilidade...");
-
-                    await navigator.share({ files: batch1, title: 'Parte 1' });
-                    await new Promise(r => setTimeout(r, 500));
-                    await navigator.share({ files: batch2, title: 'Parte 2' });
-                    return true;
                 }
+
             } catch (error: any) {
                 if (error.name === 'AbortError') {
                     console.log("[Export] User cancelled share.");
                     return true;
                 }
                 console.error("[Export] Share failed:", error);
+
+                // If sharing failed and we are on mobile, we explicitly try to allow the loop to continue to ZIP fallback
+                // BUT the user really wants to avoid ZIP. However, if share FAILS (not supported), we must fallback.
+                // The modification above tries to be as aggressive as possible.
             }
         }
 
@@ -1681,16 +1851,22 @@ SEMPRE:
                 </div>
             </header>
 
-            <div className="flex-1 relative lg:overflow-hidden">
+            {/* FIXED PROPOSAL: Use fixed positioning on mobile to detach from body scroll */}
+            <div className={cn(
+                "bg-[#09090B] flex flex-col",
+                carousel.slides && carousel.slides.length > 0
+                    ? "fixed inset-x-0 top-16 bottom-0 z-0 lg:static lg:h-[calc(100vh-64px)] lg:overflow-hidden" // Editor Mode: Locked
+                    : "flex-1 relative" // Dashboard Mode: Normal Scroll
+            )}>
                 {
                     carousel.slides && carousel.slides.length > 0 && carousel.slides[currentSlide] ? (
-                        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-0 min-h-screen lg:h-[calc(100vh-140px)] relative bg-[#09090B]">
+                        <div className="w-full h-full flex flex-col lg:grid lg:grid-cols-12 gap-0 relative bg-[#09090B]">
 
                             {/* LEFT: Preview 
-                            Mobile: Visible, top of stack, auto height
-                            Desktop: Sticky/Fixed col, full height
+                            Mobile: Fixed height (40dvh), non-sticky
+                            Desktop: Full height col
                         */}
-                            <div className="sticky top-16 w-full h-[350px] z-40 flex lg:col-span-6 flex-col items-center justify-center bg-[#0C0C0C] border-b lg:border-r border-white/5 lg:relative lg:h-full lg:top-auto lg:py-0">
+                            <div className="w-full h-[40dvh] min-h-[300px] shrink-0 z-10 flex lg:col-span-6 flex-col items-center justify-center bg-[#0C0C0C] border-b lg:border-r border-white/5 lg:h-full lg:py-0 relative touch-none pt-4 lg:pt-0">
                                 <div className="flex flex-col items-center justify-center space-y-2 lg:space-y-6 w-full px-4 h-full">
 
                                     {/* SCALE PREVIEW FOR UI */}
@@ -1843,7 +2019,7 @@ SEMPRE:
                                 </div>
                             </div>
 
-                            <div className="h-auto w-full bg-[#09090B] pt-0 lg:pt-0 lg:col-span-6 lg:h-full lg:overflow-y-auto custom-scrollbar">
+                            <div className="flex-1 w-full bg-[#09090B] pt-0 lg:pt-0 lg:col-span-6 h-full overflow-y-auto custom-scrollbar overscroll-contain">
                                 <div className="p-4 sm:p-8 pb-32 space-y-8 max-w-2xl mx-auto">
                                     <div className="grid grid-cols-1 gap-10">
 
@@ -2564,6 +2740,66 @@ SEMPRE:
                                         <Copy className="w-4 h-4" />
                                         <span className="md:inline uppercase tracking-widest text-[10px] md:text-xs">Aplicar Tudo</span>
                                     </Button>
+
+                                    <Dialog open={showStylesList} onOpenChange={setShowStylesList}>
+                                        <DialogTrigger asChild>
+                                            <Button
+                                                variant="outline" className="flex-1 md:flex-none h-10 md:h-12 px-4 md:px-6 border-white/10 bg-white/5 text-white rounded-2xl font-bold gap-2 hover:bg-white/10 text-xs md:text-sm"
+                                            >
+                                                <Palette className="w-4 h-4" />
+                                                <span className="md:inline uppercase tracking-widest text-[10px] md:text-xs">Estilos</span>
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="bg-[#09090B] border-white/10 text-white sm:max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>Meus Estilos</DialogTitle>
+                                                <DialogDescription className="text-white/60">
+                                                    Aplique formatações salvas aos seus slides.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="max-h-[300px] overflow-y-auto space-y-2 py-4">
+                                                {savedStyles.length === 0 ? (
+                                                    <div className="text-center text-white/40 py-8 text-sm">
+                                                        Nenhum estilo salvo ainda.
+                                                    </div>
+                                                ) : (
+                                                    savedStyles.map((style) => (
+                                                        <div key={style.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors group">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-sm">{style.name}</span>
+                                                                <span className="text-[10px] text-white/40">
+                                                                    {new Date(style.created_at).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-8 w-8 p-0 text-white/40 hover:text-red-400 hover:bg-white/5"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (window.confirm("Tem certeza que deseja excluir este estilo?")) {
+                                                                            handleDeleteStyle(style.id);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="text-xs bg-white/10 hover:bg-white/20 text-white border-0"
+                                                                    onClick={() => handleApplySavedStyle(style)}
+                                                                >
+                                                                    Aplicar
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+
                                     <Button
                                         variant="outline" className="flex-1 md:flex-none h-10 md:h-12 px-4 md:px-6 border-white/10 bg-white/5 text-white rounded-2xl font-bold gap-2 hover:bg-white/10 text-xs md:text-sm"
                                         onClick={handleSave}
@@ -2573,12 +2809,53 @@ SEMPRE:
                                         <span className="md:inline uppercase tracking-widest text-[10px] md:text-xs">Salvar</span>
                                     </Button>
                                 </div>
-
-
                             </div>
                         </footer>
                     )
                 }
+
+                <Dialog open={showSaveStyleDialog} onOpenChange={setShowSaveStyleDialog}>
+                    <DialogContent className="bg-[#09090B] border-white/10 text-white sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Palette className="w-4 h-4 text-primary" />
+                                Salvar como Estilo
+                            </DialogTitle>
+                            <DialogDescription className="text-white/60">
+                                Deseja salvar a formatação atual como um estilo reutilizável para próximos carrosséis?
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-white/60 uppercase tracking-wider">Nome do Estilo</Label>
+                                <Input
+                                    value={newStyleName}
+                                    onChange={(e) => setNewStyleName(e.target.value)}
+                                    placeholder="Ex: Minimalista Azul"
+                                    className="bg-white/5 border-white/10 text-white placeholder:text-white/20"
+                                />
+                            </div>
+                        </div>
+
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setShowSaveStyleDialog(false)}
+                                className="text-white/60 hover:text-white hover:bg-white/5"
+                            >
+                                Não, apenas salvar carrossel
+                            </Button>
+                            <Button
+                                onClick={handleSaveStyle}
+                                disabled={!newStyleName.trim()}
+                                className="bg-primary hover:bg-primary/90 text-white font-bold"
+                            >
+                                Salvar Estilo
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div >
     );

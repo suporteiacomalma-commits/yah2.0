@@ -1633,6 +1633,38 @@ SEMPRE:
 
     // State for preloaded images for robust mobile export
     const [preloadedImages, setPreloadedImages] = useState<Record<number, string>>({});
+    // New State for 2-step export (Mobile Safari Fix)
+    const [generatedFiles, setGeneratedFiles] = useState<File[]>([]);
+    const [showExportDialog, setShowExportDialog] = useState(false);
+
+    const handleConfirmShare = async () => {
+        if (!generatedFiles.length) return;
+
+        toast.loading("Abrindo compartilhamento...", { duration: 1000 });
+
+        // This is now a DIRECT user interaction, so navigator.share works
+        const shared = await shareOrDownload(generatedFiles, "carrossel.zip");
+
+        if (shared) {
+            toast.success("Pronto! Verifique sua galeria.");
+            setShowExportDialog(false);
+        } else {
+            // Fallback for desktop or failed share
+            const zip = new JSZip();
+            generatedFiles.forEach(f => zip.file(f.name, f));
+            const zipContent = await zip.generateAsync({ type: "blob" });
+            const zipUrl = URL.createObjectURL(zipContent);
+            const link = document.createElement("a");
+            link.href = zipUrl;
+            link.download = `carrossel_${carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah'}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(zipUrl);
+            toast.success("Carrossel baixado como ZIP!");
+            setShowExportDialog(false);
+        }
+    };
 
     const preloadCurrentSlideImages = async (slideIndex: number) => {
         const slide = carousel.slides?.[slideIndex];
@@ -1805,31 +1837,13 @@ SEMPRE:
 
             if (files.length === 0) throw new Error("Nenhum slide gerado.");
 
-            // 3. Try Native Share (Best for Mobile Gallery)
-            toast.loading("Enviando para galeria...", { id: toastId });
-            const shared = await shareOrDownload(files, "carrossel.zip");
+            if (files.length === 0) throw new Error("Nenhum slide gerado.");
 
-            if (shared) {
-                toast.success("Pronto! Verifique sua galeria.", { id: toastId });
-            } else {
-                // 4. Fallback to ZIP download for Desktop
-                toast.loading("Gerando arquivo ZIP...", { id: toastId });
-                const zip = new JSZip();
-                files.forEach(f => zip.file(f.name, f));
-
-                const zipContent = await zip.generateAsync({ type: "blob" });
-                const zipUrl = URL.createObjectURL(zipContent);
-
-                const link = document.createElement("a");
-                link.href = zipUrl;
-                link.download = `carrossel_${carousel.topic?.slice(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'yah'}.zip`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(zipUrl);
-
-                toast.success("Carrossel baixado como ZIP!", { id: toastId });
-            }
+            // 3. Store files and show confirmation dialog (2-step process for Mobile Safari)
+            setGeneratedFiles(files);
+            setShowExportDialog(true);
+            toast.dismiss(toastId);
+            toast.success("Carrossel gerado! Clique para salvar.");
 
         } catch (error: any) {
             console.error(error);
@@ -2512,6 +2526,34 @@ SEMPRE:
                                                     Criar carrossel com IA
                                                 </Button>
                                             </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    {/* Export Confirmation Dialog */}
+                                    <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+                                        <DialogContent className="bg-slate-950 border-white/10 text-white max-w-sm rounded-[32px]">
+                                            <DialogHeader>
+                                                <DialogTitle className="text-xl font-black italic text-center">Carrossel Pronto!</DialogTitle>
+                                                <DialogDescription className="text-center text-muted-foreground">
+                                                    Seu carrossel de 10 slides foi gerado com sucesso.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="flex flex-col gap-4 py-4">
+                                                <Button
+                                                    onClick={handleConfirmShare}
+                                                    className="w-full h-14 rounded-2xl gradient-primary font-black text-lg gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
+                                                >
+                                                    <Download className="w-5 h-5" />
+                                                    Salvar na Galeria
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    onClick={() => setShowExportDialog(false)}
+                                                    className="text-muted-foreground hover:text-white"
+                                                >
+                                                    Cancelar
+                                                </Button>
+                                            </div>
                                         </DialogContent>
                                     </Dialog>
 

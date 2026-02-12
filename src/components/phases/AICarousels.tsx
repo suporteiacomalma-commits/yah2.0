@@ -1580,38 +1580,51 @@ SEMPRE:
         // Try native sharing first (best for Mobile "Save to Gallery")
         if (navigator.share) {
             try {
-                // On mobile, force attempt to share all files even if canShare is strict
-                // This adheres to user request to avoid ZIPs and use system dialog
+                // Attempt 1: Share ALL files
                 if (isMobile) {
-                    await navigator.share({
-                        files: files,
-                        title: carousel.topic || 'Carrossel Yah 2.0',
-                        text: 'Meu carrossel criado com Yah 2.0'
-                    });
-                    return true;
+                    try {
+                        await navigator.share({
+                            files: files,
+                            title: carousel.topic || 'Carrossel Yah 2.0',
+                            text: 'Segue meu carrossel'
+                        });
+                        return true;
+                    } catch (e) {
+                        console.warn("Bulk share failed, trying chunks...", e);
+                        // Don't return false yet, fall through to chunk logic
+                    }
                 }
 
-                // Desktop/Other logic
+                // Desktop/Strict check or Fallback from bulk failure
                 const canShare = navigator.canShare && navigator.canShare({ files });
+
                 if (canShare) {
                     await navigator.share({
                         files: files,
                         title: carousel.topic || 'Carrossel Yah 2.0',
-                        text: 'Meu carrossel criado com Yah 2.0'
+                        text: 'Segue meu carrossel'
                     });
+                    return true;
+                } else if (isMobile && files.length > 1) {
+                    // Attempt 2: Chunked Sharing (5 items max is a safe bet for many Androids)
+                    toast("Compartilhando em 2 partes (limite do aparelho)...");
+                    const mid = Math.ceil(files.length / 2);
+                    const batch1 = files.slice(0, mid);
+                    const batch2 = files.slice(mid);
+
+                    await navigator.share({ files: batch1, title: 'Parte 1' });
+                    // Small delay to prevent "Share already in progress" errors
+                    await new Promise(r => setTimeout(r, 800));
+                    await navigator.share({ files: batch2, title: 'Parte 2' });
                     return true;
                 }
 
             } catch (error: any) {
                 if (error.name === 'AbortError') {
-                    console.log("[Export] User cancelled share.");
-                    return true;
+                    return true; // User cancelled, counts as success-ish
                 }
                 console.error("[Export] Share failed:", error);
-
-                // If sharing failed and we are on mobile, we explicitly try to allow the loop to continue to ZIP fallback
-                // BUT the user really wants to avoid ZIP. However, if share FAILS (not supported), we must fallback.
-                // The modification above tries to be as aggressive as possible.
+                toast.error(`Erro ao abrir compartilhamento: ${error.message}`);
             }
         }
 

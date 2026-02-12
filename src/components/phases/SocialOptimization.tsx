@@ -18,14 +18,25 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBrand } from "@/hooks/useBrand";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { useSocialOptimizer, SocialOptimizerData } from "@/hooks/useSocialOptimizer";
 
 type Step = "tela1" | "tela2" | "tela3a" | "tela3b" | "tela3c";
 
+const cleanMarkdown = (text: string) => {
+    if (!text) return "";
+    return text
+        .replace(/\*\*/g, "") // Remove bold markers
+        .replace(/__/g, "")   // Remove underline/bold markers
+        .replace(/^#+\s/gm, "") // Remove headers
+        .replace(/\[STORY\]/g, "[STORY]"); // Preserve STORY marker
+};
+
 export function SocialOptimization() {
     const { user } = useAuth();
     const { brand } = useBrand();
+    const { profile } = useProfile();
     const { socialData, updateSocialData, isLoading } = useSocialOptimizer();
     const { getSetting } = useSystemSettings();
 
@@ -43,14 +54,21 @@ export function SocialOptimization() {
     // Initialize local data when socialData loads
     useEffect(() => {
         if (socialData) {
-            setLocalData(socialData);
+            const initialData = { ...socialData };
+            // Use profile name if socialData has no name or has the default "Seu Nome"
+            if ((!initialData.name || initialData.name === "Seu Nome") && profile?.user_name) {
+                initialData.name = profile.user_name;
+            }
+            setLocalData(initialData);
+
             // Only redirect to mockup (tela2) if we are still on the initial screen
-            if (step === "tela1" && (socialData.diagnosis || socialData.print_url || socialData.bio || socialData.name)) {
+            if (step === "tela1" && (socialData.diagnosis || socialData.print_url || socialData.bio || initialData.name)) {
                 setStep("tela2");
             }
         } else {
             // Default values for new profile
             setLocalData({
+                name: profile?.user_name || "",
                 stats: { posts: 0, followers: 0, following: 0 },
                 highlights: [
                     { title: "Transformação", description: "", cover_url: "", type: "transformation" },
@@ -64,7 +82,7 @@ export function SocialOptimization() {
                 ]
             });
         }
-    }, [socialData]);
+    }, [socialData, profile]);
 
     const markAsDirty = () => {
         isDirty.current = true;
@@ -479,7 +497,7 @@ export function SocialOptimization() {
                                         {/* Name above stats */}
                                         <div className="px-2 group/id relative cursor-pointer hover:bg-slate-50 rounded-xl p-1 -ml-1 transition-colors" onClick={() => setStep("tela3a")}>
                                             <div className="flex items-center gap-1.5">
-                                                <div className="font-bold text-sm tracking-tight">{localData.name || "Seu Nome"}</div>
+                                                <div className="font-bold text-sm tracking-tight">{localData.name || profile?.user_name || "Seu Nome"}</div>
                                                 <div className="w-3 h-3 bg-[#0095f6] rounded-full flex items-center justify-center">
                                                     <Check className="w-2 h-2 text-white" />
                                                 </div>
@@ -1082,98 +1100,7 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
         }
     };
 
-    const getIconMetaphor = (text: string) => {
-        const lower = text.toLowerCase();
-        if (lower.includes("resultado") || lower.includes("venda") || lower.includes("lucro")) return "an ascending business growth chart with an arrow pointing up";
-        if (lower.includes("duvida") || lower.includes("pergunt") || lower.includes("faq")) return "a large clean stylized question mark symbol";
-        if (lower.includes("metodo") || lower.includes("processo") || lower.includes("como funciona")) return "three interlocking mechanical gear wheels";
-        if (lower.includes("feedback") || lower.includes("depoimento") || lower.includes("cliente")) return "a group of five sparkling five-point stars";
-        if (lower.includes("contato") || lower.includes("whatsapp") || lower.includes("fale")) return "a modern speech bubble icon";
-        if (lower.includes("quem sou") || lower.includes("sobre") || lower.includes("historia")) return "a simple human silhouette profile icon";
-        if (lower.includes("oferta") || lower.includes("preço") || lower.includes("comprar")) return "a shopping price tag icon";
-        if (lower.includes("lives") || lower.includes("aula") || lower.includes("video")) return "a centered play button triangle icon";
-        return text; // Fallback to original text if no metaphor found
-    };
 
-    const handleGenerateImage = async (idx: number, promptText: string) => {
-        if (!promptText) {
-            toast.error("Por favor, defina um título para o destaque primeiro");
-            return;
-        }
-
-        const toastId = toast.loading("Iniciando geração de ícone com IA...");
-        setGeneratingIdx(idx);
-
-        try {
-            const apiKey = getSetting("openai_api_key")?.value;
-            if (!apiKey) throw new Error("Chave da API não configurada no sistema (openai_api_key).");
-
-            const metaphor = getIconMetaphor(promptText);
-
-            const response = await fetch('https://api.openai.com/v1/images/generations', {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey.trim()}` },
-                body: JSON.stringify({
-                    model: "dall-e-2",
-                    prompt: `Ultra-minimalist symbolic pictogram of ${metaphor}. Style: Pure white vector icon, flat design. BACKGROUND: Solid dark carbon #111111 background. THE IMAGE MUST ONLY CONTAIN THE CENTRAL SYMBOL. ABSOLUTELY NO TEXT. NO WORDS. NO LETTERS. NO TYPOGRAPHY. NO SIGNS. ZERO ALPHABET CHARACTERS. EXCLUSIVELY GRAPHIC SYMBOLISM.`,
-                    n: 1,
-                    size: "256x256",
-                    response_format: "b64_json"
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                if (errorData.error?.code === 'content_policy_violation') {
-                    throw new Error("A IA recusou gerar este termo por segurança via Content Policy. Tente outro termo.");
-                }
-                throw new Error(errorData.error?.message || `Erro na API: ${response.status}`);
-            }
-
-            const res = await response.json();
-            const b64Data = res.data[0].b64_json;
-            if (!b64Data) throw new Error("A IA não retornou os dados da imagem.");
-
-            // Convert base64 to Blob
-            const byteCharacters = atob(b64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const imageBlob = new Blob([byteArray], { type: 'image/png' });
-
-            const fileName = `ai_icon_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
-            const filePath = `highlight_covers/${brand?.id || 'default'}/${fileName}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from("brand_documents")
-                .upload(filePath, imageBlob);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from("brand_documents")
-                .getPublicUrl(filePath);
-
-            const newHighlights = [...highlights];
-            newHighlights[idx].cover_url = publicUrl;
-            setHighlights(newHighlights);
-
-            await updateSocialData.mutateAsync({
-                updates: { highlights: newHighlights },
-                silent: true
-            });
-
-            toast.success("Ícone gerado e salvo com sucesso!", { id: toastId });
-        } catch (e: any) {
-            console.error("Full error generating/persisting icon:", e);
-            toast.error("Erro ao gerar ícone: " + (e.message || "Erro desconhecido"), { id: toastId });
-        } finally {
-            setGeneratingIdx(null);
-        }
-    };
 
     const handleGenerateInsights = async (idx: number, type: string, title: string) => {
         if (!title) {
@@ -1210,8 +1137,8 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        { role: "system", content: "Você é um estrategista de marca e especialista em Instagram premium. Saída curta e estratégica." },
-                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nTITULO DO DESTAQUE: ${title}\n\nOBJETIVO: ${specificPrompt}\n\nGere 3 tópicos curtos e poderosos sobre o que deve conter na descrição deste destaque.` }
+                        { role: "system", content: "Você é um estrategista de marca e especialista em Instagram premium. Saída curta e estratégica. NÃO use formatação markdown." },
+                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nTITULO DO DESTAQUE: ${title}\n\nOBJETIVO: ${specificPrompt}\n\nGere 3 tópicos curtos e poderosos sobre o que deve conter na descrição deste destaque. Não use negrito ou itálico.` }
                     ]
                 })
             });
@@ -1266,8 +1193,8 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                 body: JSON.stringify({
                     model: "gpt-4o-mini",
                     messages: [
-                        { role: "system", content: "Você é um roteirista de mídias sociais e estrategista de branding. Saída estruturada por [STORY]." },
-                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nTITULO: ${title}\n\nINSIGHTS: ${insights}\n\nOBJETIVO: ${specificPrompt}\n\nCrie um roteiro detalhado de 3 a 5 stories. Use exatamente o marcador [STORY] antes de cada story.` }
+                        { role: "system", content: "Você é um roteirista de mídias sociais e estrategista de branding. Saída estruturada por [STORY]. NÃO use formatação markdown como negrito (**texto**), itálico (*texto*) ou headers (#). Apenas texto puro." },
+                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nTITULO: ${title}\n\nINSIGHTS: ${insights}\n\nOBJETIVO: ${specificPrompt}\n\nCrie um roteiro detalhado de 3 a 5 stories. Use exatamente o marcador [STORY] antes de cada story. Não use formatação markdown.` }
                     ]
                 })
             });
@@ -1401,17 +1328,7 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                             <Upload className="w-4 h-4 text-white" />
                                             <input type="file" className="hidden" accept="image/*" onClick={(e) => e.stopPropagation()} onChange={(e) => handleCoverUpload(e, idx)} />
                                         </label>
-                                        <button
-                                            type="button"
-                                            className="h-9 w-9 rounded-full bg-primary shadow-xl shadow-primary/20 flex items-center justify-center border-4 border-background cursor-pointer hover:scale-110 transition-all"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleGenerateImage(idx, h.title);
-                                            }}
-                                            title="Gerar com IA"
-                                        >
-                                            <Wand2 className="w-4 h-4 text-white" />
-                                        </button>
+
                                         {h.cover_url && (
                                             <button
                                                 type="button"
@@ -1459,7 +1376,7 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                                 h.type === 'journey' ? 'Processo/método, experiência e bastidores do seu DNA...' :
                                                     'Dúvidas reais, autoridade e CTA de baixo risco...'
                                         }
-                                        value={h.description}
+                                        value={cleanMarkdown(h.description)}
                                         onChange={(e) => {
                                             const n = [...highlights];
                                             n[idx].description = e.target.value;
@@ -1637,7 +1554,7 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                                                         <div className="text-[11px] leading-relaxed font-medium selection:bg-primary/20">
                                                             <AutoResizeTextarea
                                                                 className="text-[11px] font-medium leading-relaxed bg-transparent border-none p-0 focus-visible:ring-0"
-                                                                value={story.trim()}
+                                                                value={cleanMarkdown(story.trim())}
                                                                 onChange={(e) => {
                                                                     const rawStories = h.content.split('[STORY]');
                                                                     let count = 0;
@@ -1691,7 +1608,6 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
     const { getSetting } = useSystemSettings();
     const [posts, setPosts] = useState(data.pinned_posts || []);
     const [generatingContentIdx, setGeneratingContentIdx] = useState<number | null>(null);
-    const [generatingCoverIdx, setGeneratingCoverIdx] = useState<number | null>(null);
     const postRefs = useRef<(HTMLDivElement | null)[]>([]);
     const coverInputRef = useRef<HTMLInputElement>(null);
     const [activeIdx, setActiveIdx] = useState<number | null>(null);
@@ -1782,37 +1698,46 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
                     messages: [
                         {
                             role: "system",
-                            content: `Você é um especialista em criação de conteúdo para cards de redes sociais. Sua missão é gerar um conteúdo único, direto, claro e impactante.
-
-Regras obrigatórias:
-- Saída SEMPRE em 3 linhas curtas.
-- Linguagem simples e forte (formato de card).
-- Não enrolar nem explicar demais.
-- Entregar valor prático ou reflexão clara.
-- Não usar emojis em excesso.
-- Não usar hashtags.
-- Não mencionar IA.
-- Não repetir o título exatamente como está.
-- Soar humano e natural.
-
-Estrutura do card:
-1ª linha: frase de impacto ou afirmação principal
-2ª linha: complemento ou explicação curta
-3ª linha: fechamento memorável ou chamada de ação leve`
+                            content: `Você é um estrategista de conteúdo para Instagram. Sua missão é criar um conteúdo estruturado para posts fixados.
+                            
+                            Sua saída DEVE ser um JSON válido com os seguintes campos:
+                            - "art_text": O texto curto e impactante que vai escrito na imagem do post (o card). Máximo 3 linhas curtas.
+                            - "script": O roteiro estratégico para o carrossel ou legenda expandida, explicando o conceito.
+                            - "caption": A legenda final para ser colada no Instagram, incluindo CTA.
+                            
+                            Regras para "art_text":
+                            - Direto, forte, sem enrolação.
+                            - Sem emojis excessivos.
+                            - Sem markdown.
+                            
+                            Regras para "script":
+                            - Estruturado, educativo e persuasivo.
+                            - Use tom de voz da marca.
+                            
+                            Regras para "caption":
+                            - Pronta para postar.
+                            - Incluir chamadas para ação.
+                            - Sem hashtags genéricas.`
                         },
                         {
                             role: "user",
-                            content: `CONTEXTO DA MARCA: ${brandContext}\n\nTÍTULO: "${posts[idx].theme}"\n\nGere o conteúdo do card pronto para ser usado na arte.`
+                            content: `CONTEXTO DA MARCA: ${brandContext}\n\nTÍTULO: "${posts[idx].theme}"\n\nOBJETIVO: ${specificPrompt}\n\nGere o conteúdo estruturado em JSON.`
                         }
-                    ]
+                    ],
+                    response_format: { type: "json_object" }
                 })
             });
             const res = await response.json();
             if (res.error) throw new Error(res.error.message);
 
-            const content = res.choices[0].message.content;
+            const contentObj = JSON.parse(res.choices[0].message.content);
             const newPosts = [...posts];
-            newPosts[idx].content = content;
+
+            // Format the content field to show both Art Text and Script
+            const formattedContent = `TEXTO DA ARTE:\n${contentObj.art_text}\n\n---\n\nROTEIRO:\n${contentObj.script}`;
+
+            newPosts[idx].content = formattedContent;
+            newPosts[idx].caption = contentObj.caption; // Populate the caption field
             setPosts(newPosts);
 
             toast.success("Roteiro gerado com sucesso!", { id: toastId });
@@ -1823,105 +1748,8 @@ Estrutura do card:
         }
     };
 
-    const handleGeneratePostCover = async (idx: number) => {
-        if (!posts[idx].theme) {
-            toast.error("Por favor, defina um Tema Principal primeiro para guiar a IA.");
-            return;
-        }
 
-        const toastId = toast.loading("Gerando capa premium com IA...");
-        setGeneratingCoverIdx(idx);
-        try {
-            const apiKey = getSetting("openai_api_key")?.value;
-            if (!apiKey) throw new Error("Chave da API não configurada.");
 
-            const brandContext = brand ? `
-                Niche: ${brand.dna_nicho || 'General'}
-                Brand Essence: ${brand.result_essencia || 'Premium'}
-                Visual Style: ${brand.graphic_elements || 'Minimalist, luxury'}
-                Colors: ${brand.primary_color || 'Gold'} and ${brand.secondary_color || 'Black'}
-                Key Elements: ${brand.logo_description || 'Clean, abstract'}
-            ` : '';
-
-            const prompt = `
-                Create a high-end, professional social media post cover for a brand in the ${brandContext} niche.
-                
-                Theme: "${posts[idx].theme}"
-                
-                Strict Visual Guidelines:
-                - Style: Ultra-luxury, ${brand?.graphic_elements || 'minimalist'}, cinematic lighting.
-                - Color Palette: Use tones related to ${brand?.primary_color || 'Gold'} and ${brand?.secondary_color || 'Black'}.
-                - Atmosphere: ${brand?.result_essencia || 'Sophisticated and authoritative'}.
-                - Composition: Clean, editorial photography, 8k resolution.
-                
-                Visual Metaphor:
-                A bold, conceptual scene representing "${posts[idx].theme}" in a way that appeals to a ${brand?.dna_persona_data?.name || 'high-ticket'} audience.
-                
-                NEGATIVE PROMPT (STRICT):
-                - ABSOLUTELY NO TEXT. NO WORDS. NO LETTERS. NO TYPOGRAPHY. ZERO SIGNS.
-                - No messy details, no cartoonish style, no low resolution, no distort faces.
-                - ONLY A CLEAN VISUAL IMAGE.
-            `.trim();
-
-            const response = await fetch('https://api.openai.com/v1/images/generations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey.trim()}` },
-                body: JSON.stringify({
-                    prompt,
-                    n: 1,
-                    size: "1024x1024",
-                    response_format: "b64_json"
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error?.message || `Erro na API: ${response.status}`);
-            }
-
-            const res = await response.json();
-            const b64Data = res.data[0].b64_json;
-            if (!b64Data) throw new Error("A IA não retornou os dados da imagem.");
-
-            // Convert base64 to Blob
-            const byteCharacters = atob(b64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const imageBlob = new Blob([byteArray], { type: 'image/png' });
-
-            const fileName = `post_cover_${Math.random().toString(36).substring(2)}_${Date.now()}.png`;
-            const filePath = `post_covers/${brand?.id || 'default'}/${fileName}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from("brand_documents")
-                .upload(filePath, imageBlob);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from("brand_documents")
-                .getPublicUrl(filePath);
-
-            const newPosts = [...posts];
-            newPosts[idx].thumbnail_url = publicUrl;
-            setPosts(newPosts);
-
-            await updateSocialData.mutateAsync({
-                updates: { pinned_posts: newPosts },
-                silent: true
-            });
-
-            toast.success("Capa gerada com sucesso!", { id: toastId });
-        } catch (e: any) {
-            console.error("Error generating post cover:", e);
-            toast.error("Erro ao gerar capa: " + e.message, { id: toastId });
-        } finally {
-            setGeneratingCoverIdx(null);
-        }
-    };
 
     const handleExportPost = (post: any) => {
         const text = `*Post Fixado: ${post.theme || 'Sem Tema'}*\n\n*Tipo:* ${post.type.toUpperCase()}\n\n*Roteiro/Legenda IA:*\n${post.content}\n\n*Legenda Final:*\n${post.caption || 'Não definido'}\n\n*Link:* ${post.link || 'Não definido'}`;
@@ -1991,20 +1819,10 @@ Estrutura do card:
                                                     <Button
                                                         variant="secondary"
                                                         size="sm"
-                                                        className="flex-1 h-11 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-black text-[9px] uppercase tracking-widest gap-2"
+                                                        className="w-full h-11 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-black text-[9px] uppercase tracking-widest gap-2"
                                                         onClick={(e) => { e.stopPropagation(); setActiveIdx(idx); coverInputRef.current?.click(); }}
                                                     >
                                                         <Upload className="w-3.5 h-3.5" /> Subir
-                                                    </Button>
-                                                    <Button
-                                                        variant="secondary"
-                                                        size="sm"
-                                                        className="flex-1 h-11 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 font-black text-[9px] uppercase tracking-widest gap-2"
-                                                        onClick={(e) => { e.stopPropagation(); handleGeneratePostCover(idx); }}
-                                                        disabled={generatingCoverIdx === idx}
-                                                    >
-                                                        {generatingCoverIdx === idx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                                                        IA
                                                     </Button>
                                                 </div>
                                                 {post.thumbnail_url && (
@@ -2109,7 +1927,7 @@ Estrutura do card:
                                             </div>
                                             <Textarea
                                                 className="min-h-[200px] rounded-[2rem] p-6 bg-white/[0.03] border-white/5 focus-visible:ring-primary/20 transition-all text-xs font-medium leading-relaxed resize-none no-scrollbar"
-                                                value={post.content}
+                                                value={cleanMarkdown(post.content)}
                                                 placeholder="Aguardando geração da estratégia..."
                                                 onChange={(e) => {
                                                     const n = [...posts];

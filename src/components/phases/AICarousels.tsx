@@ -2542,33 +2542,8 @@ SEMPRE:
                                         </DialogContent>
                                     </Dialog>
 
-                                    {/* Export Confirmation Dialog */}
-                                    <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-                                        <DialogContent className="bg-slate-950 border-white/10 text-white max-w-sm rounded-[32px]">
-                                            <DialogHeader>
-                                                <DialogTitle className="text-xl font-black italic text-center">Carrossel Pronto!</DialogTitle>
-                                                <DialogDescription className="text-center text-muted-foreground">
-                                                    Seu carrossel de 10 slides foi gerado com sucesso.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="flex flex-col gap-4 py-4">
-                                                <Button
-                                                    onClick={handleConfirmShare}
-                                                    className="w-full h-14 rounded-2xl gradient-primary font-black text-lg gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
-                                                >
-                                                    <Download className="w-5 h-5" />
-                                                    Salvar na Galeria
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={() => setShowExportDialog(false)}
-                                                    className="text-muted-foreground hover:text-white"
-                                                >
-                                                    Cancelar
-                                                </Button>
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
+                                    {/* Export Confirmation Dialog removed from here */}
+
 
                                 </div>
                             </div>
@@ -2912,6 +2887,34 @@ SEMPRE:
                     </DialogContent>
                 </Dialog>
             </div>
+
+            {/* Export Confirmation Dialog - Moved to Root */}
+            <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+                <DialogContent className="bg-slate-950 border-white/10 text-white max-w-sm rounded-[32px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black italic text-center">Carrossel Pronto!</DialogTitle>
+                        <DialogDescription className="text-center text-muted-foreground">
+                            Seu carrossel de 10 slides foi gerado com sucesso.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4 py-4">
+                        <Button
+                            onClick={handleConfirmShare}
+                            className="w-full h-14 rounded-2xl gradient-primary font-black text-lg gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
+                        >
+                            <Download className="w-5 h-5" />
+                            Salvar na Galeria
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setShowExportDialog(false)}
+                            className="text-muted-foreground hover:text-white"
+                        >
+                            Cancelar
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div >
     );
 }

@@ -4,6 +4,21 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { phases } from "@/lib/phases";
 
+
+// Fields to select when we don't need heavy JSON data (trained_ais_chats, weekly_structure_data, etc.)
+export const BRAND_LITE_FIELDS = `
+  id, user_id, name, sector, description, mission, vision, values, purpose, personality,
+  primary_color, secondary_color, accent_color, typography, logo_description, graphic_elements,
+  personas, segments, behaviors, pain_points, desires, writing_style, vocabulary, key_messages,
+  communication_examples, user_role, user_motivation, user_change_world, user_tone_selected,
+  user_creative_profile, user_energy_times, user_blockers, result_essencia, result_tom_voz,
+  result_como_funciona, routine_posts_per_week, routine_planning_days, routine_execution_days,
+  routine_posting_days, routine_feed_format_prefs, routine_intentions_prefs, routine_fixed_hours,
+  dna_nicho, dna_produto, dna_objetivo, dna_dor_principal, dna_sonho_principal, dna_transformacao,
+  dna_diferencial, dna_tese, dna_pilares, dna_objecao_comum, dna_persona_data, dna_competidores,
+  dna_comparativo, dna_uvp, extra_infos, trunk_categories, current_phase, phases_completed,
+  created_at, updated_at
+`;
 export interface Brand {
   id: string;
   user_id: string;
@@ -72,17 +87,17 @@ export interface Brand {
   updated_at: string;
 }
 
-export function useBrand() {
+export function useBrand(options?: { select?: string }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: brand, isLoading } = useQuery({
-    queryKey: ["brand", user?.id],
+    queryKey: ["brand", user?.id, options?.select],
     queryFn: async () => {
       if (!user) return null;
       const { data, error } = await supabase
         .from("brands")
-        .select("*")
+        .select(options?.select || "*")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -133,9 +148,16 @@ export function useBrand() {
       if (error) throw error;
       return { data, silent };
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["brand", user?.id] });
-      if (!data.silent) {
+    onSuccess: ({ data, silent }) => {
+      if (data) {
+        queryClient.setQueryData(["brand", user?.id], data);
+      }
+
+      if (!silent) {
+        // Only invalidate if explicitly requested (non-silent), but even then, 
+        // we already have the fresh data, so invalidation might be redundant 
+        // unless there are side effects. Keeping it for non-silent actions to be safe.
+        queryClient.invalidateQueries({ queryKey: ["brand", user?.id] });
         toast.success("Dados salvos com sucesso!");
       }
     },

@@ -1,6 +1,6 @@
 import { MinimalLayout } from "@/components/layout/MinimalLayout";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBrand } from "@/hooks/useBrand";
+import { useBrand, BRAND_LITE_FIELDS } from "@/hooks/useBrand";
 import { useProfile } from "@/hooks/useProfile";
 import { phases } from "@/lib/phases";
 import { Loader2, Mic, Lightbulb, Check, Map, CalendarDays, Sparkles, ChevronDown, ChevronUp, Clock } from "lucide-react";
@@ -34,7 +34,10 @@ const DAILY_TIPS = [
 ];
 
 export default function Dashboard() {
-  const { brand, isLoading: brandLoading } = useBrand();
+  // Dashboard needs weekly structure for the specific section, but not trained_ais_chats
+  const { brand, isLoading: brandLoading } = useBrand({
+    select: `${BRAND_LITE_FIELDS}, weekly_structure_data`
+  });
   const { profile, isLoading: profileLoading } = useProfile();
   const { user } = useAuth();
   const navigate = useNavigate();

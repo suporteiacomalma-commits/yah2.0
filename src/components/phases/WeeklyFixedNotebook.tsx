@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useBrand, Brand } from "@/hooks/useBrand";
+import { useBrand, Brand, BRAND_LITE_FIELDS } from "@/hooks/useBrand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -128,7 +128,9 @@ const DAILY_AI_TIPS: Record<number, { title: string; topic: string; format: stri
 
 export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void }) {
     const { user } = useAuth();
-    const { brand, updateBrand } = useBrand();
+    const { brand, updateBrand } = useBrand({
+        select: `${BRAND_LITE_FIELDS}, weekly_structure_data`
+    });
     const { getSetting } = useSystemSettings();
 
     const [screen, setScreen] = useState<Screen>("vision");
@@ -205,7 +207,7 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
 
     const saveWeeklyData = async (silent: boolean = false) => {
         try {
-            await updateBrand.mutateAsync({ updates: { weekly_structure_data: weeklyData } });
+            await updateBrand.mutateAsync({ updates: { weekly_structure_data: weeklyData }, silent });
             if (!silent) toast.success("Ajustes salvos!");
             isDirty.current = false;
         } catch (error) {

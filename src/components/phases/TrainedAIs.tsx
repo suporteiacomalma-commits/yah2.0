@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
     Bot,
     Sparkles,
@@ -20,15 +22,42 @@ import {
     Camera,
     Brain,
     Globe,
-    Trash2
+    Trash2,
+    MoreHorizontal,
+    Download,
+    CalendarPlus,
+    FileText as FileTextIcon
 } from "lucide-react";
 import { useBrand, Brand } from "@/hooks/useBrand";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Agent {
     id: string;
@@ -408,6 +437,16 @@ interface TrainedAIsProps {
     initialAgentId?: string;
 }
 
+const DAYS_OF_WEEK = [
+    { value: "0", label: "Domingo" },
+    { value: "1", label: "Segunda" },
+    { value: "2", label: "Terça" },
+    { value: "3", label: "Quarta" },
+    { value: "4", label: "Quinta" },
+    { value: "5", label: "Sexta" },
+    { value: "6", label: "Sábado" }
+];
+
 export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
     const { brand, updateBrand } = useBrand();
     const { getSetting } = useSystemSettings();
@@ -417,6 +456,14 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [copied, setCopied] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
+
+    // Dialog State
+    const [isWeeklyDialogOpen, setIsWeeklyDialogOpen] = useState(false);
+    const [selectedMessageContent, setSelectedMessageContent] = useState<string | null>(null);
+    const [targetWeek, setTargetWeek] = useState<string>("1");
+    const [targetDay, setTargetDay] = useState<string>("1");
+    const [targetType, setTargetType] = useState<"feed" | "stories">("feed");
+    const [isSendingToWeekly, setIsSendingToWeekly] = useState(false);
 
     useEffect(() => {
         if (initialAgentId && !selectedAgent) {
@@ -588,6 +635,85 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
         }
     };
 
+    const handleExportTxt = (content: string, agentName: string) => {
+        const element = document.createElement("a");
+        const file = new Blob([content], { type: 'text/plain' });
+        element.href = URL.createObjectURL(file);
+        element.download = `${agentName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd_HHmm')}.txt`;
+        document.body.appendChild(element); // Required for this to work in FireFox
+        element.click();
+        document.body.removeChild(element);
+        toast.success("Arquivo baixado!");
+    };
+
+    const openSendToWeeklyDialog = (content: string) => {
+        setSelectedMessageContent(content);
+        setIsWeeklyDialogOpen(true);
+    };
+
+    const handleSendToWeekly = async () => {
+        if (!selectedMessageContent || !brand) return;
+
+        setIsSendingToWeekly(true);
+        try {
+            // Retrieve current week data
+            const currentWeeklyData = brand.weekly_structure_data || {};
+            const weekIdx = parseInt(targetWeek) - 1;
+            const dayIdx = parseInt(targetDay);
+
+            // Ensure structure exists
+            if (!currentWeeklyData[weekIdx]) currentWeeklyData[weekIdx] = {};
+            if (!currentWeeklyData[weekIdx][dayIdx]) currentWeeklyData[weekIdx][dayIdx] = { feed: {}, stories: {} };
+
+            const targetSection = currentWeeklyData[weekIdx][dayIdx][targetType];
+
+            // Try to parse content as JSON
+            let parsedContent: any = {};
+            try {
+                // Determine if content is JSON-like (starts with { and ends with })
+                const jsonMatch = selectedMessageContent.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    parsedContent = JSON.parse(jsonMatch[0]);
+                }
+            } catch (e) {
+                console.warn("Content is not valid JSON, using as plain text notes");
+            }
+
+            // Construct new block
+            // If JSON has specific fields, use them. Otherwise use full text in notes.
+            const newBlock = {
+                id: Date.now(),
+                headline: parsedContent.tema || parsedContent.headline || parsedContent.title || "Conteúdo importado da IA",
+                format: parsedContent.format || (targetType === "feed" ? "Carrossel" : "Sequência"),
+                intention: parsedContent.intention || "Conexão",
+                instruction: "Conteúdo gerado via Agente IA.",
+                notes: selectedMessageContent, // Always save full original content in notes for reference
+                caption: parsedContent.caption || parsedContent.legenda || "",
+            };
+
+            // Add to main block if empty, otherwise add to extraBlocks
+            if (!targetSection.headline) {
+                Object.assign(targetSection, newBlock);
+            } else {
+                if (!targetSection.extraBlocks) targetSection.extraBlocks = [];
+                targetSection.extraBlocks.push(newBlock);
+            }
+
+            await updateBrand.mutateAsync({
+                updates: { weekly_structure_data: currentWeeklyData },
+                silent: false
+            });
+
+            toast.success("Enviado para o Planejamento Semanal!");
+            setIsWeeklyDialogOpen(false);
+        } catch (error) {
+            console.error("Error sending to weekly:", error);
+            toast.error("Erro ao enviar para o planejamento.");
+        } finally {
+            setIsSendingToWeekly(false);
+        }
+    };
+
 
 
     const formatMessageContent = (content: string) => {
@@ -699,15 +825,36 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                                 </pre>
 
                                 {msg.role === "assistant" && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleCopy(msg.content)}
-                                        className="sm:absolute -right-12 top-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 hover:bg-primary/10 mt-2 sm:mt-0"
-                                        title="Copiar"
-                                    >
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/40 w-full justify-end">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-primary">
+                                                    <Download className="w-3 h-3" />
+                                                    Exportar
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => handleCopy(msg.content)}>
+                                                    <Copy className="w-3 h-3 mr-2" />
+                                                    Copiar Texto
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleExportTxt(msg.content, selectedAgent.name)}>
+                                                    <FileTextIcon className="w-3 h-3 mr-2" />
+                                                    Baixar .txt
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => openSendToWeeklyDialog(msg.content)}
+                                            className="h-7 text-xs gap-1 text-muted-foreground hover:text-primary"
+                                        >
+                                            <CalendarPlus className="w-3 h-3" />
+                                            Enviar para Semana
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -725,6 +872,82 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                     )}
                     <div ref={chatEndRef} />
                 </div>
+
+                {/* Send to Weekly Dialog */}
+                <Dialog open={isWeeklyDialogOpen} onOpenChange={setIsWeeklyDialogOpen}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Enviar para Planejamento Semanal</DialogTitle>
+                            <DialogDescription>
+                                Escolha onde deseja salvar este conteúdo gerado pela IA.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="week" className="text-right">
+                                    Semana
+                                </Label>
+                                <Select value={targetWeek} onValueChange={setTargetWeek}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Selecione a semana" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">Semana 1</SelectItem>
+                                        <SelectItem value="2">Semana 2</SelectItem>
+                                        <SelectItem value="3">Semana 3</SelectItem>
+                                        <SelectItem value="4">Semana 4</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="day" className="text-right">
+                                    Dia
+                                </Label>
+                                <Select value={targetDay} onValueChange={setTargetDay}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Selecione o dia" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {DAYS_OF_WEEK.map((day) => (
+                                            <SelectItem key={day.value} value={day.value}>
+                                                {day.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="type" className="text-right">
+                                    Tipo
+                                </Label>
+                                <Select value={targetType} onValueChange={(val: any) => setTargetType(val)}>
+                                    <SelectTrigger className="col-span-3">
+                                        <SelectValue placeholder="Selecione o tipo" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="feed">Feed</SelectItem>
+                                        <SelectItem value="stories">Stories</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsWeeklyDialogOpen(false)}>
+                                Cancelar
+                            </Button>
+                            <Button onClick={handleSendToWeekly} disabled={isSendingToWeekly}>
+                                {isSendingToWeekly ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Enviando...
+                                    </>
+                                ) : (
+                                    "Confirmar Envio"
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 <div className="relative flex items-end gap-2 bg-card/60 p-2 sm:p-2.5 border border-border/60 rounded-2xl sm:rounded-3xl backdrop-blur-3xl focus-within:border-primary/50 transition-all shadow-2xl">
                     <Textarea

@@ -217,6 +217,8 @@ Retorne um JSON com uma lista de eventos:
 Observações importantes:
 - Se o usuário falar "amanhã", calcule a data correta baseada em ${todayStr}.
 - Se o usuário falar "toda segunda", "diário", etc., marque a "recorrencia" adequadamente.
+- IMPORTANTE: Se o usuário mencionar um dia da semana para recorrência (ex: "toda terça"), a data do evento (campo "data") DEVE SER a data da PRÓXIMA terça-feira a partir de hoje (${todayStr}), e não a data de hoje.
+- Se a recorrência for "Semanal" e o dia da semana mencionado for hoje, use a data de hoje. Se for um dia que já passou nesta semana, use a data da próxima semana.
 - Se o usuário não mencionar hora, use null se for tarefa ou 09:00 se for compromisso.
 - Identifique múltiplos eventos se eles existirem na mesma frase.
 - Seja inteligente com o contexto.

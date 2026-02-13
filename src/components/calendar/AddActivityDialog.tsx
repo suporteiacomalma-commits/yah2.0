@@ -175,7 +175,10 @@ export function AddActivityDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-lg bg-slate-950 border-white/5 p-4 sm:p-8 sm:max-h-[90vh] max-h-[96vh] overflow-y-auto custom-scrollbar overscroll-y-contain fixed left-[50%] top-5 sm:top-[50%] translate-x-[-50%] translate-y-0 sm:translate-y-[-50%] duration-200">
+      <DialogContent
+        className="w-[95vw] sm:max-w-lg bg-slate-950 border-white/5 p-4 sm:p-8 sm:max-h-[90vh] max-h-[96vh] overflow-y-auto custom-scrollbar overscroll-y-contain fixed left-[50%] top-5 sm:top-[50%] translate-x-[-50%] translate-y-0 sm:translate-y-[-50%] duration-200"
+        style={{ overscrollBehavior: 'contain' }}
+      >
         <DialogHeader className="mb-6">
           <DialogTitle className="text-3xl font-black text-white tracking-tighter uppercase italic">
             {editingEvent ? "Editar Evento" : "Novo Evento"}
@@ -244,7 +247,8 @@ export function AddActivityDialog({
                   type="time"
                   value={hour}
                   onChange={(e) => setHour(e.target.value)}
-                  className="h-12 bg-white/5 border-white/10 rounded-xl pl-10 font-bold text-left"
+                  className="h-12 bg-white/5 border-white/10 rounded-xl pl-10 font-bold text-left block w-full appearance-none"
+                  style={{ textAlign: 'left' }}
                 />
               </div>
             </div>

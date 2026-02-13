@@ -248,3 +248,8 @@
 .animate-spin-slow {
   animation: spin 12s linear infinite;
 }
+
+/* Fix for time input alignment on iOS/WebKit */
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+}

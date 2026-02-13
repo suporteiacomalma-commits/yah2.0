@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useLocation } from "react-router-dom";
 import { useBrand, Brand, BRAND_LITE_FIELDS } from "@/hooks/useBrand";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -148,6 +149,8 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
     const [weeklyData, setWeeklyData] = useState<any>({});
     const [routineConfirmation, setRoutineConfirmation] = useState<{ isOpen: boolean, type: "planning" | "execution" | null, days: string[] }>({ isOpen: false, type: null, days: [] });
 
+    const location = useLocation();
+
     useEffect(() => {
         if (brand && !isFormInitialized) {
             setRoutineData({
@@ -167,6 +170,42 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
             }
         }
     }, [brand, isFormInitialized]);
+
+    // Handle incoming navigation state from Dashboard
+    useEffect(() => {
+        const state = location.state as { targetDate?: string | Date; tab?: string } | null;
+        if (state && state.targetDate && state.tab) {
+            const { targetDate, tab } = state;
+            const dateObj = new Date(targetDate);
+
+            // Logic to calculate week and day index similar to handleDateSelect
+            const today = new Date();
+            const currentDay = today.getDay();
+            const diff = currentDay === 0 ? -6 : 1 - currentDay;
+            const mondayOfWeek1 = new Date(today);
+            mondayOfWeek1.setDate(today.getDate() + diff);
+            mondayOfWeek1.setHours(0, 0, 0, 0);
+
+            const selectedDate = new Date(dateObj);
+            selectedDate.setHours(0, 0, 0, 0);
+
+            const diffDays = differenceInCalendarDays(selectedDate, mondayOfWeek1);
+            const newWeekIndex = Math.floor(diffDays / 7);
+            const newDayIdx = selectedDate.getDay();
+
+            if (newWeekIndex >= 0 && newWeekIndex < 4) {
+                setCurrentWeek(newWeekIndex + 1);
+                setSelectedDayIndex(newDayIdx);
+                setDetailTab(tab as DetailTab);
+                setScreen("detail");
+
+                // Clear state to avoid reopening on refresh/back if desired, 
+                // but React Router state relies on navigation, so it's usually fine.
+                // We can replace the current history entry to clear state if needed:
+                // window.history.replaceState({}, document.title);
+            }
+        }
+    }, [location.state]);
 
     const handleRoutineChange = (field: keyof Brand, value: any) => {
         setRoutineData(prev => ({ ...prev, [field]: value }));

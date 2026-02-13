@@ -14,6 +14,7 @@ import { MiniCalendar } from "@/components/workspace/MiniCalendar";
 import { cn } from "@/lib/utils";
 import { expandRecurringEvents } from "@/components/calendar/utils/recurrenceUtils";
 
+
 // Phases to display in the dashboard (skipping 5 and 9 as per design/existing logic)
 const DASHBOARD_PHASE_IDS = [1, 2, 3, 4, 6, 7, 8];
 
@@ -245,7 +246,6 @@ export default function Dashboard() {
                     <p className="border-l-2 border-[#B6BC45]/30 pl-4 py-1 text-[#EEEDE9]/90 font-medium">
                       {currentTip}
                     </p>
-                    <p className="pt-2 text-[#999]/60 italic text-xs">"Sua marca agora tem alma e estratégia. Continue criando!"</p>
                   </div>
                 )}
               </div>
@@ -491,12 +491,18 @@ export default function Dashboard() {
                       )}
                     </div>
                     {hasFeed ? (
-                      <>
-                        <div className="text-[14px] text-[#EEEDE9] font-medium mb-1">{feed?.headline || 'Sem título definido'}</div>
+                      <div
+                        onClick={() => navigate('/phase/3', { state: { targetDate: new Date(), tab: 'feed' } })}
+                        className="cursor-pointer hover:bg-white/5 p-2 -m-2 rounded-lg transition-colors group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-[14px] text-[#EEEDE9] font-medium mb-1 group-hover:text-[#B6BC45] transition-colors">{feed?.headline || 'Sem título definido'}</div>
+                          <span className="text-[10px] text-[#B6BC45] opacity-0 group-hover:opacity-100 transition-opacity">Editar</span>
+                        </div>
                         <div className="text-[13px] text-[#999]">
                           <span className="opacity-70">Intenção:</span> {feed?.intention || '-'}
                         </div>
-                      </>
+                      </div>
                     ) : (
                       <div className="text-[13px] text-[#999] italic">Nada planejado para o feed hoje.</div>
                     )}
@@ -513,12 +519,18 @@ export default function Dashboard() {
                       )}
                     </div>
                     {hasStories ? (
-                      <>
-                        <div className="text-[14px] text-[#EEEDE9] font-medium mb-1">{stories?.headline || 'Sem título definido'}</div>
+                      <div
+                        onClick={() => navigate('/phase/3', { state: { targetDate: new Date(), tab: 'stories' } })}
+                        className="cursor-pointer hover:bg-white/5 p-2 -m-2 rounded-lg transition-colors group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-[14px] text-[#EEEDE9] font-medium mb-1 group-hover:text-[#B6BC45] transition-colors">{stories?.headline || 'Sem título definido'}</div>
+                          <span className="text-[10px] text-[#B6BC45] opacity-0 group-hover:opacity-100 transition-opacity">Editar</span>
+                        </div>
                         <div className="text-[13px] text-[#999]">
                           <span className="opacity-70">Intenção:</span> {stories?.intention || '-'}
                         </div>
-                      </>
+                      </div>
                     ) : (
                       <div className="text-[13px] text-[#999] italic">Nada planejado para os stories hoje.</div>
                     )}
@@ -527,6 +539,8 @@ export default function Dashboard() {
               );
             })()}
           </section>
+
+
 
           {/* Calendar Section - Using MiniCalendar Component */}
           <Link

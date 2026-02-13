@@ -100,6 +100,7 @@ const MODULES = [
             importante: "A IA faz o trabalho pesado (textos). Você personaliza o visual para humanizar e dar sua identidade.",
             conexao: "Lê: DNA de Marca, Pilares de Conteúdo | Exporta para: Sua galeria",
             ideal: "Abordar assuntos importantes para sua audiência de forma rápida e profissional.",
+            dica: "Use nos dias corridos para não deixar de postar e manter sua presença digital contínua.",
             action: "Criar primeiro carrossel",
             link: "/phase/7"
         }
@@ -161,6 +162,7 @@ const MODULES = [
             recebe: ["Posts da Estrutura", "Compromissos do Cérebro", "Tarefas de Metas", "Ideias capturadas"],
             conexao: "Recebe de: TUDO | Envia para: WhatsApp (relatório)",
             tempo: "Consulte sempre",
+            dica: "Quanto mais você alimentar o assistente, mais ele organiza os seus dias para você.",
             action: "Abrir Calendário",
             link: "/calendar"
         }
@@ -427,7 +429,7 @@ export default function ExploreMap() {
                                             type="date"
                                             value={checklist.deadlines[field.id as keyof ChecklistState['deadlines']]}
                                             onChange={(e) => handleDeadlineChange(field.id as keyof ChecklistState['deadlines'], e.target.value)}
-                                            className="bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-[13px] font-medium text-[#EEEDE9] focus:border-[#B6BC45]/50 focus:bg-white/[0.06] outline-none transition-all w-full color-scheme-dark"
+                                            className="bg-white/[0.03] border border-white/10 rounded-xl h-12 px-4 text-sm font-medium text-[#EEEDE9] focus:border-[#B6BC45]/50 focus:bg-white/[0.06] outline-none transition-all w-full min-w-0 max-w-full block appearance-none color-scheme-dark"
                                         />
                                     </div>
                                 ))}

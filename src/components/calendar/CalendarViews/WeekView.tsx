@@ -3,6 +3,7 @@ import { format, startOfWeek, addDays, isSameDay, eachDayOfInterval } from "date
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CerebroEvent, CATEGORY_COLORS } from "../types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface WeekViewProps {
     currentDate: Date;
@@ -15,12 +16,14 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
     const headerRef = useRef<HTMLDivElement>(null);
     const weekStart = startOfWeek(currentDate, { locale: ptBR });
     const weekDays = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
+    const isMobile = useIsMobile();
+    const HOUR_HEIGHT = isMobile ? 50 : 80;
     const hours = Array.from({ length: 24 }).map((_, i) => i);
 
     useEffect(() => {
         // Initial scroll to 8 AM
         if (scrollRef.current) {
-            scrollRef.current.scrollTop = 80 * 8;
+            scrollRef.current.scrollTop = HOUR_HEIGHT * 8;
         }
 
         // Scroll Sync Logic
@@ -62,8 +65,8 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
         const [h, m] = event.hora.split(':').map(Number);
         const duration = event.duracao || 60;
         return {
-            top: `${(h * 80) + (m / 60 * 80)}px`,
-            height: `${(duration / 60) * 80}px`
+            top: `${(h * HOUR_HEIGHT) + (m / 60 * HOUR_HEIGHT)}px`,
+            height: `${(duration / 60) * HOUR_HEIGHT}px`
         };
     };
 
@@ -95,7 +98,11 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
                     {/* Time Sidebar */}
                     <div className="border-r border-white/5 bg-slate-950/20">
                         {hours.map(h => (
-                            <div key={h} className="h-20 flex items-start justify-end pr-1 pt-1">
+                            <div
+                                key={h}
+                                className="border-b border-white/[0.03] flex items-start justify-end pr-1 pt-1 box-border"
+                                style={{ height: HOUR_HEIGHT }}
+                            >
                                 <span className="text-[9px] font-black text-muted-foreground uppercase opacity-40">{String(h).padStart(2, '0')}</span>
                             </div>
                         ))}
@@ -131,7 +138,7 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
                         return (
                             <div key={day.toISOString()} className="relative border-r border-white/[0.03] last:border-0 h-full">
                                 {hours.map(h => (
-                                    <div key={h} className="h-20 border-b border-white/[0.02]" />
+                                    <div key={h} className="border-b border-white/[0.02]" style={{ height: HOUR_HEIGHT }} />
                                 ))}
 
                                 {/* Events for this day */}
@@ -149,8 +156,8 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
                                                     "border-white/10"
                                                 )}
                                                 style={{
-                                                    top: `${(event.start / 60) * 80}px`,
-                                                    height: `${((event.duracao || 60) / 60) * 80}px`,
+                                                    top: `${(event.start / 60) * HOUR_HEIGHT}px`,
+                                                    height: `calc(${((event.duracao || 60) / 60) * HOUR_HEIGHT}px - 2px)`,
                                                     // Stacked layout for columns
                                                     left: `calc(2px + ${event.colIndex * 15}%)`,
                                                     width: `calc(95% - ${event.colIndex * 10}%)`,

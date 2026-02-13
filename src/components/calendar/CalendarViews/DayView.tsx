@@ -3,6 +3,7 @@ import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CerebroEvent, CATEGORY_COLORS } from "../types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DayViewProps {
     date: Date;
@@ -14,15 +15,17 @@ export function DayView({ date, events, onEdit }: DayViewProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const now = new Date();
     const isSelectedToday = isSameDay(date, now);
+    const isMobile = useIsMobile();
+    const HOUR_HEIGHT = isMobile ? 50 : 80;
 
     const hours = Array.from({ length: 24 }).map((_, i) => i);
 
     useEffect(() => {
         if (isSelectedToday && scrollRef.current) {
             const currentHour = now.getHours();
-            scrollRef.current.scrollTop = Math.max(0, currentHour * 80 - 100);
+            scrollRef.current.scrollTop = Math.max(0, currentHour * HOUR_HEIGHT - 100);
         }
-    }, []);
+    }, [HOUR_HEIGHT]);
 
     const positionedEvents = useMemo(() => {
         // 1. Filter and prepare events
@@ -65,20 +68,25 @@ export function DayView({ date, events, onEdit }: DayViewProps) {
             return {
                 ...event,
                 style: {
-                    top: `${(event.start / 60) * 80}px`,
-                    height: `${((event.duracao || 60) / 60) * 80}px`,
+                    top: `${(event.start / 60) * HOUR_HEIGHT}px`,
+                    height: `calc(${((event.duracao || 60) / 60) * HOUR_HEIGHT}px - 2px)`,
                     // Deck layout: overlapping cards with slight indentation
-                    left: `calc(12px + ${event.colIndex * 8}%)`,
-                    width: `calc(90% - ${event.colIndex * 4}%)`, // Slight width reduction for depth effect
+                    // Mobile: Fixed ~60% width as requested, slight stacking
+                    left: isMobile
+                        ? `calc(45px + ${event.colIndex * 15}px)`
+                        : `calc(12px + ${event.colIndex * 8}%)`,
+                    width: isMobile
+                        ? "60%"
+                        : `calc(90% - ${event.colIndex * 4}%)`,
                     zIndex: event.colIndex + 10,
                 }
             };
         });
-    }, [events, date]);
+    }, [events, date, isMobile, HOUR_HEIGHT]);
 
     return (
-        <div className="bg-slate-900/40 md:border border-white/5 rounded-none md:rounded-3xl h-[600px] flex flex-col md:shadow-2xl p-2 md:p-4">
-            <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center shrink-0 rounded-t-xl md:rounded-t-2xl overflow-hidden">
+        <div className="bg-slate-900/40 md:border border-white/5 rounded-none md:rounded-3xl h-[600px] flex flex-col md:shadow-2xl p-0 md:p-4">
+            <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center shrink-0 md:rounded-t-2xl overflow-hidden">
                 <h3 className="font-black text-sm uppercase tracking-widest text-white/70">
                     {format(date, "EEEE, d 'de' MMMM", { locale: ptBR })}
                 </h3>
@@ -87,11 +95,15 @@ export function DayView({ date, events, onEdit }: DayViewProps) {
                 </div>
             </div>
 
-            <div ref={scrollRef} className="flex-1 overflow-y-auto relative p-0 md:p-4 scrollbar-hide rounded-b-xl md:rounded-b-2xl overflow-hidden">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto relative p-0 md:p-4 scrollbar-hide md:rounded-b-2xl overflow-hidden">
                 {/* Hour markers */}
                 {hours.map((h) => (
-                    <div key={h} className="h-20 border-t border-white/[0.03] flex items-start -ml-2">
-                        <span className="text-[10px] font-black text-muted-foreground uppercase opacity-40 ml-2 mt-1">
+                    <div
+                        key={h}
+                        className="border-t border-white/[0.03] flex items-start -ml-2 transition-all"
+                        style={{ height: HOUR_HEIGHT }}
+                    >
+                        <span className="text-[10px] font-black text-muted-foreground uppercase opacity-40 ml-4 mt-1">
                             {String(h).padStart(2, '0')}:00
                         </span>
                     </div>
@@ -101,7 +113,7 @@ export function DayView({ date, events, onEdit }: DayViewProps) {
                 {isSelectedToday && (
                     <div
                         className="absolute left-0 right-0 border-t-2 border-primary z-20 pointer-events-none flex items-center"
-                        style={{ top: `${(now.getHours() * 80) + (now.getMinutes() / 60 * 80) + 16}px` }}
+                        style={{ top: `${(now.getHours() * HOUR_HEIGHT) + (now.getMinutes() / 60 * HOUR_HEIGHT) + (isMobile ? 0 : 16)}px` }}
                     >
                         <div className="w-2 h-2 rounded-full bg-primary -ml-1 shadow-[0_0_10px_rgba(var(--primary),0.5)]" />
                         <div className="bg-primary text-white text-[8px] font-black px-1.5 py-0.5 rounded-sm ml-2">
@@ -111,14 +123,17 @@ export function DayView({ date, events, onEdit }: DayViewProps) {
                 )}
 
                 {/* Events */}
-                <div className="absolute inset-x-4 top-4 bottom-4">
+                <div className="absolute inset-x-0 md:inset-x-4 top-0 md:top-4 bottom-4">
                     {positionedEvents.map((event) => {
                         const colors = CATEGORY_COLORS[event.categoria] || CATEGORY_COLORS.Outro;
                         return (
                             <div
                                 key={event.id}
                                 className={cn(
-                                    "absolute rounded-2xl p-3 border transition-all duration-200 cursor-pointer group shadow-lg hover:shadow-2xl hover:scale-[1.02] hover:!z-[100]",
+                                    "absolute border transition-all duration-200 cursor-pointer group shadow-lg hover:shadow-2xl hover:scale-[1.02] hover:!z-[100]",
+                                    // Mobile specific styles: rounded-xl (10-12px), p-1.5 (6-8px)
+                                    "rounded-[12px] md:rounded-2xl",
+                                    "p-2 md:p-3",
                                     colors.bg,
                                     colors.text,
                                     "border-white/10"
@@ -131,7 +146,7 @@ export function DayView({ date, events, onEdit }: DayViewProps) {
                                         <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", colors.dot)} />
                                         <span className="text-[9px] font-black uppercase tracking-widest opacity-80 truncate">{event.categoria}</span>
                                     </div>
-                                    <h4 className="font-bold text-xs leading-tight group-hover:text-white transition-colors truncate">{event.titulo}</h4>
+                                    <h4 className="font-bold text-[10px] md:text-xs leading-tight group-hover:text-white transition-colors truncate">{event.titulo}</h4>
                                     <div className="mt-auto flex items-center justify-between opacity-60 text-[9px] font-bold">
                                         <span>{event.hora?.substring(0, 5)}</span>
                                     </div>

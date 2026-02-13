@@ -98,8 +98,9 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
                             return (
                                 <div
                                     key={event.id}
+                                    onClick={() => onEdit(event)}
                                     className={cn(
-                                        "group relative flex items-center gap-3 p-3 sm:gap-4 sm:p-4 rounded-2xl sm:rounded-3xl border transition-all duration-300 w-full max-w-full overflow-hidden",
+                                        "group relative flex items-center gap-3 p-3 sm:gap-4 sm:p-4 rounded-2xl sm:rounded-3xl border transition-all duration-300 w-full max-w-full overflow-hidden cursor-pointer",
                                         "bg-slate-900/40 border-white/5 hover:border-white/10 hover:bg-white/[0.03] shadow-lg",
                                         isCompleted && "opacity-50"
                                     )}
@@ -133,7 +134,10 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            onClick={() => onToggleStatus(event.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onToggleStatus(event.id);
+                                            }}
                                             className={cn(
                                                 "w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl transition-all",
                                                 isCompleted ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/40 hover:text-white"
@@ -144,7 +148,10 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            onClick={() => onEdit(event)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onEdit(event);
+                                            }}
                                             className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white/5 text-white/40 hover:text-white hidden sm:flex"
                                         >
                                             <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -152,7 +159,10 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            onClick={() => onDelete(event.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDelete(event.id);
+                                            }}
                                             className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white/5 text-red-400/40 hover:text-red-400 hidden sm:flex"
                                         >
                                             <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />

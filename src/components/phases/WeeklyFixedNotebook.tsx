@@ -1590,12 +1590,12 @@ ${block.caption || 'Sem legenda.'}`;
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-[100px_1fr] gap-4">
                                         <div className="space-y-2">
                                             <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 flex items-center gap-1.5"><Clock className="w-3 h-3" /> Horário</Label>
                                             <Input
                                                 type="time"
-                                                className="h-9 bg-background/50"
+                                                className="h-9 bg-background/50 text-center px-0"
                                                 value={block.time || ""}
                                                 onChange={(e) => handleDataChange(detailTab, "time", e.target.value, bIdx)}
                                             />

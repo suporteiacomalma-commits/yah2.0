@@ -26,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2 } from "lucide-react";
 import { PaymentHistoryDialog } from "@/components/admin/PaymentHistoryDialog";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
 import { toast } from "sonner";
@@ -71,7 +71,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
-  const { users, isLoading: usersLoading, assignRole, removeRole, updateSubscription, updateUserAuth } = useAdminUsers();
+  const { users, isLoading: usersLoading, assignRole, removeRole, updateSubscription, updateUserAuth, deleteUser } = useAdminUsers();
   const { settings, isLoading: settingsLoading, updateSetting, getSetting } = useSystemSettings();
 
   const [openaiKey, setOpenaiKey] = useState("");
@@ -95,6 +95,7 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [historyUser, setHistoryUser] = useState<AdminUser | null>(null);
+  const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
 
   const filteredUsers = users.filter(user =>
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -217,6 +218,18 @@ export default function Admin() {
     } catch (error) {
       console.error("Error updating user:", error);
       toast.error("Erro ao salvar alterações");
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    try {
+      await deleteUser.mutateAsync(userToDelete.user_id);
+      toast.success("Usuário excluído com sucesso");
+      setUserToDelete(null);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error("Erro ao excluir usuário");
     }
   };
 
@@ -470,6 +483,15 @@ export default function Admin() {
                             <TableCell>{getRoleBadge(userItem.role)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 hover:bg-red-500/20 text-red-400 mr-1"
+                                  onClick={() => setUserToDelete(userItem)}
+                                  title="Excluir Usuário"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                                 <div className="flex items-center gap-1">
                                   <Input
                                     type="number"
@@ -574,6 +596,14 @@ export default function Admin() {
                               onClick={() => setEditingUser(userItem)}
                             >
                               <Edit2 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 hover:bg-red-500/20 text-red-400"
+                              onClick={() => setUserToDelete(userItem)}
+                            >
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         </div>
@@ -958,6 +988,41 @@ export default function Admin() {
         userId={historyUser?.user_id || null}
         userName={historyUser?.full_name || historyUser?.user_name}
       />
+
+      <Dialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <DialogContent className="max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Excluir Usuário?
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground pt-2">
+              Você tem certeza que deseja excluir o usuário <strong>{userToDelete?.full_name || userToDelete?.email}</strong>?
+              <br /><br />
+              <span className="text-red-400 font-bold block">Esta ação é irreversível e apagará todos os dados associados.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setUserToDelete(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={deleteUser.isPending}
+            >
+              {deleteUser.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Sim, excluir usuário"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

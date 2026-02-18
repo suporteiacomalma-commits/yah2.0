@@ -120,12 +120,26 @@ export function useAdminUsers() {
     }
   });
 
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await (supabase as any).rpc('admin_delete_user', {
+        target_user_id: userId
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+  });
+
   return {
     users: users || [],
     isLoading,
     assignRole,
     removeRole,
     updateSubscription,
-    updateUserAuth
+    updateUserAuth,
+    deleteUser
   };
 }

@@ -11,6 +11,7 @@ export interface SocialOptimizerData {
     handle: string | null;
     website: string | null;
     bio: string | null;
+    extra_bios: string[] | null;
     stats: {
         posts: number;
         followers: number;

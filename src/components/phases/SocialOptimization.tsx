@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-    Camera, Plus, Pencil, Save, Upload, Link,
+    Camera, Plus, Pencil, Save, Upload, Link, ListPlus,
     Loader2, Sparkles, ChevronRight, ArrowLeft, ChevronLeft,
     Instagram, MessageSquare, Image as ImageIcon,
     MoreHorizontal, Grid, Film, UserSquare,
@@ -692,6 +692,7 @@ function Screen3A({ data, onBack, onSave, updateSocialData, markAsDirty }: { dat
     const { getSetting } = useSystemSettings();
     const [bio, setBio] = useState(data.bio || "");
     const [chatInput, setChatInput] = useState("");
+    const [newBioInput, setNewBioInput] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
 
     const handleRefineBio = async () => {
@@ -844,6 +845,78 @@ function Screen3A({ data, onBack, onSave, updateSocialData, markAsDirty }: { dat
                                 placeholder="Sua bio estratégica..."
                             />
                             <div className="absolute inset-0 rounded-[24px] border border-white/5 pointer-events-none group-hover:border-primary/20 transition-colors" />
+                        </div>
+                    </div>
+
+                    {/* Extra Bios Section */}
+                    <div className="bg-slate-900/40 border border-white/5 rounded-[32px] p-8 space-y-6 backdrop-blur-sm relative group bg-gradient-to-b from-transparent to-primary/5 mt-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                                    <ListPlus className="w-5 h-5" />
+                                </div>
+                                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Bios Alternativas</Label>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* List of Extra Bios */}
+                            {data.extra_bios?.map((extraBio: string, idx: number) => (
+                                <div key={idx} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group/item relative">
+                                    <p className="text-sm text-slate-300 leading-relaxed pr-8 whitespace-pre-line font-medium">{extraBio}</p>
+                                    <div className="flex gap-2 mt-3 opacity-0 group-hover/item:opacity-100 transition-opacity absolute top-2 right-2 flex-col md:flex-row md:static md:opacity-100 md:mt-3 md:justify-end">
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 text-xs hover:bg-white/10 text-white bg-white/5"
+                                            onClick={() => {
+                                                setBio(extraBio);
+                                                toast.success("Bio aplicada!");
+                                            }}
+                                        >
+                                            Usar esta
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 w-7 p-0 hover:bg-red-500/20 text-red-400"
+                                            onClick={() => {
+                                                const newExtras = [...(data.extra_bios || [])];
+                                                newExtras.splice(idx, 1);
+                                                onSave({ extra_bios: newExtras });
+                                            }}
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Add New Bio */}
+                            <div className="pt-4 space-y-3">
+                                <Label className="text-[10px] uppercase font-bold text-muted-foreground/60 ml-1">Adicionar Nova Opção</Label>
+                                <Textarea
+                                    className="min-h-[100px] bg-slate-900/50 border-white/5 rounded-[16px] p-4 text-sm font-medium focus-visible:ring-primary/20 resize-none shadow-inner"
+                                    placeholder="Escreva uma nova opção de bio aqui para salvar..."
+                                    value={newBioInput}
+                                    onChange={(e) => setNewBioInput(e.target.value)}
+                                />
+                                <Button
+                                    size="sm"
+                                    className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/5 h-10 rounded-xl font-bold"
+                                    onClick={() => {
+                                        if (!newBioInput.trim()) return;
+                                        const newExtras = [...(data.extra_bios || []), newBioInput.trim()];
+                                        onSave({ extra_bios: newExtras });
+                                        setNewBioInput("");
+                                        toast.success("Bio alternativa salva!");
+                                    }}
+                                    disabled={!newBioInput.trim()}
+                                >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Salvar nos Rascunhos
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>

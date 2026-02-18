@@ -1489,7 +1489,6 @@ ${block.caption || 'Sem legenda.'}`;
                             {detailTab}
                         </span>
                         <h3 className="text-sm font-bold uppercase tracking-widest">{DAYS_OF_WEEK[selectedDayIndex]}</h3>
-                        <h3 className="text-sm font-bold uppercase tracking-widest">{DAYS_OF_WEEK[selectedDayIndex]}</h3>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent text-[10px] text-muted-foreground uppercase font-normal hover:text-accent transition-colors">

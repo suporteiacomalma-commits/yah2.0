@@ -32,6 +32,11 @@ Deno.serve(async (req) => {
       Cada semana deve ter chaves numéricas de 0 a 6 (representando Domingo a Sábado).
       Exemplo de mapeamento: 0: Domingo, 1: Segunda, 2: Terça, 3: Quarta, 4: Quinta, 5: Sexta, 6: Sábado.
       
+      REGRAS CRÍTICAS DE UNICIDADE E PROGRESSÃO:
+      - OBRIGATÓRIO: Cada uma das 4 semanas DEVE ter um foco narrativo diferente (ex: Semana 1: Consciência, Semana 2: Educação, Semana 3: Autoridade, Semana 4: Venda/Oferta).
+      - PROIBIDO: Repetir o mesmo título, tema ou roteiro em semanas diferentes.
+      - A narrativa deve evoluir ao longo do mês.
+      
       REGRAS CRÍTICAS DE FREQUÊNCIA:
       - Frequência: ${routine.routine_posts_per_week} posts por semana.
       - Dias de Postagem PERMITIDOS: ${routine.routine_posting_days?.join(", ")}.

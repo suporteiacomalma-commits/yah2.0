@@ -173,7 +173,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 className="cursor-pointer rounded-lg hover:bg-secondary transition-colors py-2"
               >
                 <Sparkles className="w-4 h-4 mr-3 text-purple-500" />
-                <span className="font-medium">Assinar Premium</span>
+                <span className="font-medium">Premium</span>
               </DropdownMenuItem>
               {isAdmin && (
                 <DropdownMenuItem
@@ -199,7 +199,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
 
       {/* Purchase Dialog */}
       <Dialog open={isPurchaseOpen} onOpenChange={setIsPurchaseOpen}>
-        <DialogContent className="max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-md rounded-2xl bg-card border-border max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
               <Sparkles className="w-6 h-6 text-primary" />

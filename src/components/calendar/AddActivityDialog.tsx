@@ -131,6 +131,11 @@ export function AddActivityDialog({
     e.preventDefault();
     if (!title.trim() || !user) return;
 
+    if (!hour) {
+      toast.error("Por favor, preencha o horário do evento");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const eventData = {
@@ -139,7 +144,7 @@ export function AddActivityDialog({
         tipo: type,
         data: format(date, "yyyy-MM-dd"),
         hora: hour,
-        duracao: parseInt(duration),
+        duracao: parseInt(duration) || 60,
         recorrencia: recurrence,
         dias_da_semana: recurrence !== "Nenhuma" ? selectedDays : [],
         descricao: description.trim(),
@@ -167,7 +172,7 @@ export function AddActivityDialog({
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error saving event:", error);
-      toast.error("Erro ao salvar evento");
+      toast.error("Erro ao salvar evento: " + (error.message || "Erro desconhecido"));
     } finally {
       setIsSaving(false);
     }

@@ -1610,7 +1610,9 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
     const [generatingContentIdx, setGeneratingContentIdx] = useState<number | null>(null);
     const postRefs = useRef<(HTMLDivElement | null)[]>([]);
     const coverInputRef = useRef<HTMLInputElement>(null);
+
     const [activeIdx, setActiveIdx] = useState<number | null>(null);
+    const [generatingThemeIdx, setGeneratingThemeIdx] = useState<number | null>(null);
 
     useEffect(() => {
         if (postRefs.current[initialIndex]) {
@@ -1751,6 +1753,64 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
 
 
 
+
+
+
+    const handleGenerateTheme = async (idx: number) => {
+        const toastId = toast.loading("Gerando tema principal...");
+        setGeneratingThemeIdx(idx);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value;
+            const brandContext = brand ? `
+                Persona: ${brand.dna_persona_data?.name || 'Não definido'}
+                Nicho: ${brand.dna_nicho || 'Não definido'}
+                Produto: ${brand.dna_produto || 'Não definido'}
+                Diferencial: ${brand.dna_diferencial || 'Não definido'}
+                Tese: ${brand.dna_tese || 'Não definida'}
+                Tom de Voz: ${brand.result_tom_voz || 'Não definido'}
+            ` : '';
+
+            const postType = posts[idx].type;
+            let specificPrompt = "";
+
+            if (postType === 'pain') {
+                specificPrompt = "Crie um título curto e impactante (máximo 4 palavras) sobre uma DOR ou ERRO comum do público, que gere curiosidade imediata.";
+            } else if (postType === 'process') {
+                specificPrompt = "Crie um título curto e processual (máximo 4 palavras) que prometa revelar um método, segredo ou bastidor de como o resultado é gerado.";
+            } else if (postType === 'transformation') {
+                specificPrompt = "Crie um título curto de promessa ou resultado (máximo 4 palavras) que mostre uma transformação desejada ou um antes/depois impactante.";
+            }
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        { role: "system", content: "Você é um especialista em headlines virais. Retorne APENAS o título, sem aspas, sem explicações. Máximo 4 palavras. Foco em impacto e curiosidade." },
+                        { role: "user", content: `CONTEXTO DA MARCA: ${brandContext}\n\nOBJETIVO: ${specificPrompt}\n\nGere 1 opção de título curto (Tema Principal).` }
+                    ]
+                })
+            });
+
+            const res = await response.json();
+            if (res.error) throw new Error(res.error.message);
+
+            const theme = res.choices[0].message.content.replace(/^"|"$/g, '').trim().toUpperCase();
+
+            const newPosts = [...posts];
+            newPosts[idx].theme = theme;
+            setPosts(newPosts);
+            markAsDirty();
+
+            toast.success("Tema gerado com sucesso!", { id: toastId });
+        } catch (e: any) {
+            toast.error("Erro ao gerar tema: " + e.message, { id: toastId });
+        } finally {
+            setGeneratingThemeIdx(null);
+        }
+    };
+
     const handleExportPost = (post: any) => {
         const text = `*Post Fixado: ${post.theme || 'Sem Tema'}*\n\n*Tipo:* ${post.type.toUpperCase()}\n\n*Roteiro/Legenda IA:*\n${post.content}\n\n*Legenda Final:*\n${post.caption || 'Não definido'}\n\n*Link:* ${post.link || 'Não definido'}`;
         const encodedText = encodeURIComponent(text);
@@ -1851,8 +1911,21 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
 
                                         <div className="space-y-4 pt-2">
                                             <div className="space-y-2">
-                                                <Label className="text-[10px] uppercase font-black tracking-widest text-primary/60 ml-1">Tema Principal</Label>
+                                                <div className="flex items-center justify-between ml-1">
+                                                    <Label className="text-[10px] uppercase font-black tracking-widest text-primary/60">Tema Principal</Label>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 text-[8px] font-black uppercase tracking-widest text-primary hover:text-primary/100 hover:bg-primary/5 transition-all px-2 rounded-md"
+                                                        onClick={() => handleGenerateTheme(idx)}
+                                                        disabled={generatingThemeIdx === idx}
+                                                    >
+                                                        {generatingThemeIdx === idx ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                                                        Gerar com IA
+                                                    </Button>
+                                                </div>
                                                 <Input
+
                                                     className="h-12 rounded-2xl bg-white/5 border-white/5 focus:bg-white/10 transition-all font-black uppercase text-xs tracking-widest"
                                                     value={post.theme}
                                                     placeholder="EX: MUDANDO O JOGO"

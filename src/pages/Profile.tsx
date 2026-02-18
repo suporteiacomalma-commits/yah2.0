@@ -294,7 +294,7 @@ export default function Profile() {
                                         Compartilhar no WhatsApp
                                     </Button>
                                     <Button
-                                        onClick={() => window.open("https://instagram.com/yahapp", "_blank")}
+                                        onClick={() => window.open("https://www.instagram.com/yahapp2.0", "_blank")}
                                         variant="outline"
                                         className="w-full border-pink-500/20 hover:bg-pink-500/10 text-pink-500 hover:text-[#E1306C] gap-2 h-10 transition-all hover:scale-[1.02] active:scale-95"
                                     >

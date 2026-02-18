@@ -208,7 +208,7 @@ export default function Dashboard() {
           <section className="space-y-4">
             <div>
               <h1 className="text-2xl font-semibold text-[#EEEDE9] mb-2">
-                Bom te ver por aqui, <span className="text-[#B6BC45]">{profile?.full_name?.split(' ')[0] || "Criador"}</span><span className="text-[#B6BC45]">!</span>
+                Bom te ver por aqui, <span className="text-[#B6BC45]">{profile?.user_name || profile?.full_name?.split(' ')[0] || "Criador"}</span><span className="text-[#B6BC45]">!</span>
               </h1>
               <p className="text-sm text-[#999]">Vamos continuar estruturando sua rotina, marca e presença digital.</p>
             </div>
@@ -355,8 +355,34 @@ export default function Dashboard() {
                 const isCompleted = completedPhases.includes(phaseId);
                 const isCurrent = currentPhaseId === phaseId;
                 // Unlock phases 4, 6, 7, 8 as per user request (always open)
-                const ALWAYS_UNLOCKED = [4, 6, 7, 8];
-                const isLocked = !ALWAYS_UNLOCKED.includes(phaseId) && false; // Keep global unlock for now, but explicit on requested IDs
+                const ALWAYS_UNLOCKED = [6, 7, 8];
+                // Logic: A phase is locked if it is NOT completed AND is NOT the current phase AND is NOT in the ALWAYS_UNLOCKED list.
+                // We also check if it's the *next* available phase. Only the *absolutely next* uncompleted phase is "current".
+                // But wait, user might have skipped some steps?
+                // currentPhaseId comes from brand.current_phase.
+                // If brand.current_phase is 1, then 2 is locked?
+                // Let's rely on currentPhaseId logic.
+                // If phaseId > currentPhaseId and not completed => Locked.
+                // But ALWAYS_UNLOCKED overrides this.
+
+                const isNext = phaseId === nextPhaseId;
+                // Wait, nextPhaseId is calculated at line 164 based on uncompleted.
+                // If completedPhases = [], nextPhaseId = 1.
+                // So phase 1 isNext. phase 2 is not.
+
+                // Let's stick to simple logic:
+                // Unlocked if:
+                // 1. In ALWAYS_UNLOCKED
+                // 2. In completedPhases
+                // 3. Is the current phase (brand.current_phase or computed nextPhaseId)
+
+                const isUnlocked =
+                  ALWAYS_UNLOCKED.includes(phaseId) ||
+                  completedPhases.includes(phaseId) ||
+                  phaseId === currentPhaseId ||
+                  phaseId === nextPhaseId;
+
+                const isLocked = !isUnlocked;
 
                 // Match specific HTML titles if they differ
                 const displayTitle =
@@ -379,7 +405,13 @@ export default function Dashboard() {
                       isCurrent && "border-[#B6BC45]/50 shadow-[0_0_15px_rgba(182,188,69,0.05)]",
                       !isLocked && "hover:border-[#B6BC45] cursor-pointer"
                     )}
-                    onClick={() => !isLocked && navigate(phaseConfig.href)}
+                    onClick={() => {
+                      if (isLocked) {
+                        toast.warning("Complete as etapas anteriores para liberar essa fase! 🚀");
+                        return;
+                      }
+                      navigate(phaseConfig.href);
+                    }}
                   >
                     {!isLocked && (
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#B6BC45] opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -436,7 +468,13 @@ export default function Dashboard() {
                           )}
                         </>
                       ) : (
-                        <button disabled className="flex-1 bg-[#2A2A2A] border border-[#3A3A3A] text-[#999] text-[13px] py-2.5 rounded-lg opacity-50 cursor-not-allowed">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toast.warning("Complete as etapas anteriores para liberar essa fase! 🚀");
+                          }}
+                          className="flex-1 bg-[#2A2A2A] border border-[#3A3A3A] text-[#999] text-[13px] py-2.5 rounded-lg opacity-50 hover:opacity-75 transition-opacity cursor-pointer"
+                        >
                           Bloqueado
                         </button>
                       )}

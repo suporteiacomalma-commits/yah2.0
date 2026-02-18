@@ -9,6 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { Checkbox } from "@/components/ui/checkbox";
+import { TERMS_AND_PRIVACY } from "@/lib/terms";
 
 const emailSchema = z.string().email("Email inválido");
 const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres");
@@ -21,6 +24,8 @@ export default function Auth() {
   const [whatsapp, setWhatsapp] = useState("");
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const { signIn, signUp, resetPassword, user } = useAuth();
   const navigate = useNavigate();
 
@@ -70,6 +75,10 @@ export default function Auth() {
         toast.error("WhatsApp é obrigatório");
         return;
       }
+      if (!acceptedTerms) {
+        toast.error("Você precisa aceitar os Termos de Uso e Política de Privacidade para criar uma conta.");
+        return;
+      }
     } catch (err) {
       if (err instanceof z.ZodError) {
         toast.error(err.errors[0].message);
@@ -78,19 +87,49 @@ export default function Auth() {
     }
 
     setIsLoading(true);
-    setIsLoading(true);
-    const { error } = await signUp(email, password, fullName, whatsapp);
-    setIsLoading(false);
-    setIsLoading(false);
 
-    if (error) {
-      if (error.message.includes("already registered")) {
-        toast.error("Este email já está cadastrado");
-      } else {
-        toast.error(error.message);
+    try {
+      // Check for existing phone number
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('whatsapp', whatsapp)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking phone number:", checkError);
+        // Continue signup if check fails (fallback) or show error?
+        // Let's assume network error and maybe block? For now log and continue or block. 
+        // Blocking might be safer to avoid duplicates if DB is fine but connection is flaky.
+        // But might be annoying.
+        // Let's just log. If unique constraint exists in DB it will fail anyway on insert, 
+        // but profiles insert usually happens via trigger or manually in signup flow.
+        // Auth signup creates auth user, trigger creates profile.
+        // If trigger fails, auth user is created but profile is inconsistent.
+        // We really want to catch this before auth.signUp.
       }
-    } else {
-      toast.success("Conta criada com sucesso!");
+
+      if (existingUser) {
+        toast.error("Este número de WhatsApp já está cadastrado");
+        setIsLoading(false);
+        return;
+      }
+
+      const { error } = await signUp(email, password, fullName, whatsapp);
+
+      if (error) {
+        if (error.message.includes("already registered")) {
+          toast.error("Este email já está cadastrado");
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.success("Conta criada com sucesso!");
+      }
+    } catch (error) {
+      toast.error("Erro ao criar conta");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -279,6 +318,24 @@ export default function Auth() {
                     required
                   />
                 </div>
+
+                <div className="flex items-start space-x-2 pt-2">
+                  <Checkbox
+                    id="terms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+                    className="mt-1 data-[state=checked]:bg-primary data-[state=checked]:border-primary border-white/20"
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label
+                      htmlFor="terms"
+                      className="text-sm font-medium leading-normal peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-muted-foreground"
+                    >
+                      Li e aceito os <button type="button" onClick={() => setShowTermsModal(true)} className="text-primary hover:underline font-bold">Termos de Uso e Política de Privacidade</button>
+                    </label>
+                  </div>
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full h-12 bg-gradient-to-r from-primary to-neon-magenta text-white font-semibold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/30"
@@ -344,6 +401,52 @@ export default function Auth() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Terms and Privacy Modal */}
+      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
+        <DialogContent className="max-w-[800px] w-[90vw] h-[85vh] bg-card/95 backdrop-blur-3xl border-border/50 rounded-2xl p-0 overflow-hidden block">
+
+          <div className="flex flex-col h-full max-h-[calc(85vh-2px)]">
+            <DialogHeader className="p-6 pb-2 shrink-0">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                Termos de Uso e Política de Privacidade
+              </DialogTitle>
+              <DialogDescription>
+                Leia atentamente os termos antes de aceitar.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex-1 min-h-0 p-6 pt-2 overflow-hidden">
+              <div className="h-full w-full overflow-y-auto custom-scrollbar rounded-md border border-white/10 bg-black/20 p-4">
+                <div className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed font-mono pb-32">
+                  {TERMS_AND_PRIVACY}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="p-6 pt-2 shrink-0 flex flex-col sm:flex-row gap-2 bg-card/95 backdrop-blur-3xl z-10 border-t border-white/5">
+              <Button
+                variant="outline"
+                onClick={() => setShowTermsModal(false)}
+                className="h-12 rounded-xl"
+              >
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  setAcceptedTerms(true);
+                  setShowTermsModal(false);
+                }}
+                className="h-12 bg-primary text-primary-foreground font-semibold rounded-xl hover:opacity-90 transition-all flex-1"
+              >
+                Li e Aceito
+              </Button>
+            </DialogFooter>
+          </div>
+
         </DialogContent>
       </Dialog>
     </div>

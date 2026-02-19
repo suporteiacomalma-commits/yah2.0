@@ -83,14 +83,71 @@ export function UsageTab({ data }: UsageTabProps) {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-card/50 border-white/5 backdrop-blur-sm flex flex-col justify-center items-center text-center p-6">
-                    <h3 className="text-xl font-bold text-foreground">Engajamento Total</h3>
-                    <div className="mt-4 space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                            Média de <span className="text-primary font-bold">{data.overview.usage.avg_minutes.toFixed(0)} min</span> por dia/usuário
+                <Card className="bg-card/50 border-white/5 backdrop-blur-sm flex flex-col justify-center p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <h3 className="text-xl font-bold text-foreground">Engajamento</h3>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                            <span className="text-sm text-muted-foreground">Tempo Médio Geral</span>
+                            <span className="text-lg font-bold text-foreground">{data.overview.usage.avg_daily_general.toFixed(1)} min</span>
+                        </div>
+
+                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                            <span className="text-sm text-muted-foreground">Por Usuário Ativo</span>
+                            <span className="text-lg font-bold text-emerald-400">{data.overview.usage.avg_daily_active_users.toFixed(1)} min</span>
+                        </div>
+
+                        <div className="flex justify-between items-center pb-2">
+                            <span className="text-sm text-muted-foreground">Dias Ativos (Trial)</span>
+                            <span className="text-lg font-bold text-blue-400">{data.overview.usage.avg_trial_days.toFixed(1)} <span className="text-xs font-normal text-muted-foreground">/ 7 dias</span></span>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-white/10 text-center">
+                        <p className="text-xs text-muted-foreground">
+                            Total de <span className="text-foreground font-bold">{usage_heatmap.reduce((acc, curr) => acc + curr.screen_views, 0)}</span> interações de tela
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                            Total de <span className="text-blue-400 font-bold">{usage_heatmap.reduce((acc, curr) => acc + curr.screen_views, 0)}</span> visualizações de tela
+                    </div>
+                </Card>
+
+                <Card className="bg-card/50 border-white/5 backdrop-blur-sm flex flex-col justify-center p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <h3 className="text-xl font-bold text-foreground">Top 5 Telas</h3>
+                    </div>
+
+                    <div className="space-y-4">
+                        {data.overview.usage.top_screens && data.overview.usage.top_screens.length > 0 ? (
+                            data.overview.usage.top_screens.map((screen, index) => {
+                                const names: Record<string, string> = {
+                                    'screen_dashboard': 'Dashboard',
+                                    'screen_assistant': 'Assistente',
+                                    'screen_ideas': 'Ideias',
+                                    'screen_structure': 'Estrutura Semanal',
+                                    'screen_projects': 'Projetos',
+                                    'screen_calendar': 'Calendário',
+                                    'screen_profile': 'Perfil',
+                                    'screen_other': 'Outros'
+                                };
+                                const displayName = names[screen.name] || screen.name;
+
+                                return (
+                                    <div key={index} className="flex justify-between items-center border-b border-white/5 pb-2 last:border-0">
+                                        <span className="text-sm text-muted-foreground">{displayName}</span>
+                                        <span className="text-lg font-bold text-foreground">{screen.percentage.toFixed(0)}%</span>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="text-center text-muted-foreground text-sm py-4">
+                                Aguardando dados de navegação...
+                            </div>
+                        )}
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/10 text-center">
+                        <p className="text-xs text-muted-foreground">
+                            Baseado em usuários únicos nos últimos 30 dias
                         </p>
                     </div>
                 </Card>

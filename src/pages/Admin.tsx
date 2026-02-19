@@ -434,6 +434,8 @@ export default function Admin() {
                         <TableHead className="text-muted-foreground">Status Assinatura</TableHead>
                         <TableHead className="text-muted-foreground">Plano</TableHead>
                         <TableHead className="text-muted-foreground">Trial (Dias)</TableHead>
+                        <TableHead className="text-muted-foreground">Próxima Renovação</TableHead>
+                        <TableHead className="text-muted-foreground">Último Pagamento</TableHead>
                         <TableHead className="text-muted-foreground">Role</TableHead>
                         <TableHead className="text-muted-foreground text-right min-w-[300px]">Ações</TableHead>
                       </TableRow>
@@ -479,6 +481,21 @@ export default function Admin() {
                               ) : (
                                 <span className="text-muted-foreground">—</span>
                               )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {userItem.next_renewal ? new Date(userItem.next_renewal).toLocaleDateString() : '—'}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {userItem.last_payment_date ? (
+                                <div className="flex flex-col">
+                                  <span className="text-foreground font-medium">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(userItem.last_payment_amount || 0)}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(userItem.last_payment_date).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              ) : '—'}
                             </TableCell>
                             <TableCell>{getRoleBadge(userItem.role)}</TableCell>
                             <TableCell className="text-right">

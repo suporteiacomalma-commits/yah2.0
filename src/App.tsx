@@ -32,24 +32,60 @@ function UsageTracker() {
   const { user } = useAuth();
   const location = useLocation();
   const lastPathRef = useRef(location.pathname);
-  const timeActiveRef = useRef(0);
+  const lastActivityRef = useRef(Date.now());
+
+  // Track user interaction
+  useEffect(() => {
+    const updateActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener('mousemove', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('scroll', updateActivity);
+
+    return () => {
+      window.removeEventListener('mousemove', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('click', updateActivity);
+      window.removeEventListener('scroll', updateActivity);
+    };
+  }, []);
 
   // Track screen views
   useEffect(() => {
     if (user && location.pathname !== lastPathRef.current) {
-      DashboardService.logActivity(0, 1);
+      let screenName = 'screen_other';
+      const path = location.pathname;
+
+      if (path === '/dashboard') screenName = 'screen_dashboard';
+      else if (path.startsWith('/assistant')) screenName = 'screen_assistant';
+      else if (path.startsWith('/ideia-inbox')) screenName = 'screen_ideas';
+      else if (path.startsWith('/calendar')) screenName = 'screen_calendar';
+      else if (path.startsWith('/phase')) screenName = 'screen_structure'; // Weekly structure
+      else if (path.startsWith('/explore-map')) screenName = 'screen_projects'; // Assuming explore map is projects or similar
+      else if (path.startsWith('/profile')) screenName = 'screen_profile';
+
+      DashboardService.logActivity(0, 1, screenName);
       lastPathRef.current = location.pathname;
     }
   }, [location, user]);
 
-  // Track active time (every 5 minutes)
+  // Track active time (every 1 minute)
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(() => {
-      // Log 5 minutes of activity
-      DashboardService.logActivity(5, 0);
-    }, 5 * 60 * 1000);
+      // Check if tab is visible
+      if (document.hidden) return;
+
+      // Check if user was active in last 5 minutes (idle threshold)
+      if (Date.now() - lastActivityRef.current > 5 * 60 * 1000) return;
+
+      // Log 1 minute of activity
+      DashboardService.logActivity(1, 0);
+    }, 60 * 1000);
 
     return () => clearInterval(interval);
   }, [user]);

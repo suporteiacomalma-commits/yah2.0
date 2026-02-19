@@ -19,6 +19,9 @@ export interface AdminUser {
   active_plan_id?: string | null;
   bio?: string | null;
   website?: string | null;
+  next_renewal?: string | null;
+  last_payment_date?: string | null;
+  last_payment_amount?: number | null;
 }
 
 export function useAdminUsers() {
@@ -27,29 +30,11 @@ export function useAdminUsers() {
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      // Cast supabase to any to access dynamic columns if types aren't updated yet
-      const { data: profiles, error: profilesError } = await (supabase as any)
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data, error } = await (supabase as any).rpc('get_admin_users');
 
-      if (profilesError) throw profilesError;
+      if (error) throw error;
 
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("*");
-
-      if (rolesError) throw rolesError;
-
-      const usersWithRoles: AdminUser[] = (profiles || []).map((profile: any) => {
-        const userRole = roles?.find((r) => r.user_id === profile.user_id);
-        return {
-          ...profile,
-          role: userRole?.role as AppRole | undefined,
-        };
-      });
-
-      return usersWithRoles;
+      return data as unknown as AdminUser[];
     },
   });
 

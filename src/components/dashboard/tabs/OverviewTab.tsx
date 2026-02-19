@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardStats } from "@/services/dashboard-service";
-import { Users, DollarSign, Zap, TrendingDown, UserPlus, Clock, AlertTriangle } from "lucide-react";
+import { Users, DollarSign, Zap, TrendingDown, UserPlus, Clock, AlertTriangle, CreditCard, UserX } from "lucide-react";
 
 interface OverviewTabProps {
     data: DashboardStats;
@@ -31,22 +31,31 @@ export function OverviewTab({ data }: OverviewTabProps) {
             description: "Assinantes ativos na plataforma"
         },
         {
-            title: "Taxa de Ativação",
-            value: `${overview.rates.activation.toFixed(1)}%`,
-            subtext: "Completaram Onboarding",
+            title: "Novos Usuários (7 dias)",
+            value: (overview.users.new_7d || 0).toString(),
+            subtext: "Crescimento recente",
+            icon: UserPlus,
+            color: "text-indigo-400",
+            bg: "bg-indigo-500/10",
+            description: "Novos cadastros na última semana"
+        },
+        {
+            title: "Pagos Ativos",
+            value: (overview.users.active_paid || 0).toString(),
+            subtext: "Status: paid_active",
+            icon: CreditCard,
+            color: "text-emerald-400",
+            bg: "bg-emerald-500/10",
+            description: "Assinantes premium ativos"
+        },
+        {
+            title: "Taxa de Conversão",
+            value: `${(overview.rates.conversion || 0).toFixed(1)}%`,
+            subtext: "Ticket Premium",
             icon: Zap,
             color: "text-amber-400",
             bg: "bg-amber-500/10",
-            description: "Lead -> Usuário Ativo"
-        },
-        {
-            title: "Churn Mensal",
-            value: `${overview.rates.churn.toFixed(1)}%`,
-            subtext: `Dias Inativos Médio: ${overview.usage.avg_days_inactive_churn.toFixed(0)}`,
-            icon: TrendingDown,
-            color: "text-red-400",
-            bg: "bg-red-500/10",
-            description: "Cancelamentos nos últimos 30 dias"
+            description: "Conversão Trial → Pago (30d)"
         },
         {
             title: "Tempo Médio Diário",
@@ -55,7 +64,7 @@ export function OverviewTab({ data }: OverviewTabProps) {
             icon: Clock,
             color: "text-purple-400",
             bg: "bg-purple-500/10",
-            description: "Engajamento diário"
+            description: "Engajamento real (sessão ativa)"
         },
         {
             title: "Em Trial",
@@ -65,6 +74,33 @@ export function OverviewTab({ data }: OverviewTabProps) {
             color: "text-cyan-400",
             bg: "bg-cyan-500/10",
             description: "Usuários testando gratuitamente"
+        },
+        {
+            title: "Trial Expirado",
+            value: (overview.users.expired_trials || 0).toString(),
+            subtext: "Status: trial_expired",
+            icon: UserX,
+            color: "text-orange-400",
+            bg: "bg-orange-500/10",
+            description: "Trials que não converteram"
+        },
+        {
+            title: "Inadimplentes",
+            value: (overview.users.delinquent || 0).toString(),
+            subtext: "Status: delinquent",
+            icon: AlertTriangle,
+            color: "text-red-500",
+            bg: "bg-red-500/10",
+            description: "Pagamentos pendentes ou falhos"
+        },
+        {
+            title: "Churn Mensal",
+            value: `${overview.rates.churn.toFixed(1)}%`,
+            subtext: `Dias Inativos Médio: ${overview.usage.avg_days_inactive_churn.toFixed(0)}`,
+            icon: TrendingDown,
+            color: "text-rose-400",
+            bg: "bg-rose-500/10",
+            description: "Cancelamentos nos últimos 30 dias"
         }
     ];
 

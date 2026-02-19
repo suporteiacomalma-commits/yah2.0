@@ -2,10 +2,28 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface DashboardStats {
     overview: {
-        users: { total: number; active: number; trial: number };
+        users: {
+            total: number;
+            active: number;
+            trial: number;
+            new_7d: number;
+            active_paid: number;
+            expired_trials: number;
+            delinquent: number;
+        };
         financials: { mrr: number; arr: number };
         rates: { conversion: number; churn: number; activation: number };
-        usage: { avg_minutes: number; avg_days_inactive_churn: number };
+        usage: {
+            avg_minutes: number;
+            avg_days_inactive_churn: number;
+            avg_daily_general: number;
+            avg_daily_active_users: number;
+            avg_trial_days: number;
+            top_screens: Array<{
+                name: string;
+                percentage: number;
+            }>;
+        };
     };
     usage_heatmap: Array<{
         date: string;
@@ -34,6 +52,11 @@ export interface DashboardStats {
         plan_id: string;
         risk_level: 'high_risk' | 'churned' | 'healthy' | 'medium_risk';
         weekly_minutes: number;
+        days_since_last_login: number;
+        weekly_frequency: number;
+        d1_retention: boolean;
+        d3_retention: boolean;
+        d7_retention: boolean;
     }>;
 }
 
@@ -66,7 +89,11 @@ export const DashboardService = {
                 users: {
                     total: stats.overview?.users?.total || 0,
                     active: stats.overview?.users?.active || 0,
-                    trial: stats.overview?.users?.trial || 0
+                    trial: stats.overview?.users?.trial || 0,
+                    new_7d: stats.overview?.users?.new_7d || 0,
+                    active_paid: stats.overview?.users?.active_paid || 0,
+                    expired_trials: stats.overview?.users?.expired_trials || 0,
+                    delinquent: stats.overview?.users?.delinquent || 0
                 },
                 rates: {
                     churn: stats.overview?.rates?.churn || 0,
@@ -75,7 +102,11 @@ export const DashboardService = {
                 },
                 usage: {
                     avg_minutes: stats.overview?.usage?.avg_minutes || 0,
-                    avg_days_inactive_churn: stats.overview?.usage?.avg_days_inactive_churn || 0
+                    avg_days_inactive_churn: stats.overview?.usage?.avg_days_inactive_churn || 0,
+                    avg_daily_general: stats.overview?.usage?.avg_daily_general || 0,
+                    avg_daily_active_users: (stats.overview as any)?.usage?.avg_daily_active_users || 0,
+                    avg_trial_days: (stats.overview as any)?.usage?.avg_trial_days || 0,
+                    top_screens: (stats.overview as any)?.usage?.top_screens || []
                 }
             }
         };

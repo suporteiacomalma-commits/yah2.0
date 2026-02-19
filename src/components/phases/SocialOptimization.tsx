@@ -186,7 +186,7 @@ export function SocialOptimization() {
     const handleGenerateDiagnosis = async (printUrl?: string) => {
         setIsGenerating(true);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             if (!apiKey) throw new Error("Chave da API não configurada");
 
             const brandContext = brand ? `
@@ -699,7 +699,7 @@ function Screen3A({ data, onBack, onSave, updateSocialData, markAsDirty }: { dat
         if (!chatInput.trim() && !bio) return;
         setIsGenerating(true);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             const prompt = `Refine a bio do Instagram abaixo de acordo com este pedido: "${chatInput || 'Crie uma variação estratégica premium'}".
             
             BIO ATUAL:
@@ -1183,7 +1183,7 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
         const toastId = toast.loading("Gerando insights estratégicos...");
         setInsightGeneratingIdx(idx);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             const brandContext = brand ? `
         Persona: ${brand.dna_persona_data?.name || 'Não definido'}
         Nicho: ${brand.dna_nicho || 'Não definido'}
@@ -1240,7 +1240,7 @@ function Screen3B({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
         const toastId = toast.loading("Criando roteiro detalhado...");
         setContentGeneratingIdx(idx);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             const brandContext = brand ? `
         Persona: ${brand.dna_persona_data?.name || 'Não definido'}
         Nicho: ${brand.dna_nicho || 'Não definido'}
@@ -1743,7 +1743,7 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
         const toastId = toast.loading("Criando roteiro para post fixado...");
         setGeneratingContentIdx(idx);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             const brandContext = brand ? `
                 Persona: ${brand.dna_persona_data?.name || 'Não definido'}
                 Nicho: ${brand.dna_nicho || 'Não definido'}
@@ -1833,7 +1833,7 @@ function Screen3C({ data, brand, initialIndex = 0, onBack, onSave, updateSocialD
         const toastId = toast.loading("Gerando tema principal...");
         setGeneratingThemeIdx(idx);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             const brandContext = brand ? `
                 Persona: ${brand.dna_persona_data?.name || 'Não definido'}
                 Nicho: ${brand.dna_nicho || 'Não definido'}

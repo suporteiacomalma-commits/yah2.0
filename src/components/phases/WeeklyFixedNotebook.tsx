@@ -271,7 +271,7 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
         setIsGenerating(true);
         try {
             // Retrieve API Key from settings (fallback for Edge Function)
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
 
             // Call Supabase Edge Function
             const { data: result, error } = await supabase.functions.invoke('generate-weekly-structure', {
@@ -365,7 +365,7 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
         const toastId = toast.loading("Gerando sugestão de título...");
         setIsGeneratingHeadline(true);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             if (!apiKey) throw new Error("API Key não configurada");
 
             const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
@@ -412,7 +412,7 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
         const toastId = toast.loading(adjustment ? "Ajustando roteiro..." : "Gerando roteiro detalhado...");
         setIsWritingScript(true);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             if (!apiKey) throw new Error("API Key não configurada");
 
             const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
@@ -473,7 +473,7 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
         const toastId = toast.loading("Sugerindo legenda estratégica...");
         setIsWritingCaption(true);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             if (!apiKey) throw new Error("API Key não configurada");
 
             const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
@@ -650,7 +650,7 @@ ${block.caption || 'Sem legenda.'}`;
         const toastId = toast.loading("IA analisando marca e traçando jornada semanal...");
         setIsGeneratingIntentions(true);
         try {
-            const apiKey = getSetting("openai_api_key")?.value;
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
             if (!apiKey) throw new Error("API Key não configurada");
 
             const prompt = `Você é um Estrategista de Branding e Conteúdo.

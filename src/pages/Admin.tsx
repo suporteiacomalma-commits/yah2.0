@@ -238,27 +238,27 @@ export default function Admin() {
       const settingsToUpdate = [
         {
           key: "openai_api_key",
-          value: openaiKey,
+          value: openaiKey.trim(),
           description: "Chave da API do OpenAI para integração com o assistente"
         },
         {
           key: "abacate_pay_api_key",
-          value: abacatePayKey,
+          value: abacatePayKey.trim(),
           description: "Chave da API do AbacatePay para processamento de pagamentos"
         },
         {
           key: "stripe_publishable_key",
-          value: stripePublishableKey,
+          value: stripePublishableKey.trim(),
           description: "Chave pública do Stripe"
         },
         {
           key: "stripe_secret_key",
-          value: stripeSecretKey,
+          value: stripeSecretKey.trim(),
           description: "Chave secreta do Stripe"
         },
         {
           key: "stripe_webhook_secret",
-          value: stripeWebhookSecret,
+          value: stripeWebhookSecret.trim(),
           description: "Segredo do Webhook do Stripe"
         },
         {

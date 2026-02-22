@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useMicrophone } from "@/hooks/useMicrophone";
+import { useProfile } from "@/hooks/useProfile";
 import { CenterToast, useCenterToast } from "@/components/ui/center-toast";
 
 const LIFE_BLOCKS = [
@@ -43,6 +44,7 @@ interface EventoConfirmacao {
 export default function Assistant() {
     const { getSetting } = useSystemSettings();
     const { user } = useAuth();
+    const { profile } = useProfile();
     const navigate = useNavigate();
     const { toastState, showToast, hideToast } = useCenterToast();
 
@@ -317,8 +319,8 @@ Frase do usuário: "${textToUse}"`;
             showToast("Agendado! Vou te lembrar quando chegar a hora");
 
             // Voice Feedback
-            const firstName = user.user_metadata?.full_name?.split(' ')[0] || "usuário";
-            speakMessage(`Feito, ${firstName}. Já organizei para você.`);
+            const displayName = profile?.user_name || user.user_metadata?.full_name?.split(' ')[0] || "usuário";
+            speakMessage(`Feito, ${displayName}. Já organizei para você.`);
 
             setShowModal(false);
             setConfirmEvents([]);

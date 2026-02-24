@@ -8,6 +8,7 @@ export interface AdminUser {
   email: string | null;
   full_name: string | null;
   user_name: string | null;
+  whatsapp: string | null;
   business_stage: string | null;
   onboarding_completed: boolean;
   created_at: string;

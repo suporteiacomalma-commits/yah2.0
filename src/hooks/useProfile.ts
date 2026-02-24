@@ -8,6 +8,7 @@ export interface Profile {
   email: string | null;
   full_name: string | null;
   user_name: string | null;
+  whatsapp: string | null;
   business_stage: string | null;
   main_goal: string | null;
   onboarding_completed: boolean;

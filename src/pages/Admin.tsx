@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAdminUsers } from "@/hooks/useAdminUsers";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,7 +27,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2, MessageCircle, Send, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { PaymentHistoryDialog } from "@/components/admin/PaymentHistoryDialog";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
 import { toast } from "sonner";
@@ -83,6 +85,17 @@ export default function Admin() {
   const [stripeWebhookSecret, setStripeWebhookSecret] = useState("");
   const [showStripeKey, setShowStripeKey] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+
+  // WhatsApp Settings
+  const [whatsappUrl, setWhatsappUrl] = useState("");
+  const [whatsappToken, setWhatsappToken] = useState("");
+  const [showWhatsappToken, setShowWhatsappToken] = useState(false);
+  const [whatsappMsgDaily, setWhatsappMsgDaily] = useState("");
+  const [whatsappMsgTrial, setWhatsappMsgTrial] = useState("");
+  const [whatsappMsg7Days, setWhatsappMsg7Days] = useState("");
+  const [whatsappMsgWelcome, setWhatsappMsgWelcome] = useState("");
+  const [whatsappTestNumber, setWhatsappTestNumber] = useState("");
+  const [isTestingWa, setIsTestingWa] = useState(false);
   const [mercadoPagoPublicKey, setMercadoPagoPublicKey] = useState("");
   const [mercadoPagoAccessToken, setMercadoPagoAccessToken] = useState("");
   const [showMPAccessToken, setShowMPAccessToken] = useState(false);
@@ -95,6 +108,10 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [historyUser, setHistoryUser] = useState<AdminUser | null>(null);
+
+  // WhatsApp Editing State
+  const [editingWhatsappId, setEditingWhatsappId] = useState<string | null>(null);
+  const [editingWhatsappValue, setEditingWhatsappValue] = useState("");
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
 
   const filteredUsers = users.filter(user =>
@@ -137,6 +154,24 @@ export default function Admin() {
 
     const mp_at = getSetting("mercado_pago_access_token");
     if (mp_at) setMercadoPagoAccessToken(mp_at.value);
+
+    const wu = getSetting("whatsapp_backend_url");
+    if (wu) setWhatsappUrl(wu.value);
+
+    const wt = getSetting("whatsapp_token");
+    if (wt) setWhatsappToken(wt.value);
+
+    const wmd = getSetting("whatsapp_msg_daily");
+    if (wmd) setWhatsappMsgDaily(wmd.value);
+
+    const wmt = getSetting("whatsapp_msg_trial");
+    if (wmt) setWhatsappMsgTrial(wmt.value);
+
+    const wm7 = getSetting("whatsapp_msg_7days");
+    if (wm7) setWhatsappMsg7Days(wm7.value);
+
+    const wmw = getSetting("whatsapp_msg_welcome");
+    if (wmw) setWhatsappMsgWelcome(wmw.value);
   }, [settings]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -235,6 +270,7 @@ export default function Admin() {
 
   const handleSaveSettings = async () => {
     try {
+      if (!isAdmin) return;
       const settingsToUpdate = [
         {
           key: "openai_api_key",
@@ -270,6 +306,36 @@ export default function Admin() {
           key: "mercado_pago_access_token",
           value: mercadoPagoAccessToken.trim(),
           description: "Access Token do Mercado Pago"
+        },
+        {
+          key: "whatsapp_backend_url",
+          value: whatsappUrl.trim(),
+          description: "URL do backend do WhatsMeow"
+        },
+        {
+          key: "whatsapp_token",
+          value: whatsappToken.trim(),
+          description: "Token de autorização do WhatsApp"
+        },
+        {
+          key: "whatsapp_msg_daily",
+          value: whatsappMsgDaily,
+          description: "Mensagem diária com tarefas"
+        },
+        {
+          key: "whatsapp_msg_trial",
+          value: whatsappMsgTrial,
+          description: "Mensagem de início do trial"
+        },
+        {
+          key: "whatsapp_msg_7days",
+          value: whatsappMsg7Days,
+          description: "Mensagem de 7 dias"
+        },
+        {
+          key: "whatsapp_msg_welcome",
+          value: whatsappMsgWelcome,
+          description: "Mensagem de boas-vindas (premium)"
         }
       ];
 
@@ -294,6 +360,61 @@ export default function Admin() {
     } catch (error) {
       console.error(error);
       toast.error("Erro ao salvar algumas configurações");
+    }
+  };
+
+  const handleTestWhatsapp = async (messageTemplate: string, messageName: string) => {
+    const missing = [];
+    if (!whatsappUrl) missing.push("URL do Backend");
+    if (!whatsappToken) missing.push("Token");
+    if (!whatsappTestNumber) missing.push("Número de Teste");
+    if (!messageTemplate) missing.push("Mensagem (" + messageName + ")");
+
+    if (missing.length > 0) {
+      toast.error(`Preencha os seguintes campos antes de testar: ${missing.join(", ")}`);
+      return;
+    }
+
+    try {
+      setIsTestingWa(true);
+      const { data, error } = await supabase.functions.invoke('whatsapp-proxy', {
+        body: {
+          url: whatsappUrl,
+          token: whatsappToken,
+          number: whatsappTestNumber.replace(/\D/g, ''),
+          body: messageTemplate,
+          openTicket: 0,
+          queueId: "45"
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || "Erro desconhecido ao chamar API de Whatsapp");
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success(`Mensagem de teste "${messageName}" enviada com sucesso!`);
+    } catch (error: any) {
+      console.error("Erro ao testar whatsapp:", error);
+      toast.error(`Falha ao enviar mensagem de teste: ${error.message}`);
+    } finally {
+      setIsTestingWa(false);
+    }
+  };
+
+  const handleSaveWhatsapp = async (userId: string) => {
+    try {
+      await updateSubscription.mutateAsync({
+        userId,
+        updates: { whatsapp: editingWhatsappValue.replace(/\D/g, '') }
+      });
+      toast.success("WhatsApp atualizado com sucesso!");
+      setEditingWhatsappId(null);
+    } catch (error) {
+      toast.error("Erro ao atualizar WhatsApp.");
     }
   };
 
@@ -431,6 +552,7 @@ export default function Admin() {
                       <TableRow className="border-border">
                         <TableHead className="text-muted-foreground w-[100px]">Data</TableHead>
                         <TableHead className="text-muted-foreground min-w-[200px]">Nome</TableHead>
+                        <TableHead className="text-muted-foreground min-w-[150px]">WhatsApp</TableHead>
                         <TableHead className="text-muted-foreground">Status Assinatura</TableHead>
                         <TableHead className="text-muted-foreground">Plano</TableHead>
                         <TableHead className="text-muted-foreground">Trial (Dias)</TableHead>
@@ -456,6 +578,51 @@ export default function Admin() {
                                 <span>{userItem.full_name || userItem.user_name || "—"}</span>
                                 <span className="text-xs text-muted-foreground">{userItem.email}</span>
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              {editingWhatsappId === userItem.user_id ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    className="w-28 h-7 text-xs px-2 bg-background border-border"
+                                    value={editingWhatsappValue}
+                                    placeholder="Apenas números"
+                                    onChange={(e) => setEditingWhatsappValue(e.target.value)}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-green-500"
+                                    onClick={() => handleSaveWhatsapp(userItem.user_id)}
+                                  >
+                                    <Save className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-muted-foreground"
+                                    onClick={() => setEditingWhatsappId(null)}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-foreground">
+                                    {userItem.whatsapp || "—"}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
+                                    onClick={() => {
+                                      setEditingWhatsappId(userItem.user_id);
+                                      setEditingWhatsappValue(userItem.whatsapp || "");
+                                    }}
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Badge variant={userItem.subscription_status === 'active' ? "default" : "secondary"} className={
@@ -592,7 +759,45 @@ export default function Admin() {
                           <div>
                             <h4 className="font-bold text-foreground">{userItem.full_name || userItem.user_name || "—"}</h4>
                             <p className="text-xs text-muted-foreground">{userItem.email}</p>
-                            <p className="text-[10px] text-muted-foreground mt-1">
+
+                            {/* WhatsApp Edit Mobile */}
+                            <div className="mt-2">
+                              {editingWhatsappId === userItem.user_id ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    className="w-28 h-7 text-xs px-2 bg-background border-border"
+                                    value={editingWhatsappValue}
+                                    placeholder="Apenas números"
+                                    onChange={(e) => setEditingWhatsappValue(e.target.value)}
+                                  />
+                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-green-500" onClick={() => handleSaveWhatsapp(userItem.user_id)}>
+                                    <Save className="h-3 w-3" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground" onClick={() => setEditingWhatsappId(null)}>
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-foreground">
+                                    {userItem.whatsapp || "Sem WhatsApp"}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
+                                    onClick={() => {
+                                      setEditingWhatsappId(userItem.user_id);
+                                      setEditingWhatsappValue(userItem.whatsapp || "");
+                                    }}
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+
+                            <p className="text-[10px] text-muted-foreground mt-2">
                               Cadastrado em: {new Date(userItem.created_at).toLocaleDateString()}
                             </p>
                           </div>
@@ -887,6 +1092,169 @@ export default function Admin() {
                   </div>
                 </div>
 
+                <div className="h-px bg-border my-6" />
+
+                {/* WhatsApp Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5 text-green-500" />
+                    WhatsApp (WhatsMeow API)
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="wa-url" className="text-foreground">URL do Endpoint do Backend</Label>
+                      <Input
+                        id="wa-url"
+                        placeholder="Ex: https://appback.conativadesk.com.br"
+                        value={whatsappUrl}
+                        onChange={(e) => setWhatsappUrl(e.target.value)}
+                        className="bg-background border-border"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="wa-token" className="text-foreground">Token de Autorização Bearer</Label>
+                      <div className="relative flex-1">
+                        <Input
+                          id="wa-token"
+                          type={showWhatsappToken ? "text" : "password"}
+                          placeholder="Token cadastrado na conexão..."
+                          value={whatsappToken}
+                          onChange={(e) => setWhatsappToken(e.target.value)}
+                          className="bg-background border-border pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowWhatsappToken(!showWhatsappToken)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showWhatsappToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-border mt-4">
+                    <div className="space-y-2 pb-4">
+                      <Label htmlFor="wa-test-num" className="text-foreground">Número para Teste (com DDI e DDD)</Label>
+                      <Input
+                        id="wa-test-num"
+                        placeholder="Ex: 5511999999999"
+                        value={whatsappTestNumber}
+                        onChange={(e) => setWhatsappTestNumber(e.target.value)}
+                        className="bg-background border-border max-w-xs"
+                      />
+                      <p className="text-xs text-muted-foreground italic">
+                        Insira apenas números. Usado apenas para os botões de teste abaixo.
+                      </p>
+                    </div>
+
+                    <h4 className="font-medium text-md text-foreground mb-3">Mensagens Automáticas (Templates)</h4>
+                    <div className="flex bg-muted/50 p-3 mb-4 rounded-md border border-border/50 text-sm">
+                      <div className="text-muted-foreground mr-2">ℹ️</div>
+                      <div className="text-muted-foreground">
+                        <strong>Variáveis disponíveis:</strong>
+                        <ul className="list-disc ml-5 mt-1 space-y-1">
+                          <li><code className="bg-background px-1 py-0.5 rounded text-xs select-all">{`{{nome}}`}</code>: Primeiro nome do usuário.</li>
+                          <li><code className="bg-background px-1 py-0.5 rounded text-xs select-all">{`{{nome_completo}}`}</code>: Nome completo do usuário.</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-daily" className="text-foreground">1. Mensagem Diária com Tarefas</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgDaily, "Diária")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-daily"
+                        placeholder="Sua mensagem diária. Use variáveis como {{nome}} se aplicável..."
+                        value={whatsappMsgDaily}
+                        onChange={(e) => setWhatsappMsgDaily(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-trial" className="text-foreground">2. Mensagem de Início de Trial</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgTrial, "Trial")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-trial"
+                        placeholder="Enviada quando o usuário iniciar o Trial..."
+                        value={whatsappMsgTrial}
+                        onChange={(e) => setWhatsappMsgTrial(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-7days" className="text-foreground">3. Mensagem de 7 Dias</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsg7Days, "7 Dias")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-7days"
+                        placeholder="Enviada para avisar de 7 dias..."
+                        value={whatsappMsg7Days}
+                        onChange={(e) => setWhatsappMsg7Days(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-welcome" className="text-foreground">4. Mensagem de Boas-vindas (Compra Premium)</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgWelcome, "Boas-vindas")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-welcome"
+                        placeholder="Enviada logo após a confirmação da assinatura premium..."
+                        value={whatsappMsgWelcome}
+                        onChange={(e) => setWhatsappMsgWelcome(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+                  </div>
+                </div>
 
                 <div className="flex justify-end pt-4">
                   <Button

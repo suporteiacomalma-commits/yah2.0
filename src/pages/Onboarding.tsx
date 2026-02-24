@@ -100,7 +100,6 @@ export default function Onboarding() {
       navigate("/welcome");
     } catch (error: any) {
       console.error("Error during onboarding finish:", error);
-      // createBrand and updateProfile already show toasts via onError
     }
   };
 

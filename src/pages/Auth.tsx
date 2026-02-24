@@ -90,32 +90,21 @@ export default function Auth() {
 
     try {
       // Check for existing phone number
-      const { data: existingUser, error: checkError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('whatsapp', whatsapp)
-        .maybeSingle();
+      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      const { data: whatsappExists, error: checkError } = await (supabase as any)
+        .rpc('check_whatsapp_exists', { check_whatsapp: cleanWhatsapp });
 
       if (checkError) {
         console.error("Error checking phone number:", checkError);
-        // Continue signup if check fails (fallback) or show error?
-        // Let's assume network error and maybe block? For now log and continue or block. 
-        // Blocking might be safer to avoid duplicates if DB is fine but connection is flaky.
-        // But might be annoying.
-        // Let's just log. If unique constraint exists in DB it will fail anyway on insert, 
-        // but profiles insert usually happens via trigger or manually in signup flow.
-        // Auth signup creates auth user, trigger creates profile.
-        // If trigger fails, auth user is created but profile is inconsistent.
-        // We really want to catch this before auth.signUp.
       }
 
-      if (existingUser) {
-        toast.error("Este número de WhatsApp já está cadastrado");
+      if (whatsappExists) {
+        toast.error("Este número de WhatsApp já está cadastrado em outra conta.");
         setIsLoading(false);
         return;
       }
 
-      const { error } = await signUp(email, password, fullName, whatsapp);
+      const { error } = await signUp(email, password, fullName, cleanWhatsapp);
 
       if (error) {
         if (error.message.includes("already registered")) {

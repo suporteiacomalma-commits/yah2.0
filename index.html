@@ -78,14 +78,14 @@
       }
     }
 
-    // Failsafe: if still loading after 10 seconds, show warning
+    // Failsafe: if still loading after 30 seconds, show warning
     setTimeout(() => {
       const root = document.getElementById("root");
       // precise check: if root still contains the spinner div
       if (root && root.innerHTML.includes("animation: spin")) {
         showError("Timeout: App took too long to load. Is the network slow or is JS blocked?");
       }
-    }, 10000);
+    }, 30000);
   </script>
   <script type="module" src="/src/main.tsx"
     onerror="alert('FATAL: Failed to load /src/main.tsx. Check network tab.')"></script>

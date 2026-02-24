@@ -23,10 +23,14 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
             };
 
             document.addEventListener('click', handleInteraction, true);
+            document.addEventListener('mousedown', handleInteraction, true);
+            document.addEventListener('touchstart', handleInteraction, true);
             document.addEventListener('keydown', handleInteraction, true);
 
             return () => {
                 document.removeEventListener('click', handleInteraction, true);
+                document.removeEventListener('mousedown', handleInteraction, true);
+                document.removeEventListener('touchstart', handleInteraction, true);
                 document.removeEventListener('keydown', handleInteraction, true);
             };
         }

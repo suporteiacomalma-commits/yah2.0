@@ -17,6 +17,26 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (isDismissed) {
             const handleInteraction = (e: Event) => {
+                // Ensure we handle shadow DOM and elements that might detach
+                const path = e.composedPath ? e.composedPath() : [];
+
+                // Allow interaction if ANY element in the path matches our whitelist
+                const isAllowed = path.some((node: any) => {
+                    if (!node) return false;
+
+                    if (node.classList?.contains('ignore-paywall-whitelist')) return true;
+                    if (node.tagName?.toLowerCase() === 'header') return true;
+
+                    // Also whitelist Radix UI's toaster just in case error messages appear
+                    if (node.hasAttribute?.('data-sonner-toaster')) return true;
+
+                    return false;
+                });
+
+                if (isAllowed) {
+                    return; // Allow the interaction
+                }
+
                 e.preventDefault();
                 e.stopPropagation();
                 setIsDismissed(false);
@@ -25,13 +45,11 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
             document.addEventListener('click', handleInteraction, true);
             document.addEventListener('mousedown', handleInteraction, true);
             document.addEventListener('touchstart', handleInteraction, true);
-            document.addEventListener('keydown', handleInteraction, true);
 
             return () => {
                 document.removeEventListener('click', handleInteraction, true);
                 document.removeEventListener('mousedown', handleInteraction, true);
                 document.removeEventListener('touchstart', handleInteraction, true);
-                document.removeEventListener('keydown', handleInteraction, true);
             };
         }
     }, [isDismissed]);

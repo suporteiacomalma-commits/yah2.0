@@ -163,7 +163,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-card border-border w-56 p-2 space-y-1 shadow-2xl">
+            <DropdownMenuContent align="end" className="bg-card border-border w-56 p-2 space-y-1 shadow-2xl ignore-paywall-whitelist">
               <div className="px-3 py-2 border-b border-border/50 mb-1">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Menu</p>
               </div>
@@ -205,7 +205,7 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
 
       {/* Purchase Dialog */}
       <Dialog open={isPurchaseOpen} onOpenChange={setIsPurchaseOpen}>
-        <DialogContent className="w-[95vw] max-w-md rounded-2xl bg-card border-border max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+        <DialogContent className="w-[95vw] max-w-md rounded-2xl bg-card border-border max-h-[85vh] overflow-y-auto p-4 sm:p-6 ignore-paywall-whitelist">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
               <Sparkles className="w-6 h-6 text-primary" />

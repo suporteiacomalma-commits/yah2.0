@@ -40,7 +40,7 @@ serve(async (req: Request) => {
       const { data: settings, error: settingsError } = await supabaseClient
         .from('system_settings')
         .select('key, value')
-        .in('key', ['whatsapp_backend_url', 'whatsapp_token', 'whatsapp_msg_welcome']);
+        .in('key', ['whatsapp_backend_url', 'whatsapp_token', 'whatsapp_msg_welcome', 'whatsapp_msg_day1']);
 
       if (settingsError) {
         throw new Error(`Error fetching settings: ${settingsError.message}`);
@@ -50,15 +50,21 @@ serve(async (req: Request) => {
       const waUrl = getSetting('whatsapp_backend_url');
       const waToken = getSetting('whatsapp_token');
       const msgTemplate = getSetting('whatsapp_msg_welcome');
+      const msgDay1Template = getSetting('whatsapp_msg_day1');
 
       if (!waUrl || !waToken || !msgTemplate) {
         console.warn("WhatsApp integration not fully configured. Skipping welcome message.");
         return new Response('WhatsApp not configured', { headers: corsHeaders, status: 200 });
       }
 
-      // Replace variables in message
+      // Replace variables in messages
       const firstName = user_name || (full_name ? full_name.split(' ')[0] : 'Usuário');
       const actualMessage = msgTemplate.replace(/\{\{nome\}\}/gi, firstName).replace(/\{\{nome_completo\}\}/gi, full_name || 'Usuário');
+
+      let actualDay1Message = null;
+      if (msgDay1Template) {
+        actualDay1Message = msgDay1Template.replace(/\{\{nome\}\}/gi, firstName).replace(/\{\{nome_completo\}\}/gi, full_name || 'Usuário');
+      }
 
       // Send WhatsApp Message
       const apiUrl = `${waUrl.replace(/\/$/, '')}/api/messages/whatsmeow/sendTextPRO`;
@@ -93,6 +99,31 @@ serve(async (req: Request) => {
       }
 
       console.log("Welcome message sent successfully.");
+
+      // Schedule Day 1 message if configured
+      if (actualDay1Message) {
+        console.log("Scheduling Day 1 message for 5 minutes from now.");
+
+        // Calculate timestamp 5 mins from now
+        const sendAt = new Date();
+        sendAt.setMinutes(sendAt.getMinutes() + 5);
+
+        const { error: scheduleError } = await supabaseClient
+          .from('scheduled_messages')
+          .insert({
+            user_id: newProfile.id,
+            phone_number: cleanNumber,
+            message: actualDay1Message,
+            send_at: sendAt.toISOString()
+          });
+
+        if (scheduleError) {
+          console.error("Failed to schedule Day 1 message:", scheduleError);
+        } else {
+          console.log("Day 1 message scheduled successfully.");
+        }
+      }
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

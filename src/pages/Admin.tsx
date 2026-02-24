@@ -94,6 +94,7 @@ export default function Admin() {
   const [whatsappMsgTrial, setWhatsappMsgTrial] = useState("");
   const [whatsappMsg7Days, setWhatsappMsg7Days] = useState("");
   const [whatsappMsgWelcome, setWhatsappMsgWelcome] = useState("");
+  const [whatsappMsgDay1, setWhatsappMsgDay1] = useState("");
   const [whatsappTestNumber, setWhatsappTestNumber] = useState("");
   const [isTestingWa, setIsTestingWa] = useState(false);
   const [mercadoPagoPublicKey, setMercadoPagoPublicKey] = useState("");
@@ -172,6 +173,9 @@ export default function Admin() {
 
     const wmw = getSetting("whatsapp_msg_welcome");
     if (wmw) setWhatsappMsgWelcome(wmw.value);
+
+    const wmd1 = getSetting("whatsapp_msg_day1");
+    if (wmd1) setWhatsappMsgDay1(wmd1.value);
   }, [settings]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -336,6 +340,11 @@ export default function Admin() {
           key: "whatsapp_msg_welcome",
           value: whatsappMsgWelcome,
           description: "Mensagem de boas-vindas (premium)"
+        },
+        {
+          key: "whatsapp_msg_day1",
+          value: whatsappMsgDay1,
+          description: "Mensagem de Dia 1"
         }
       ];
 
@@ -1250,6 +1259,29 @@ export default function Admin() {
                         placeholder="Enviada logo após a confirmação da assinatura premium..."
                         value={whatsappMsgWelcome}
                         onChange={(e) => setWhatsappMsgWelcome(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-day1" className="text-foreground">5. Mensagem Dia 1</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay1, "Dia 1")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-day1"
+                        placeholder="Enviada 5 minutos após a mensagem de onboarding..."
+                        value={whatsappMsgDay1}
+                        onChange={(e) => setWhatsappMsgDay1(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
                       />
                     </div>

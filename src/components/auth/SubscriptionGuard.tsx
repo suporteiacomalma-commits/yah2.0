@@ -13,19 +13,6 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
     const location = useLocation();
     const [isDismissed, setIsDismissed] = useState(false);
 
-    // Allow access to auth pages without check
-    if (location.pathname.startsWith('/auth') || location.pathname === '/' || location.pathname.startsWith('/onboarding')) {
-        return <>{children}</>;
-    }
-
-    if (authLoading || subLoading) {
-        return (
-            <div className="min-h-screen bg-[#09090B] flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-        );
-    }
-
     // Re-show paywall on interaction if dismissed
     useEffect(() => {
         if (isDismissed) {
@@ -44,6 +31,19 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
             };
         }
     }, [isDismissed]);
+
+    // Allow access to auth pages without check
+    if (location.pathname.startsWith('/auth') || location.pathname === '/' || location.pathname.startsWith('/onboarding')) {
+        return <>{children}</>;
+    }
+
+    if (authLoading || subLoading) {
+        return (
+            <div className="min-h-screen bg-[#09090B] flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     // If expired and not premium/admin, show paywall
     if (user && isExpired && !isPremium && !isAdmin) {

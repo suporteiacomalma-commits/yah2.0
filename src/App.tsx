@@ -15,6 +15,7 @@ import Auth from "./pages/Auth"; // Corrected from Login/Register
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import PhasePage from "./pages/PhasePage";
+import { SubscriptionGuard } from "@/components/auth/SubscriptionGuard";
 import Admin from "./pages/Admin"; // Corrected from AdminDashboard
 import IdeiaInbox from "./pages/IdeiaInbox";
 import Profile from "./pages/Profile";
@@ -174,7 +175,9 @@ const AppRoutes = () => {
 
         <Route path="/dashboard" element={
           <ProtectedRouteInline>
-            <Dashboard />
+            <SubscriptionGuard>
+              <Dashboard />
+            </SubscriptionGuard>
           </ProtectedRouteInline>
         } />
 
@@ -186,13 +189,17 @@ const AppRoutes = () => {
 
         <Route path="/phase/:phaseId/*" element={
           <ProtectedRouteInline>
-            <PhasePage />
+            <SubscriptionGuard>
+              <PhasePage />
+            </SubscriptionGuard>
           </ProtectedRouteInline>
         } />
 
         <Route path="/ideia-inbox" element={
           <ProtectedRouteInline>
-            <IdeiaInbox />
+            <SubscriptionGuard>
+              <IdeiaInbox />
+            </SubscriptionGuard>
           </ProtectedRouteInline>
         } />
 
@@ -204,19 +211,25 @@ const AppRoutes = () => {
 
         <Route path="/assistant" element={
           <ProtectedRouteInline>
-            <Assistant />
+            <SubscriptionGuard>
+              <Assistant />
+            </SubscriptionGuard>
           </ProtectedRouteInline>
         } />
 
         <Route path="/calendar" element={
           <ProtectedRouteInline>
-            <Calendar />
+            <SubscriptionGuard>
+              <Calendar />
+            </SubscriptionGuard>
           </ProtectedRouteInline>
         } />
 
         <Route path="/explore-map" element={
           <ProtectedRouteInline>
-            <ExploreMap />
+            <SubscriptionGuard>
+              <ExploreMap />
+            </SubscriptionGuard>
           </ProtectedRouteInline>
         } />
 

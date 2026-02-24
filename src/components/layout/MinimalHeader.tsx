@@ -55,6 +55,12 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
 
   const { plans: premiumPlans, isLoading: plansLoading } = usePlans(true);
 
+  useEffect(() => {
+    const handleOpen = () => setIsPurchaseOpen(true);
+    window.addEventListener('open-purchase-modal', handleOpen);
+    return () => window.removeEventListener('open-purchase-modal', handleOpen);
+  }, [setIsPurchaseOpen]);
+
   const handlePurchase = async (plan: any) => {
     if (!cpf || !phone) {
       import("sonner").then(({ toast }) => {

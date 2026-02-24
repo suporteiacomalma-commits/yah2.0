@@ -93,11 +93,6 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
               className="w-full h-full object-contain"
             />
           </div>
-          {brandName && (
-            <span className="font-semibold text-foreground hidden sm:block text-lg">
-              {brandName}
-            </span>
-          )}
         </div>
 
         {/* Center - Greeting */}

@@ -493,7 +493,7 @@ export default function Admin() {
     try {
       setIsTestingWa(true);
       const cleanNumber = whatsappTestNumber.replace(/\D/g, '');
-      const { error } = await supabase.functions.invoke('cron-daily-reminders', {
+      const { data, error } = await supabase.functions.invoke('cron-daily-reminders', {
         body: {
           test_whatsapp: cleanNumber,
           test_user_id: user.id
@@ -501,7 +501,13 @@ export default function Admin() {
       });
 
       if (error) throw error;
-      toast.success("Teste Dinâmico enviado com sucesso!");
+
+      if (data && data.sent === 0) {
+        toast.warning("O teste rodou, mas seu usuário foi ignorado. (Talvez sua assinatura não esteja 'active' ou houve erro na substituição).");
+      } else {
+        toast.success("Teste Dinâmico enviado com sucesso!");
+      }
+
     } catch (error) {
       console.error(error);
       toast.error("Erro ao enviar Teste Dinâmico.");

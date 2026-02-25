@@ -60,19 +60,32 @@ serve(async (req: Request) => {
     // Fetch active users
     let query = supabase
       .from("profiles")
-      .select("id, full_name, whatsapp, subscription_plan, subscription_status, created_at")
-      .neq("whatsapp", null)
-      .neq("whatsapp", "");
+      .select("id, full_name, whatsapp, subscription_plan, subscription_status, created_at");
 
     if (isTest && testUserId) {
       query = query.eq("id", testUserId);
     } else {
-      query = query.eq("subscription_status", "active");
+      query = query
+        .eq("subscription_status", "active")
+        .neq("whatsapp", null)
+        .neq("whatsapp", "");
     }
 
-    const { data: users, error: usersError } = await query;
+    let { data: users, error: usersError } = await query;
 
     if (usersError) throw new Error(`Users fetch error: ${usersError.message}`);
+
+    if (isTest && (!users || users.length === 0)) {
+      console.warn(`Test user ${testUserId} has no profile. Falling back to any active user for data mapping.`);
+      const { data: fallbackUsers } = await supabase
+        .from("profiles")
+        .select("id, full_name, whatsapp, subscription_plan, subscription_status, created_at")
+        .limit(1);
+
+      if (fallbackUsers && fallbackUsers.length > 0) {
+        users = fallbackUsers;
+      }
+    }
 
     console.log(`Found ${users?.length || 0} active users with valid whatsapp numbers.`);
 
@@ -183,10 +196,27 @@ serve(async (req: Request) => {
 
       } catch (err: any) {
         console.error(`Error processing user ${user.id}:`, err);
+        if (isTest) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Runtime Exception: ${err.message}`,
+            stack: err.stack,
+            sent: 0
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500
+          });
+        }
       }
     }
 
-    return new Response(JSON.stringify({ success: true, sent: sentCount, skipped: skipCount }), {
+    return new Response(JSON.stringify({
+      success: true,
+      sent: sentCount,
+      skipped: skipCount,
+      users_found: users?.length || 0,
+      testUserId: testUserId || null
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });

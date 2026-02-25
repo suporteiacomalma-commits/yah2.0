@@ -24,7 +24,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { CerebroEvent, EventCategory, EventType, RecurrenceType, EventStatus, EventPriority } from "./types";
+import { CerebroEvent, EventCategory, EventType, RecurrenceType, EventStatus, EventPriority, normalizeCategory } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -71,7 +71,7 @@ export function AddActivityDialog({
   useEffect(() => {
     if (editingEvent) {
       setTitle(editingEvent.titulo);
-      setCategory(editingEvent.categoria);
+      setCategory(normalizeCategory(editingEvent.categoria));
       setType(editingEvent.tipo);
       setDate(new Date(editingEvent.data + 'T12:00:00'));
       setHour(editingEvent.hora?.substring(0, 5) || "09:00");

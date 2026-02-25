@@ -70,8 +70,10 @@ export function useSubscription() {
             let isExpired = false;
 
             if (data.subscription_plan === 'trial' && end) {
-                daysRemaining = differenceInDays(end, now);
-                if (daysRemaining < 0) {
+                const diffTime = end.getTime() - now.getTime();
+                daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffTime <= 0) {
                     daysRemaining = 0;
                     isExpired = true;
                 }

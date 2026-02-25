@@ -54,8 +54,9 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
         }
     }, [isDismissed]);
 
-    // Allow access to auth pages without check
-    if (location.pathname.startsWith('/auth') || location.pathname === '/' || location.pathname.startsWith('/onboarding')) {
+    // Allow access to auth pages, profile, and calendar without check or paywall
+    const allowedPaths = ['/auth', '/', '/onboarding', '/profile', '/calendar'];
+    if (allowedPaths.some(path => location.pathname.startsWith(path)) || location.pathname === '/') {
         return <>{children}</>;
     }
 

@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarDays, Plus, Loader2, CheckCircle2, Circle, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { ptBR } from "date-fns/locale";
 import { isSameDay, format, startOfMonth, endOfMonth, addMonths, subMonths } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { CerebroEvent, CATEGORY_COLORS, EventCategory } from "../calendar/types";
+import { CerebroEvent, CATEGORY_COLORS, EventCategory, normalizeCategory } from "../calendar/types";
 import { CATEGORIES } from "../calendar/CategoryFilters";
 import { expandRecurringEvents } from "../calendar/utils/recurrenceUtils";
 import { toast } from "sonner";
@@ -19,6 +20,8 @@ export function MiniCalendar() {
   const [activities, setActivities] = useState<CerebroEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const { isExpired, isPremium, isAdmin } = useSubscription();
+  const isLocked = isExpired && !isPremium && !isAdmin;
   const navigate = useNavigate();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CerebroEvent | null>(null);
@@ -62,6 +65,11 @@ export function MiniCalendar() {
   };
 
   const handleToggleStatus = async (id: string, eventDate: string) => {
+    if (isLocked) {
+      toast.error("Assine o Premium para habilitar essa função.");
+      return;
+    }
+
     const isVirtual = id.includes("-virtual-");
     const realId = isVirtual ? id.split("-virtual-")[0] : id;
     const masterEvent = activities.find((e) => e.id === realId);
@@ -113,15 +121,17 @@ export function MiniCalendar() {
     addMonths(currentMonthStart, 2)
   );
 
-  const validCategories = CATEGORIES.map(c => c.id);
-
-  const selectedDayActivities = expandedActivities.filter(a =>
-    date && isSameDay(new Date(a.data + 'T12:00:00'), date) && validCategories.includes(a.categoria)
-  );
+  const selectedDayActivities = expandedActivities
+    .filter(a => date && isSameDay(new Date(a.data + 'T12:00:00'), date))
+    .sort((a, b) => {
+      if (!a.hora) return 1;
+      if (!b.hora) return -1;
+      return a.hora.localeCompare(b.hora);
+    });
 
   const modifiers = {
     hasActivity: (day: Date) => expandedActivities.some(a =>
-      isSameDay(new Date(a.data + 'T12:00:00'), day) && validCategories.includes(a.categoria)
+      isSameDay(new Date(a.data + 'T12:00:00'), day)
     )
   };
 
@@ -145,7 +155,13 @@ export function MiniCalendar() {
             </div>
           </button>
           <button
-            onClick={() => navigate("/calendar", { state: { selectedDate: date } })}
+            onClick={() => {
+              if (isLocked) {
+                toast.error("Assine o Premium para adicionar eventos.");
+                return;
+              }
+              navigate("/calendar", { state: { selectedDate: date } });
+            }}
             className="w-8 h-8 rounded-xl bg-primary shadow-lg shadow-primary/20 flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300"
           >
             <Plus className="w-5 h-5 text-primary-foreground" />
@@ -210,12 +226,17 @@ export function MiniCalendar() {
               <div className="space-y-2.5 max-h-[300px] lg:max-h-[340px] overflow-y-auto pr-1 custom-scrollbar flex-1">
                 {selectedDayActivities.length > 0 ? (
                   selectedDayActivities.map((activity) => {
-                    const colors = CATEGORY_COLORS[activity.categoria] || CATEGORY_COLORS.Outro;
+                    const normalizedCat = normalizeCategory(activity.categoria);
+                    const colors = CATEGORY_COLORS[normalizedCat] || CATEGORY_COLORS.Outro;
                     return (
                       <div
                         key={activity.id}
                         className="group flex items-center gap-4 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/10 transition-all duration-300 cursor-pointer relative overflow-hidden"
                         onClick={() => {
+                          if (isLocked) {
+                            toast.error("Assine o Premium para habilitar essa função.");
+                            return;
+                          }
                           // Find master event if it's a recurrence instance
                           const realEvent = activity.isVirtual
                             ? activities.find(master => master.id === activity.id.split("-virtual-")[0]) || activity
@@ -234,7 +255,7 @@ export function MiniCalendar() {
                           <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors text-left">{activity.titulo}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tighter">
-                              {activity.categoria}
+                              {normalizedCat}
                             </p>
                             <div className="w-1 h-1 rounded-full bg-white/10" />
                             <p className="text-[10px] text-muted-foreground/60">

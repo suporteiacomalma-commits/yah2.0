@@ -37,3 +37,22 @@ export const CATEGORY_COLORS: Record<EventCategory, { bg: string; text: string; 
     Estudos: { bg: "bg-indigo-600", text: "text-white", dot: "bg-white" },
     Outro: { bg: "bg-slate-700", text: "text-white", dot: "bg-white" },
 };
+
+export function normalizeCategory(catString: string | undefined | null): EventCategory {
+    if (!catString) return "Outro";
+
+    // Some AI generations might use formats like "SAÚDE|EDUCAÇÃO" or "Saúde, Família"
+    const firstPart = catString.split(/[|,]/)[0].trim();
+
+    const validCategories: EventCategory[] = [
+        "Vida", "Família", "Trabalho", "Conteúdo",
+        "Saúde", "Casa", "Contas", "Estudos", "Outro"
+    ];
+
+    // Find a case-insensitive match (or match ignoring accents if possible, but exact accent match is preferred first)
+    // AI usually returns uppercase like SAÚDE.
+    const normalizedFirstPart = firstPart.toUpperCase();
+    const matched = validCategories.find(c => c.toUpperCase() === normalizedFirstPart);
+
+    return matched || "Outro";
+}

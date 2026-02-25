@@ -4,6 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { CalendarHeader } from "./CalendarHeader";
@@ -16,12 +17,14 @@ import { ListView } from "./CalendarViews/ListView";
 import { DayDrawer } from "./CalendarViews/DayDrawer";
 import { ActivityReports } from "./CalendarReports/ActivityReports";
 import { AddActivityDialog } from "./AddActivityDialog";
-import { CerebroEvent } from "./types";
+import { CerebroEvent, normalizeCategory } from "./types";
 import { expandRecurringEvents } from "./utils/recurrenceUtils";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 
 export function ActivityCalendar() {
   const { user } = useAuth();
+  const { isExpired, isPremium, isAdmin } = useSubscription();
+  const isLocked = isExpired && !isPremium && !isAdmin;
   const location = useLocation();
   const [view, setView] = useState<"day" | "week" | "month" | "year">("month");
   const [displayMode, setDisplayMode] = useState<"calendar" | "list">("calendar");
@@ -62,7 +65,13 @@ export function ActivityCalendar() {
         .order("data", { ascending: true });
 
       if (error) throw error;
-      setEvents(data as any as CerebroEvent[]);
+
+      const normalizedEvents = (data as any as CerebroEvent[]).map(e => ({
+        ...e,
+        categoria: normalizeCategory((e as any).categoria)
+      }));
+
+      setEvents(normalizedEvents);
     } catch (error: any) {
       console.error("Error fetching events:", error);
       toast.error("Erro ao carregar eventos");
@@ -99,6 +108,11 @@ export function ActivityCalendar() {
   };
 
   const handleToggleStatus = async (id: string) => {
+    if (isLocked) {
+      toast.error("Assine o Premium para habilitar essa função.");
+      return;
+    }
+
     const isVirtual = id.includes("-virtual-");
     const realId = isVirtual ? id.split("-virtual-")[0] : id;
     const masterEvent = events.find((e) => e.id === realId);
@@ -152,6 +166,11 @@ export function ActivityCalendar() {
   };
 
   const handleDeleteEvent = async (id: string) => {
+    if (isLocked) {
+      toast.error("Assine o Premium para habilitar essa função.");
+      return;
+    }
+
     const isVirtual = id.includes("-virtual-");
     const realId = isVirtual ? id.split("-virtual-")[0] : id;
     const event = isVirtual
@@ -221,6 +240,11 @@ export function ActivityCalendar() {
   };
 
   const handleEditEvent = (event: CerebroEvent) => {
+    if (isLocked) {
+      toast.error("Assine o Premium para habilitar essa função.");
+      return;
+    }
+
     const realEvent = event.isVirtual
       ? events.find(master => master.id === event.id.split("-virtual-")[0]) || event
       : event;
@@ -256,7 +280,13 @@ export function ActivityCalendar() {
           onViewChange={setView}
           displayMode={displayMode}
           onDisplayModeChange={setDisplayMode}
-          onAddEvent={() => setShowAddDialog(true)}
+          onAddEvent={() => {
+            if (isLocked) {
+              toast.error("Assine o Premium para habilitar essa função.");
+              return;
+            }
+            setShowAddDialog(true);
+          }}
           onPrev={handlePrev}
           onNext={handleNext}
         />

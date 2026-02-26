@@ -57,7 +57,14 @@ serve(async (req: Request) => {
           'whatsapp_msg_day7_19h',
           'whatsapp_msg_post_trial_day1',
           'whatsapp_msg_post_trial_day3',
-          'whatsapp_msg_post_trial_day7'
+          'whatsapp_msg_post_trial_day7',
+          'whatsapp_msg_post_purchase_day1',
+          'whatsapp_msg_post_purchase_day2',
+          'whatsapp_msg_post_purchase_day3',
+          'whatsapp_msg_post_purchase_day4',
+          'whatsapp_msg_post_purchase_day5',
+          'whatsapp_msg_post_purchase_day6',
+          'whatsapp_msg_post_purchase_day7'
         ]);
 
       if (settingsError) {
@@ -81,6 +88,15 @@ serve(async (req: Request) => {
         'post_trial_day1': getSetting('whatsapp_msg_post_trial_day1'),
         'post_trial_day3': getSetting('whatsapp_msg_post_trial_day3'),
         'post_trial_day7': getSetting('whatsapp_msg_post_trial_day7'),
+      };
+      const msgPostPurchaseSequence: Record<string, string> = {
+        'day1': getSetting('whatsapp_msg_post_purchase_day1'),
+        'day2': getSetting('whatsapp_msg_post_purchase_day2'),
+        'day3': getSetting('whatsapp_msg_post_purchase_day3'),
+        'day4': getSetting('whatsapp_msg_post_purchase_day4'),
+        'day5': getSetting('whatsapp_msg_post_purchase_day5'),
+        'day6': getSetting('whatsapp_msg_post_purchase_day6'),
+        'day7': getSetting('whatsapp_msg_post_purchase_day7'),
       };
 
       if (!waUrl || !waToken) {
@@ -198,8 +214,76 @@ serve(async (req: Request) => {
         }
       }
 
-      if (justBecamePremium && actualPostPurchaseMessage) {
-        await sendMessage(actualPostPurchaseMessage, "Post-Purchase");
+      if (justBecamePremium) {
+        // We will schedule the new 7 days Post-Purchase sequence.
+        // Old post_purchase immediate message goes out if available.
+        if (actualPostPurchaseMessage) {
+          await sendMessage(actualPostPurchaseMessage, "Post-Purchase Immediate");
+        }
+
+        const baseDate = new Date();
+        const getScheduledTime = (daysOffset: number, hoursUtc: number, minutesUtc: number = 0) => {
+          const d = new Date(baseDate);
+          d.setDate(d.getDate() + daysOffset);
+          // Set timezone properly or use UTC equivalent for user timezone. 
+          // Previous time was 15:00 UTC = 12:00 BRT, 18:00 UTC = 15:00 BRT.
+          // In previous messages, standard times were mostly at 19:30 BRT or similar.
+          // We will schedule them at 19:30 BRT (22:30 UTC).
+          d.setUTCHours(hoursUtc, minutesUtc, 0, 0);
+          return d.toISOString();
+        };
+
+        const postPurchaseSchedules = [
+          { key: 'day2', time: getScheduledTime(1, 22, 30) }, // Tomorrow ~19:30 BRT
+          { key: 'day3', time: getScheduledTime(2, 22, 30) },
+          { key: 'day4', time: getScheduledTime(3, 22, 30) },
+          { key: 'day5', time: getScheduledTime(4, 22, 30) },
+          { key: 'day6', time: getScheduledTime(5, 22, 30) },
+          { key: 'day7', time: getScheduledTime(6, 22, 30) },
+        ];
+
+        const premiumMessagesToInsert = [];
+
+        // Add Day 1 (Immediate or +5 mins)
+        const actualPremiumDay1 = formatMsg(msgPostPurchaseSequence['day1']);
+        if (actualPremiumDay1) {
+          console.log("Scheduling Day 1 Premium message for 5 minutes from now.");
+          const sendAt = new Date();
+          sendAt.setMinutes(sendAt.getMinutes() + 5);
+          premiumMessagesToInsert.push({
+            user_id: newProfile.id,
+            phone_number: cleanNumber,
+            message: actualPremiumDay1,
+            send_at: sendAt.toISOString()
+          });
+        }
+
+        for (const sched of postPurchaseSchedules) {
+          const template = msgPostPurchaseSequence[sched.key];
+          if (template) {
+            const actualMsg = formatMsg(template);
+            if (actualMsg) {
+              premiumMessagesToInsert.push({
+                user_id: newProfile.id,
+                phone_number: cleanNumber,
+                message: actualMsg, // premium doesn't have [TRIAL] prefix to worry about hiding
+                send_at: sched.time
+              });
+            }
+          }
+        }
+
+        if (premiumMessagesToInsert.length > 0) {
+          const { error: scheduleError } = await supabaseClient
+            .from('scheduled_messages')
+            .insert(premiumMessagesToInsert);
+
+          if (scheduleError) {
+            console.error("Failed to schedule bulk premium messages:", scheduleError);
+          } else {
+            console.log(`Scheduled ${premiumMessagesToInsert.length} premium messages successfully.`);
+          }
+        }
       }
 
       return new Response(JSON.stringify({ success: true }), {

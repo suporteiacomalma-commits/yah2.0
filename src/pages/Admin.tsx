@@ -103,6 +103,13 @@ export default function Admin() {
   const [whatsappMsgDay7_15h, setWhatsappMsgDay7_15h] = useState("");
   const [whatsappMsgDay7_19h, setWhatsappMsgDay7_19h] = useState("");
   const [whatsappMsgPostPurchase, setWhatsappMsgPostPurchase] = useState("");
+  const [whatsappMsgPostPurchaseDay1, setWhatsappMsgPostPurchaseDay1] = useState("");
+  const [whatsappMsgPostPurchaseDay2, setWhatsappMsgPostPurchaseDay2] = useState("");
+  const [whatsappMsgPostPurchaseDay3, setWhatsappMsgPostPurchaseDay3] = useState("");
+  const [whatsappMsgPostPurchaseDay4, setWhatsappMsgPostPurchaseDay4] = useState("");
+  const [whatsappMsgPostPurchaseDay5, setWhatsappMsgPostPurchaseDay5] = useState("");
+  const [whatsappMsgPostPurchaseDay6, setWhatsappMsgPostPurchaseDay6] = useState("");
+  const [whatsappMsgPostPurchaseDay7, setWhatsappMsgPostPurchaseDay7] = useState("");
   const [whatsappMsgPostTrialDay1, setWhatsappMsgPostTrialDay1] = useState("");
   const [whatsappMsgPostTrialDay3, setWhatsappMsgPostTrialDay3] = useState("");
   const [whatsappMsgPostTrialDay7, setWhatsappMsgPostTrialDay7] = useState("");
@@ -212,6 +219,27 @@ export default function Admin() {
 
     const wmpPostPurchase = getSetting("whatsapp_msg_post_purchase");
     if (wmpPostPurchase) setWhatsappMsgPostPurchase(wmpPostPurchase.value);
+
+    const wmpPostPD1 = getSetting("whatsapp_msg_post_purchase_day1");
+    if (wmpPostPD1) setWhatsappMsgPostPurchaseDay1(wmpPostPD1.value);
+
+    const wmpPostPD2 = getSetting("whatsapp_msg_post_purchase_day2");
+    if (wmpPostPD2) setWhatsappMsgPostPurchaseDay2(wmpPostPD2.value);
+
+    const wmpPostPD3 = getSetting("whatsapp_msg_post_purchase_day3");
+    if (wmpPostPD3) setWhatsappMsgPostPurchaseDay3(wmpPostPD3.value);
+
+    const wmpPostPD4 = getSetting("whatsapp_msg_post_purchase_day4");
+    if (wmpPostPD4) setWhatsappMsgPostPurchaseDay4(wmpPostPD4.value);
+
+    const wmpPostPD5 = getSetting("whatsapp_msg_post_purchase_day5");
+    if (wmpPostPD5) setWhatsappMsgPostPurchaseDay5(wmpPostPD5.value);
+
+    const wmpPostPD6 = getSetting("whatsapp_msg_post_purchase_day6");
+    if (wmpPostPD6) setWhatsappMsgPostPurchaseDay6(wmpPostPD6.value);
+
+    const wmpPostPD7 = getSetting("whatsapp_msg_post_purchase_day7");
+    if (wmpPostPD7) setWhatsappMsgPostPurchaseDay7(wmpPostPD7.value);
 
     const wmpTrialD1 = getSetting("whatsapp_msg_post_trial_day1");
     if (wmpTrialD1) setWhatsappMsgPostTrialDay1(wmpTrialD1.value);
@@ -432,7 +460,42 @@ export default function Admin() {
         {
           key: "whatsapp_msg_post_purchase",
           value: whatsappMsgPostPurchase,
-          description: "Mensagem Pós-compra (Pagamento Confirmado)"
+          description: "Mensagem Pós-compra Imediata (Pagamento Confirmado)"
+        },
+        {
+          key: "whatsapp_msg_post_purchase_day1",
+          value: whatsappMsgPostPurchaseDay1,
+          description: "Mensagem Pós-compra - Dia 1"
+        },
+        {
+          key: "whatsapp_msg_post_purchase_day2",
+          value: whatsappMsgPostPurchaseDay2,
+          description: "Mensagem Pós-compra - Dia 2"
+        },
+        {
+          key: "whatsapp_msg_post_purchase_day3",
+          value: whatsappMsgPostPurchaseDay3,
+          description: "Mensagem Pós-compra - Dia 3"
+        },
+        {
+          key: "whatsapp_msg_post_purchase_day4",
+          value: whatsappMsgPostPurchaseDay4,
+          description: "Mensagem Pós-compra - Dia 4"
+        },
+        {
+          key: "whatsapp_msg_post_purchase_day5",
+          value: whatsappMsgPostPurchaseDay5,
+          description: "Mensagem Pós-compra - Dia 5"
+        },
+        {
+          key: "whatsapp_msg_post_purchase_day6",
+          value: whatsappMsgPostPurchaseDay6,
+          description: "Mensagem Pós-compra - Dia 6"
+        },
+        {
+          key: "whatsapp_msg_post_purchase_day7",
+          value: whatsappMsgPostPurchaseDay7,
+          description: "Mensagem Pós-compra - Dia 7"
         },
         {
           key: "whatsapp_msg_post_trial_day1",
@@ -530,12 +593,21 @@ export default function Admin() {
 
     try {
       setIsTestingWa(true);
+
+      const currentUserProfile = users.find(u => u.user_id === user?.id);
+      const fullName = currentUserProfile?.full_name || currentUserProfile?.user_name || "Usuário Teste";
+      const firstName = fullName.split(' ')[0];
+
+      const finalMessage = messageTemplate
+        .replace(/\{\{nome\}\}/gi, firstName)
+        .replace(/\{\{nome_completo\}\}/gi, fullName);
+
       const { data, error } = await supabase.functions.invoke('whatsapp-proxy', {
         body: {
           url: whatsappUrl,
           token: whatsappToken,
           number: whatsappTestNumber.replace(/\D/g, ''),
-          body: messageTemplate,
+          body: finalMessage,
           openTicket: 0,
           queueId: "45"
         }
@@ -1656,6 +1728,167 @@ export default function Admin() {
                           className="bg-background border-border min-h-[80px]"
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-post-purchase-day1" className="text-foreground">13.1 Pós-compra - Dia 1</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgPostPurchaseDay1, "Pós-compra Dia 1")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-post-purchase-day1"
+                        placeholder="Enviada no Dia 1 (Pós-compra)..."
+                        value={whatsappMsgPostPurchaseDay1}
+                        onChange={(e) => setWhatsappMsgPostPurchaseDay1(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-post-purchase-day2" className="text-foreground">13.2 Pós-compra - Dia 2</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgPostPurchaseDay2, "Pós-compra Dia 2")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-post-purchase-day2"
+                        placeholder="Enviada no Dia 2 (Pós-compra)..."
+                        value={whatsappMsgPostPurchaseDay2}
+                        onChange={(e) => setWhatsappMsgPostPurchaseDay2(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-post-purchase-day3" className="text-foreground">13.3 Pós-compra - Dia 3</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgPostPurchaseDay3, "Pós-compra Dia 3")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-post-purchase-day3"
+                        placeholder="Enviada no Dia 3 (Pós-compra)..."
+                        value={whatsappMsgPostPurchaseDay3}
+                        onChange={(e) => setWhatsappMsgPostPurchaseDay3(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-post-purchase-day4" className="text-foreground">13.4 Pós-compra - Dia 4</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgPostPurchaseDay4, "Pós-compra Dia 4")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-post-purchase-day4"
+                        placeholder="Enviada no Dia 4 (Pós-compra)..."
+                        value={whatsappMsgPostPurchaseDay4}
+                        onChange={(e) => setWhatsappMsgPostPurchaseDay4(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-post-purchase-day5" className="text-foreground">13.5 Pós-compra - Dia 5</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgPostPurchaseDay5, "Pós-compra Dia 5")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-post-purchase-day5"
+                        placeholder="Enviada no Dia 5 (Pós-compra)..."
+                        value={whatsappMsgPostPurchaseDay5}
+                        onChange={(e) => setWhatsappMsgPostPurchaseDay5(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-post-purchase-day6" className="text-foreground">13.6 Pós-compra - Dia 6</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgPostPurchaseDay6, "Pós-compra Dia 6")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-post-purchase-day6"
+                        placeholder="Enviada no Dia 6 (Pós-compra)..."
+                        value={whatsappMsgPostPurchaseDay6}
+                        onChange={(e) => setWhatsappMsgPostPurchaseDay6(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label htmlFor="wa-msg-post-purchase-day7" className="text-foreground">13.7 Pós-compra - Dia 7</Label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => handleTestWhatsapp(whatsappMsgPostPurchaseDay7, "Pós-compra Dia 7")}
+                          disabled={isTestingWa}
+                        >
+                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                          Testar Envio
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="wa-msg-post-purchase-day7"
+                        placeholder="Enviada no Dia 7 (Pós-compra)..."
+                        value={whatsappMsgPostPurchaseDay7}
+                        onChange={(e) => setWhatsappMsgPostPurchaseDay7(e.target.value)}
+                        className="bg-background border-border min-h-[80px]"
+                      />
                     </div>
 
                     <div className="space-y-2">

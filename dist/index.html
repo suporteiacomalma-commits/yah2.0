@@ -36,8 +36,8 @@
   <meta name="apple-mobile-web-app-title" content="YAH 2.0" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.json" />
-  <script type="module" crossorigin src="/assets/index-DP44RrHb.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BYSW60-R.css">
+  <script type="module" crossorigin src="/assets/index-CuGauYC0.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DWvXQ5Lo.css">
 <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
 
 <body style="background-color: #000; color: #fff;">
@@ -80,14 +80,14 @@
       }
     }
 
-    // Failsafe: if still loading after 10 seconds, show warning
+    // Failsafe: if still loading after 30 seconds, show warning
     setTimeout(() => {
       const root = document.getElementById("root");
       // precise check: if root still contains the spinner div
       if (root && root.innerHTML.includes("animation: spin")) {
         showError("Timeout: App took too long to load. Is the network slow or is JS blocked?");
       }
-    }, 10000);
+    }, 30000);
   </script>
 </body>
 

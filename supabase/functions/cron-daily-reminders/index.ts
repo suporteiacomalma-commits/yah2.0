@@ -113,23 +113,48 @@ serve(async (req: Request) => {
         // Fetch today's agenda (eventos_do_cerebro)
         const { data: events, error: eventsError } = await supabase
           .from("eventos_do_cerebro")
-          .select("nome, hora, data, dias_semana")
+          .select("nome, hora, data, dias_da_semana, recorrencia, status")
           .eq("user_id", user.id);
 
         if (eventsError) console.error(`Error fetching events for ${user.id}:`, eventsError);
 
-        const currentDayOfWeek = todayTimestamp.getDay(); // 0 is Sunday, 1 is Monday...
-        const dateStrBR = todayTimestamp.toLocaleDateString('pt-BR'); // DD/MM/YYYY
+        const tzOffset = -3;
+        const localTime = new Date(todayTimestamp.getTime() + tzOffset * 3600 * 1000);
+        const currentDateStr = localTime.toISOString().split('T')[0];
+        const currentDayOfWeek = localTime.getUTCDay();
 
-        const todaysEvents = (events || []).filter(e => {
-          const matchesDate = e.data === dateStrBR;
-          const matchesWeekday = Array.isArray(e.dias_semana) && e.dias_semana.includes(String(currentDayOfWeek));
-          return matchesDate || matchesWeekday;
-        }).sort((a, b) => a.hora.localeCompare(b.hora));
+        const todaysEvents = (events || []).filter((e: any) => {
+          if (e.status === 'Concluído') return false; // Ignore completed events in reminder
+
+          const eventDate = e.data;
+          if (!eventDate) return false;
+
+          const matchesDate = eventDate === currentDateStr;
+          let isRecurringMatch = false;
+
+          if (eventDate <= currentDateStr && e.recorrencia !== 'Nenhuma') {
+            if (e.recorrencia === 'Diária') {
+              isRecurringMatch = true;
+            } else if (e.recorrencia === 'Semanal') {
+              if (Array.isArray(e.dias_da_semana) && e.dias_da_semana.length > 0) {
+                isRecurringMatch = e.dias_da_semana.includes(currentDayOfWeek);
+              } else {
+                const origDate = new Date(eventDate + "T12:00:00Z");
+                isRecurringMatch = origDate.getUTCDay() === currentDayOfWeek;
+              }
+            } else if (e.recorrencia === 'Mensal') {
+              isRecurringMatch = parseInt(eventDate.split('-')[2]) === localTime.getUTCDate();
+            } else if (e.recorrencia === 'Anual') {
+              isRecurringMatch = eventDate.substring(5) === currentDateStr.substring(5);
+            }
+          }
+
+          return matchesDate || isRecurringMatch;
+        }).sort((a: any, b: any) => a.hora.localeCompare(b.hora));
 
         let eventStr = "•  Nenhum evento agendado para hoje.";
         if (todaysEvents.length > 0) {
-          eventStr = todaysEvents.map((e: any) => `•  ${e.hora} - ${e.nome}`).join('\n');
+          eventStr = todaysEvents.map((e: any) => `•  ${e.hora || 'O Dia Todo'} - ${e.nome}`).join('\n');
         }
 
         // Fetch Brand Questionnaire for Feed/Stories content

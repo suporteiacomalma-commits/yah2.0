@@ -91,6 +91,23 @@ export function useAdminUsers() {
     }
   });
 
+  const adminUpdateUserProfile = useMutation({
+    mutationFn: async ({ userId, fullName, userName, bio, website }: { userId: string, fullName: string | null, userName: string | null, bio: string | null, website: string | null }) => {
+      const { error } = await (supabase as any).rpc('admin_update_user_profile', {
+        target_user_id: userId,
+        new_full_name: fullName,
+        new_user_name: userName,
+        new_bio: bio,
+        new_website: website
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+  });
+
   const updateUserAuth = useMutation({
     mutationFn: async ({ userId, email, password }: { userId: string, email?: string, password?: string }) => {
       const { error } = await (supabase as any).rpc('admin_update_user_auth', {
@@ -125,6 +142,7 @@ export function useAdminUsers() {
     assignRole,
     removeRole,
     updateSubscription,
+    adminUpdateUserProfile,
     updateUserAuth,
     deleteUser
   };

@@ -73,7 +73,7 @@ export default function Admin() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
-  const { users, isLoading: usersLoading, assignRole, removeRole, updateSubscription, updateUserAuth, deleteUser } = useAdminUsers();
+  const { users, isLoading: usersLoading, assignRole, removeRole, updateSubscription, updateUserAuth, deleteUser, adminUpdateUserProfile } = useAdminUsers();
   const { settings, isLoading: settingsLoading, updateSetting, getSetting } = useSystemSettings();
 
   const [openaiKey, setOpenaiKey] = useState("");
@@ -320,19 +320,21 @@ export default function Admin() {
         });
       }
 
-      // 2. Update profile info
-      const { id, user_id, created_at, role, ...updates } = editingUser;
-      await updateSubscription.mutateAsync({
-        userId: user_id,
-        updates
+      // 2. Update profile and social_optimizer securely using admin RPC
+      await adminUpdateUserProfile.mutateAsync({
+        userId: editingUser.user_id,
+        fullName: editingUser.full_name || null,
+        userName: editingUser.user_name || null,
+        bio: editingUser.bio || null,
+        website: editingUser.website || null
       });
 
       toast.success("Informações do usuário atualizadas");
       setEditingUser(null);
       setNewPassword("");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating user:", error);
-      toast.error("Erro ao salvar alterações");
+      toast.error(`Erro ao salvar alterações: ${error?.message || error?.details || JSON.stringify(error)}`);
     }
   };
 

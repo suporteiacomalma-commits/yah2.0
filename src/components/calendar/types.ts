@@ -15,6 +15,9 @@ export interface CerebroEvent {
     hora: string | null;
     duracao: number | null;
     recorrencia: RecurrenceType;
+    is_recurring?: boolean;
+    rrule?: string | null;
+    timezone?: string;
     descricao: string | null;
     status: EventStatus;
     user_id: string;

@@ -12,6 +12,7 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { RRule } from "rrule";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
@@ -38,6 +39,10 @@ interface EventoConfirmacao {
     data: string;
     hora: string | null;
     recorrencia: string;
+    is_recurring: boolean;
+    rrule: string | null;
+    timezone: string;
+    status: string;
     prioridade: "Baixa" | "Média" | "Alta";
 }
 
@@ -184,10 +189,26 @@ export default function Assistant() {
         }
     };
 
-    const handleOrganize = async (overrideText?: string) => {
-        const textToUse = overrideText || inputText;
-        if (!textToUse.trim()) return;
+    /**
+     * Normalizes the input text before sending it to the AI.
+     * Prevents common parser issues like "9h" vs "09:00".
+     */
+    const normalizeInput = (text: string) => {
+        let normalized = text.toLowerCase().trim();
+        // Replace common time formats like "9h", "14hs", "8 h" to "09:00", etc.
+        normalized = normalized.replace(/\b([0-9]{1,2})\s*h(s)?(\s*([0-9]{2}))?\b/gi, (match, h, _s, _mStr, m) => {
+            const hour = h.padStart(2, '0');
+            const minute = m ? m : '00';
+            return `${hour}:${minute}`;
+        });
+        return normalized;
+    };
 
+    const handleOrganize = async (overrideText?: string) => {
+        const rawText = overrideText || inputText;
+        if (!rawText.trim()) return;
+
+        const normalizedText = normalizeInput(rawText);
         setIsProcessing(true);
         try {
             const apiKey = getSetting("openai_api_key")?.value;
@@ -200,8 +221,10 @@ export default function Assistant() {
             const prompt = `Você é um Assistente de Organização Pessoal.
 Hoje é: ${todayStr}, agora são: ${currentTimeStr}.
 Sua missão é extrair eventos de frases.
-O usuário pode falar UMA ou VÁRIAS tarefas ao mesmo tempo.
-Retorne um JSON com uma lista de eventos:
+O usuário pode falar UMA ou VÁRIAS tarefas ao mesmo tempo. 
+Divida e processe cada item de forma independente.
+
+Retorne um JSON OBRIGATÓRIO neste schema por item:
 {
   "eventos": [
     {
@@ -210,22 +233,23 @@ Retorne um JSON com uma lista de eventos:
       "tipo": "Tarefa|Compromisso",
       "data": "YYYY-MM-DD",
       "hora": "HH:MM",
+      "timezone": "America/Sao_Paulo",
       "recorrencia": "Nenhuma|Diária|Semanal|Mensal|Anual",
+      "is_recurring": true/false,
+      "rrule": "Uma string RRULE válida (RFC5545) se for recorrente, ou null",
       "prioridade": "Baixa|Média|Alta"
     }
   ]
 }
 
-Observações importantes:
-- Se o usuário falar "amanhã", calcule a data correta baseada em ${todayStr}.
-- Se o usuário falar "toda segunda", "diário", etc., marque a "recorrencia" adequadamente.
-- IMPORTANTE: Se o usuário mencionar um dia da semana para recorrência (ex: "toda terça"), a data do evento (campo "data") DEVE SER a data da PRÓXIMA terça-feira a partir de hoje (${todayStr}), e não a data de hoje.
-- Se a recorrência for "Semanal" e o dia da semana mencionado for hoje, use a data de hoje. Se for um dia que já passou nesta semana, use a data da próxima semana.
-- Se o usuário não mencionar hora, use null se for tarefa ou 09:00 se for compromisso.
-- Identifique múltiplos eventos se eles existirem na mesma frase.
-- Seja inteligente com o contexto.
+Regras Rigorosas:
+1. "is_recurring": true SE E SOMENTE SE houver um padrão de repetição ("toda segunda", "todo dia", "aos finais de semana").
+2. "rrule": DEVE SER a regra padrão RFC5545 se is_recurring=true (Ex: "FREQ=WEEKLY;BYDAY=MO,WE,FR;BYHOUR=15;BYMINUTE=0" SE e somente SE a hora existir na frase. IMPORTANTE: converta a hora para UTC no rrule ou omita BYHOUR e use dtstart). Ex simples: "FREQ=WEEKLY;BYDAY=SU" para TODO DOMINGO.
+3. Se "is_recurring" é true, vc DEVE enviar a "data" (dtstart) com o DIA CORRETO da PRIMEIRA OCORRÊNCIA a partir de hoje.
+4. Se o usuário falar "Lembrar de tomar água" e NÃO disser quando, é uma Tarefa, sem hora e sem recorrência.
+5. Trate a IA como sugestão, seja preciso.
 
-Frase do usuário: "${textToUse}"`;
+Input normalizado do usuário: "${normalizedText}"`;
 
             const res = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -234,7 +258,7 @@ Frase do usuário: "${textToUse}"`;
                     'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
-                    model: "gpt-4o-mini",
+                    model: "gpt-4o",
                     messages: [{ role: "user", content: prompt }],
                     response_format: { type: "json_object" }
                 })
@@ -249,15 +273,30 @@ Frase do usuário: "${textToUse}"`;
                 return;
             }
 
-            setConfirmEvents(eventos.map((e: any) => ({
-                titulo: e.titulo || "Sem título",
-                categoria: e.categoria || "Outro",
-                tipo: e.tipo || "Tarefa",
-                data: e.data || format(new Date(), "yyyy-MM-dd"),
-                hora: e.hora || (e.tipo === "Compromisso" ? "09:00" : null),
-                recorrencia: e.recorrencia || "Nenhuma",
-                prioridade: e.prioridade || "Média"
-            })));
+            const eventsValidated = eventos.map((e: any) => {
+                let status = "Pendente";
+                // Validação Local: Se é recorrente, DEVE ter rrule e data válida. 
+                // Se falta algo em frase complexa, envia como pending_review para triagem.
+                if (e.is_recurring && (!e.rrule || !e.data)) {
+                    status = "pending_review";
+                }
+
+                return {
+                    titulo: e.titulo || "Sem título",
+                    categoria: e.categoria || "Outro",
+                    tipo: e.tipo || "Tarefa",
+                    data: e.data || format(new Date(), "yyyy-MM-dd"),
+                    hora: e.hora || (e.tipo === "Compromisso" ? "09:00" : null),
+                    recorrencia: e.recorrencia || "Nenhuma",
+                    is_recurring: !!e.is_recurring,
+                    rrule: e.rrule || null,
+                    timezone: e.timezone || "America/Sao_Paulo",
+                    status: status,
+                    prioridade: e.prioridade || "Média"
+                };
+            });
+
+            setConfirmEvents(eventsValidated);
             setShowModal(true);
         } catch (error) {
             console.error(error);
@@ -300,21 +339,34 @@ Frase do usuário: "${textToUse}"`;
         if (!user || confirmEvents.length === 0) return;
         setIsProcessing(true);
         try {
+            // Check for strict required fields (re-verify step)
             for (const event of confirmEvents) {
-                // Salvar na tabela unificada eventos_do_cerebro
-                await (supabase as any).from("eventos_do_cerebro").insert({
-                    titulo: event.titulo,
-                    categoria: event.categoria,
-                    tipo: event.tipo,
-                    data: event.data,
-                    hora: event.hora,
-                    recorrencia: event.recorrencia,
-                    status: "Pendente",
-                    prioridade: event.prioridade,
-                    duracao: 60, // Default duration for AI extracted events
-                    user_id: user.id
-                });
+                if (event.is_recurring && (!event.rrule || !event.data)) {
+                    toast.error(`O evento "${event.titulo}" tem falhas na regra de recorrência. Corrija ou não defina como recorrente.`);
+                    setIsProcessing(false);
+                    return;
+                }
             }
+
+            const inserts = confirmEvents.map(event => ({
+                titulo: event.titulo,
+                categoria: event.categoria,
+                tipo: event.tipo,
+                data: event.data,
+                hora: event.hora,
+                recorrencia: event.recorrencia,
+                is_recurring: event.is_recurring,
+                rrule: event.rrule,
+                timezone: event.timezone,
+                status: "Pendente",
+                prioridade: event.prioridade,
+                duracao: 60, // Default duration for AI extracted events
+                user_id: user.id
+            }));
+
+            // Inserção transacional simulada pela lib (esperando o BD retornar sucesso total)
+            const { error, data } = await (supabase as any).from("eventos_do_cerebro").insert(inserts).select();
+            if (error) throw error;
 
             showToast("Agendado! Vou te lembrar quando chegar a hora");
 

@@ -138,7 +138,7 @@ export function AddActivityDialog({
 
     setIsSaving(true);
     try {
-      const eventData = {
+      const baseEventData = {
         titulo: title.trim(),
         categoria: category,
         tipo: type,
@@ -150,8 +150,15 @@ export function AddActivityDialog({
         descricao: description.trim(),
         status: status,
         prioridade: priority,
-        user_id: user.id
+        user_id: user.id,
+        is_recurring: recurrence !== "Nenhuma"
       };
+
+      // Se o usuário editar a recorrência manualmente pela UI, limpamos o RRULE da IA
+      // para que a engine de expansão volte a usar a regra simples legada da UI
+      const eventData = editingEvent
+        ? { ...baseEventData, rrule: recurrence !== editingEvent.recorrencia ? null : editingEvent.rrule }
+        : { ...baseEventData, rrule: null };
 
       if (editingEvent) {
         const { error } = await (supabase as any)

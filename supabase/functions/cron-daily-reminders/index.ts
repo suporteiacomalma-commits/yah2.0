@@ -60,10 +60,10 @@ serve(async (req: Request) => {
     // Fetch active users
     let query = supabase
       .from("profiles")
-      .select("id, full_name, whatsapp, subscription_plan, subscription_status, created_at");
+      .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at");
 
     if (isTest && testUserId) {
-      query = query.eq("id", testUserId);
+      query = query.eq("user_id", testUserId);
     } else {
       query = query
         .eq("subscription_status", "active")
@@ -79,7 +79,7 @@ serve(async (req: Request) => {
       console.warn(`Test user ${testUserId} has no profile. Falling back to any active user for data mapping.`);
       const { data: fallbackUsers } = await supabase
         .from("profiles")
-        .select("id, full_name, whatsapp, subscription_plan, subscription_status, created_at")
+        .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at")
         .limit(1);
 
       if (fallbackUsers && fallbackUsers.length > 0) {
@@ -105,7 +105,7 @@ serve(async (req: Request) => {
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
         if (!isTest && diffDays <= 0) {
-          console.log(`Skipping user ${user.id} (Day 0)`);
+          console.log(`Skipping user ${user.user_id} (Day 0)`);
           skipCount++;
           continue;
         }
@@ -113,10 +113,10 @@ serve(async (req: Request) => {
         // Fetch today's agenda (eventos_do_cerebro)
         const { data: events, error: eventsError } = await supabase
           .from("eventos_do_cerebro")
-          .select("nome, hora, data, dias_da_semana, recorrencia, status")
-          .eq("user_id", user.id);
+          .select("titulo, hora, data, dias_da_semana, recorrencia, status")
+          .eq("user_id", user.user_id);
 
-        if (eventsError) console.error(`Error fetching events for ${user.id}:`, eventsError);
+        if (eventsError) console.error(`Error fetching events for ${user.user_id}:`, eventsError);
 
         const tzOffset = -3;
         const localTime = new Date(todayTimestamp.getTime() + tzOffset * 3600 * 1000);
@@ -124,59 +124,76 @@ serve(async (req: Request) => {
         const currentDayOfWeek = localTime.getUTCDay();
 
         const todaysEvents = (events || []).filter((e: any) => {
-          if (e.status === 'Concluído') return false; // Ignore completed events in reminder
-
           const eventDate = e.data;
           if (!eventDate) return false;
 
-          const matchesDate = eventDate === currentDateStr;
+          const localDateStr = currentDateStr; // 'YYYY-MM-DD'
+
+          // Check if already completed for today (for recurring events)
+          if (Array.isArray(e.concluidos) && e.concluidos.includes(localDateStr)) {
+            return false;
+          }
+
+          // Check if excluded for today
+          if (Array.isArray(e.exclusoes) && e.exclusoes.includes(localDateStr)) {
+            return false;
+          }
+
+          // For non-recurring, check status
+          if (e.recorrencia === 'Nenhuma' && e.status === 'Concluído' && eventDate === localDateStr) {
+            return false;
+          }
+
+          const matchesDate = eventDate === localDateStr;
           let isRecurringMatch = false;
 
-          if (eventDate <= currentDateStr && e.recorrencia !== 'Nenhuma') {
+          if (eventDate <= localDateStr && (e.recorrencia !== 'Nenhuma' || e.is_recurring)) {
+            // Basic parity with recurrenceUtils.ts
             if (e.recorrencia === 'Diária') {
               isRecurringMatch = true;
             } else if (e.recorrencia === 'Semanal') {
               if (Array.isArray(e.dias_da_semana) && e.dias_da_semana.length > 0) {
                 isRecurringMatch = e.dias_da_semana.includes(currentDayOfWeek);
               } else {
+                // parseISO equivalent in pure JS for neutral YYYY-MM-DD
                 const origDate = new Date(eventDate + "T12:00:00Z");
                 isRecurringMatch = origDate.getUTCDay() === currentDayOfWeek;
               }
             } else if (e.recorrencia === 'Mensal') {
               isRecurringMatch = parseInt(eventDate.split('-')[2]) === localTime.getUTCDate();
             } else if (e.recorrencia === 'Anual') {
-              isRecurringMatch = eventDate.substring(5) === currentDateStr.substring(5);
+              isRecurringMatch = eventDate.substring(5) === localDateStr.substring(5);
             }
           }
 
           return matchesDate || isRecurringMatch;
-        }).sort((a: any, b: any) => a.hora.localeCompare(b.hora));
+        }).sort((a: any, b: any) => (a.hora || '23:59:59').localeCompare(b.hora || '23:59:59'));
 
         let eventStr = "•  Nenhum evento agendado para hoje.";
         if (todaysEvents.length > 0) {
-          eventStr = todaysEvents.map((e: any) => `•  ${e.hora || 'O Dia Todo'} - ${e.nome}`).join('\n');
+          eventStr = todaysEvents.map((e: any) => {
+            const timeStr = e.hora ? e.hora.substring(0, 5) : 'O Dia Todo';
+            return `•  ${timeStr} - ${e.titulo}`;
+          }).join('\n');
         }
 
-        // Fetch Brand Questionnaire for Feed/Stories content
+        // Fetch Brand Content for Feed/Stories (from brands table)
+        // Dashboard uses week 0 (Week 1)
         const { data: brandData, error: brandError } = await supabase
-          .from("brand_questionnaire")
-          .select("weekly_structure_data, created_at")
-          .eq("user_id", user.id)
+          .from("brands")
+          .select("weekly_structure_data")
+          .eq("user_id", user.user_id)
           .single();
 
         if (brandError && brandError.code !== 'PGRST116') {
-          console.error(`Error fetching brand for ${user.id}:`, brandError);
+          console.error(`Error fetching brand for ${user.user_id}:`, brandError);
         }
 
         let contentBlocks: string[] = [];
 
         if (brandData && brandData.weekly_structure_data) {
-          const brandCreated = new Date(brandData.created_at);
-          const brandStart = new Date(brandCreated.getFullYear(), brandCreated.getMonth(), brandCreated.getDate());
-          const brandDiffDays = Math.floor((startOfToday.getTime() - brandStart.getTime()) / (1000 * 60 * 60 * 24));
-
-          const weekIdx = Math.floor(brandDiffDays / 7) % 4; // 0 to 3
-          const dayIdx = currentDayOfWeek; // 0 to 6
+          const weekIdx = 0; // Dashboard alignment: Always use Week 1
+          const dayIdx = currentDayOfWeek; // 0-6
 
           const weeklyData = brandData.weekly_structure_data as any[];
           if (Array.isArray(weeklyData) && weeklyData[weekIdx] && weeklyData[weekIdx][dayIdx]) {
@@ -186,16 +203,6 @@ serve(async (req: Request) => {
             const mainStory = dayData.stories?.headline;
             if (mainFeed || mainStory) {
               contentBlocks.push(`•  Feed: ${mainFeed || 'Sem tema definido'}\n•  Stories: ${mainStory || 'Sem tema definido'}`);
-            }
-
-            if (Array.isArray(dayData.feed?.extraBlocks)) {
-              dayData.feed.extraBlocks.forEach((eb: any, idx: number) => {
-                const ebFeed = eb.headline;
-                const ebStory = dayData.stories?.extraBlocks?.[idx]?.headline;
-                if (ebFeed || ebStory) {
-                  contentBlocks.push(`•  Feed: ${ebFeed || 'Sem tema definido'}\n•  Stories: ${ebStory || 'Sem tema definido'}`);
-                }
-              });
             }
           }
         }
@@ -216,11 +223,25 @@ serve(async (req: Request) => {
         }
 
         // Send via Whatsapp Proxy
-        const success = await sendMessage(waUrl, waToken, whatsappToSend, messageToSend, `Daily Reminder ${user.id}`);
+        const success = await sendMessage(waUrl, waToken, whatsappToSend, messageToSend, `Daily Reminder ${user.user_id}`);
         if (success) sentCount++;
 
+        if (isTest) {
+          return new Response(JSON.stringify({
+            success: true,
+            sent: 1,
+            message: messageToSend,
+            user: user.full_name,
+            events_count: todaysEvents.length,
+            content_found: contentBlocks.length > 0
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
       } catch (err: any) {
-        console.error(`Error processing user ${user.id}:`, err);
+        console.error(`Error processing user ${user.user_id}:`, err);
         if (isTest) {
           return new Response(JSON.stringify({
             success: false,
@@ -240,7 +261,8 @@ serve(async (req: Request) => {
       sent: sentCount,
       skipped: skipCount,
       users_found: users?.length || 0,
-      testUserId: testUserId || null
+      testUserId: testUserId || null,
+      debugMessage: isTest ? 'Message sent to WhatsApp proxy. Check proxy logs or phone.' : undefined
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

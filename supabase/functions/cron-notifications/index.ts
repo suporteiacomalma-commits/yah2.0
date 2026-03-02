@@ -101,7 +101,7 @@ serve(async (req: Request) => {
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('subscription_plan')
-                    .eq('id', msg.user_id)
+                    .eq('user_id', msg.user_id)
                     .single();
 
                 const plan = profile?.subscription_plan || 'trial';

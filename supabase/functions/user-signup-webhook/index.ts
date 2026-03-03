@@ -146,8 +146,26 @@ serve(async (req: Request) => {
         }
       };
 
-      if (justCompletedOnboarding && actualWelcomeMessage) {
-        await sendMessage(actualWelcomeMessage, "Welcome/Onboarding");
+      if (justCompletedOnboarding) {
+        // 1. Initialize trial status
+        const trialStartsAt = new Date();
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+
+        await supabaseClient
+          .from('profiles')
+          .update({
+            subscription_status: 'trialing',
+            subscription_plan: 'trial',
+            trial_started_at: trialStartsAt.toISOString(),
+            trial_ends_at: trialEndsAt.toISOString(),
+            timezone: 'America/Sao_Paulo' // Default
+          })
+          .eq('id', newProfile.id);
+
+        if (actualWelcomeMessage) {
+          await sendMessage(actualWelcomeMessage, "Welcome/Onboarding");
+        }
 
         const messagesToInsert = [];
         const baseDate = new Date();
@@ -158,20 +176,25 @@ serve(async (req: Request) => {
           return d.toISOString();
         };
 
+        // Rule-aligned schedules (Times shifted for America/Sao_Paulo -3)
         const schedules = [
-          { key: 'day2', time: getScheduledTime(1, 15) },
-          { key: 'day3', time: getScheduledTime(2, 15) },
-          { key: 'day4', time: getScheduledTime(3, 15) },
-          { key: 'day5', time: getScheduledTime(4, 15) },
-          { key: 'day6', time: getScheduledTime(5, 15) },
-          { key: 'day7_15h', time: getScheduledTime(6, 18) },
-          { key: 'day7_19h', time: getScheduledTime(6, 22, 30) },
-          { key: 'post_trial_day1', time: getScheduledTime(8, 15) },
-          { key: 'post_trial_day3', time: getScheduledTime(10, 15) },
-          { key: 'post_trial_day7', time: getScheduledTime(14, 15) },
+          // TRIAL_ACTION_1930 (Diário D2-D6 at 19:30 BRT = 22:30 UTC)
+          { key: 'day2', type: 'TRIAL_D2', time: getScheduledTime(1, 22, 30) },
+          { key: 'day3', type: 'TRIAL_D3', time: getScheduledTime(2, 22, 30) },
+          { key: 'day4', type: 'TRIAL_D4', time: getScheduledTime(3, 22, 30) },
+          { key: 'day5', type: 'TRIAL_D5', time: getScheduledTime(4, 22, 30) },
+          { key: 'day6', type: 'TRIAL_D6', time: getScheduledTime(5, 22, 30) },
+          // TRIAL_DAY7_1500 (Dia 7, 15:00 BRT = 18:00 UTC)
+          { key: 'day7_15h', type: 'TRIAL_D7_1500', time: getScheduledTime(6, 18, 0) },
+          // TRIAL_DAY7_1930 (Dia 7, 19:30 BRT = 22:30 UTC)
+          { key: 'day7_19h', type: 'TRIAL_D7_1930', time: getScheduledTime(6, 22, 30) },
+          // POST_TRIAL
+          { key: 'post_trial_day1', type: 'POST_TRIAL_D1', time: getScheduledTime(8, 15, 0) },
+          { key: 'post_trial_day3', type: 'POST_TRIAL_D3', time: getScheduledTime(10, 15, 0) },
+          { key: 'post_trial_day7', type: 'POST_TRIAL_D7', time: getScheduledTime(14, 15, 0) },
         ];
 
-        // Add Day 1
+        // FIRST_ACTION_5MIN (TRIAL_DAY1)
         if (actualDay1Message) {
           console.log("Scheduling Day 1 message for 5 minutes from now.");
           const sendAt = new Date();
@@ -180,22 +203,24 @@ serve(async (req: Request) => {
             user_id: newProfile.id,
             phone_number: cleanNumber,
             message: actualDay1Message,
-            send_at: sendAt.toISOString()
+            send_at: sendAt.toISOString(),
+            type: 'TRIAL_D1',
+            dedupe_key: `${newProfile.id}_TRIAL_D1`
           });
         }
 
-        // Add Day 2 to 7 and Post-Trial
         for (const sched of schedules) {
           const template = msgTemplatesDay2to7[sched.key];
           if (template) {
             const actualMsg = formatMsg(template);
             if (actualMsg) {
-              const prefix = sched.key.startsWith('post_trial') ? '[POST_TRIAL]' : '[TRIAL]';
               messagesToInsert.push({
                 user_id: newProfile.id,
                 phone_number: cleanNumber,
-                message: `${prefix}${actualMsg}`,
-                send_at: sched.time
+                message: actualMsg,
+                send_at: sched.time,
+                type: sched.type,
+                dedupe_key: `${newProfile.id}_${sched.type}`
               });
             }
           }
@@ -204,7 +229,7 @@ serve(async (req: Request) => {
         if (messagesToInsert.length > 0) {
           const { error: scheduleError } = await supabaseClient
             .from('scheduled_messages')
-            .insert(messagesToInsert);
+            .upsert(messagesToInsert, { onConflict: 'dedupe_key' });
 
           if (scheduleError) {
             console.error("Failed to schedule bulk messages:", scheduleError);
@@ -215,8 +240,20 @@ serve(async (req: Request) => {
       }
 
       if (justBecamePremium) {
-        // We will schedule the new 7 days Post-Purchase sequence.
-        // Old post_purchase immediate message goes out if available.
+        // 1. Cancel pending TRIAL and POST_TRIAL messages
+        const { error: cancelError } = await supabaseClient
+          .from('scheduled_messages')
+          .delete()
+          .eq('user_id', newProfile.id)
+          .like('type', 'TRIAL_%') // TRIAL_D1, TRIAL_D2, etc.
+          .or('type.like.POST_TRIAL_%');
+
+        if (cancelError) {
+          console.error("Error cancelling trial messages:", cancelError);
+        } else {
+          console.log(`Cancelled pending trial/post-trial messages for user ${newProfile.id}`);
+        }
+
         if (actualPostPurchaseMessage) {
           await sendMessage(actualPostPurchaseMessage, "Post-Purchase Immediate");
         }
@@ -225,38 +262,22 @@ serve(async (req: Request) => {
         const getScheduledTime = (daysOffset: number, hoursUtc: number, minutesUtc: number = 0) => {
           const d = new Date(baseDate);
           d.setDate(d.getDate() + daysOffset);
-          // Set timezone properly or use UTC equivalent for user timezone. 
-          // Previous time was 15:00 UTC = 12:00 BRT, 18:00 UTC = 15:00 BRT.
-          // In previous messages, standard times were mostly at 19:30 BRT or similar.
-          // We will schedule them at 19:30 BRT (22:30 UTC).
           d.setUTCHours(hoursUtc, minutesUtc, 0, 0);
           return d.toISOString();
         };
 
+        // PAID_1930_D1..D7 (19:30 BRT = 22:30 UTC)
         const postPurchaseSchedules = [
-          { key: 'day2', time: getScheduledTime(1, 22, 30) }, // Tomorrow ~19:30 BRT
-          { key: 'day3', time: getScheduledTime(2, 22, 30) },
-          { key: 'day4', time: getScheduledTime(3, 22, 30) },
-          { key: 'day5', time: getScheduledTime(4, 22, 30) },
-          { key: 'day6', time: getScheduledTime(5, 22, 30) },
-          { key: 'day7', time: getScheduledTime(6, 22, 30) },
+          { key: 'day1', type: 'PAID_D1', time: getScheduledTime(0, 22, 30) }, // Today ~19:30 BRT
+          { key: 'day2', type: 'PAID_D2', time: getScheduledTime(1, 22, 30) },
+          { key: 'day3', type: 'PAID_D3', time: getScheduledTime(2, 22, 30) },
+          { key: 'day4', type: 'PAID_D4', time: getScheduledTime(3, 22, 30) },
+          { key: 'day5', type: 'PAID_D5', time: getScheduledTime(4, 22, 30) },
+          { key: 'day6', type: 'PAID_D6', time: getScheduledTime(5, 22, 30) },
+          { key: 'day7', type: 'PAID_D7', time: getScheduledTime(6, 22, 30) },
         ];
 
         const premiumMessagesToInsert = [];
-
-        // Add Day 1 (Immediate or +5 mins)
-        const actualPremiumDay1 = formatMsg(msgPostPurchaseSequence['day1']);
-        if (actualPremiumDay1) {
-          console.log("Scheduling Day 1 Premium message for 5 minutes from now.");
-          const sendAt = new Date();
-          sendAt.setMinutes(sendAt.getMinutes() + 5);
-          premiumMessagesToInsert.push({
-            user_id: newProfile.id,
-            phone_number: cleanNumber,
-            message: actualPremiumDay1,
-            send_at: sendAt.toISOString()
-          });
-        }
 
         for (const sched of postPurchaseSchedules) {
           const template = msgPostPurchaseSequence[sched.key];
@@ -266,8 +287,10 @@ serve(async (req: Request) => {
               premiumMessagesToInsert.push({
                 user_id: newProfile.id,
                 phone_number: cleanNumber,
-                message: actualMsg, // premium doesn't have [TRIAL] prefix to worry about hiding
-                send_at: sched.time
+                message: actualMsg,
+                send_at: sched.time,
+                type: sched.type,
+                dedupe_key: `${newProfile.id}_${sched.type}`
               });
             }
           }
@@ -276,7 +299,7 @@ serve(async (req: Request) => {
         if (premiumMessagesToInsert.length > 0) {
           const { error: scheduleError } = await supabaseClient
             .from('scheduled_messages')
-            .insert(premiumMessagesToInsert);
+            .upsert(premiumMessagesToInsert, { onConflict: 'dedupe_key' });
 
           if (scheduleError) {
             console.error("Failed to schedule bulk premium messages:", scheduleError);

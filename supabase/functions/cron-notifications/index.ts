@@ -77,6 +77,7 @@ serve(async (req: Request) => {
         const { data: pendingMessages, error: pendingError } = await supabase
             .from("scheduled_messages")
             .select("*")
+            .eq("status", "pending")
             .lte("send_at", now.toISOString())
             .limit(50); // process 50 at a time
 
@@ -97,43 +98,50 @@ serve(async (req: Request) => {
 
         for (const msg of pendingMessages) {
             try {
-                // Fetch user profile to check subscription plan
+                // 1) Fetch user profile to check subscription status (getAccess logic)
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('subscription_plan')
+                    .select('subscription_status, subscription_plan')
                     .eq('user_id', msg.user_id)
                     .single();
 
-                const plan = profile?.subscription_plan || 'trial';
+                const status = profile?.subscription_status || 'expired';
 
-                let shouldSend = true;
-                let finalMessage = msg.message;
+                // Rule: Only trialing or active can receive messages.
+                // Exceptions might exist for specific marketing/post-trial types.
+                let hasAccess = (status === 'trialing' || status === 'active');
 
-                // Check conditions for Trial and Post-Trial messages
-                if (typeof finalMessage === 'string') {
-                    if (finalMessage.startsWith('[TRIAL]')) {
-                        finalMessage = finalMessage.replace('[TRIAL]', '');
-                        if (plan === 'premium') shouldSend = false;
-                    } else if (finalMessage.startsWith('[POST_TRIAL]')) {
-                        finalMessage = finalMessage.replace('[POST_TRIAL]', '');
-                        if (plan === 'premium') shouldSend = false;
-                    }
+                // Special case: Allow POST_TRIAL messages even if expired
+                if (msg.type && msg.type.startsWith('POST_TRIAL_')) {
+                    hasAccess = true;
                 }
 
-                if (shouldSend) {
-                    const success = await sendMessage(msg.phone_number, finalMessage, `Scheduled (ID: ${msg.id})`);
-                    if (!success) {
-                        console.error(`Failed to send message ${msg.id}`);
+                if (hasAccess) {
+                    const success = await sendMessage(msg.phone_number, msg.message, `Scheduled (ID: ${msg.id}, Type: ${msg.type})`);
+                    if (success) {
+                        await supabase.from("scheduled_messages")
+                            .update({ status: 'sent' })
+                            .eq("id", msg.id);
+                    } else {
+                        await supabase.from("scheduled_messages")
+                            .update({ status: 'error', error: 'Failed to send via WA API' })
+                            .eq("id", msg.id);
                     }
                 } else {
-                    console.log(`Skipped message ${msg.id} because user plan is ${plan}`);
+                    console.log(`Skipped message ${msg.id} (Type: ${msg.type}) because user status is ${status}`);
+                    await supabase.from("scheduled_messages")
+                        .update({ status: 'cancelled', error: `Access denied: status ${status}` })
+                        .eq("id", msg.id);
                 }
 
             } catch (err: any) {
                 console.error(`Error processing message ${msg.id}:`, err.message);
+                await supabase.from("scheduled_messages")
+                    .update({ status: 'error', error: err.message })
+                    .eq("id", msg.id);
             } finally {
-                // Always delete after processing to prevent retry loops
-                await supabase.from("scheduled_messages").delete().eq("id", msg.id);
+                // Note: We used to delete, but now we keep with a status for auditing.
+                // However, the query selects pending, so it won't re-process.
             }
         }
 

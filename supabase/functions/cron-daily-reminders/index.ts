@@ -57,16 +57,16 @@ serve(async (req: Request) => {
     const isTest = !!reqBody.test_whatsapp;
     const testUserId = reqBody.test_user_id;
 
-    // Fetch active users
+    // Fetch active/trialing users
     let query = supabase
       .from("profiles")
-      .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at");
+      .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at, trial_started_at");
 
     if (isTest && testUserId) {
       query = query.eq("user_id", testUserId);
     } else {
       query = query
-        .eq("subscription_status", "active")
+        .or('subscription_status.eq.active,subscription_status.eq.trialing')
         .neq("whatsapp", null)
         .neq("whatsapp", "");
     }
@@ -79,7 +79,7 @@ serve(async (req: Request) => {
       console.warn(`Test user ${testUserId} has no profile. Falling back to any active user for data mapping.`);
       const { data: fallbackUsers } = await supabase
         .from("profiles")
-        .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at")
+        .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at, trial_started_at")
         .limit(1);
 
       if (fallbackUsers && fallbackUsers.length > 0) {
@@ -87,7 +87,7 @@ serve(async (req: Request) => {
       }
     }
 
-    console.log(`Found ${users?.length || 0} active users with valid whatsapp numbers.`);
+    console.log(`Found ${users?.length || 0} potential users (active/trialing) with valid whatsapp numbers.`);
 
     const todayTimestamp = new Date();
     const startOfToday = new Date(todayTimestamp.getFullYear(), todayTimestamp.getMonth(), todayTimestamp.getDate());
@@ -97,31 +97,55 @@ serve(async (req: Request) => {
 
     for (const user of users || []) {
       try {
-        // Determine if user is in day 0
-        const userCreated = new Date(user.created_at);
-        const userCreatedAtStart = new Date(userCreated.getFullYear(), userCreated.getMonth(), userCreated.getDate());
+        // Rule Alignment: 
+        // trialing -> Only if trial_day >= 2
+        // active -> Daily
+        const status = user.subscription_status;
+        const baseDateForTrial = user.trial_started_at ? new Date(user.trial_started_at) : new Date(user.created_at);
+        const trialStartsAtDay = new Date(baseDateForTrial.getFullYear(), baseDateForTrial.getMonth(), baseDateForTrial.getDate());
 
-        const diffTime = startOfToday.getTime() - userCreatedAtStart.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const diffTime = startOfToday.getTime() - trialStartsAtDay.getTime();
+        const trialDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-        if (!isTest && diffDays <= 0) {
-          console.log(`Skipping user ${user.user_id} (Day 0)`);
-          skipCount++;
-          continue;
+        if (!isTest) {
+          if (status === 'trialing' && trialDay < 2) {
+            console.log(`Skipping trialing user ${user.user_id} (Trial Day ${trialDay} < 2)`);
+            skipCount++;
+            continue;
+          }
+          if (status !== 'active' && status !== 'trialing') {
+            console.log(`Skipping user ${user.user_id} (Status: ${status})`);
+            skipCount++;
+            continue;
+          }
         }
 
         // Fetch today's agenda (eventos_do_cerebro)
         const { data: events, error: eventsError } = await supabase
           .from("eventos_do_cerebro")
-          .select("titulo, hora, data, dias_da_semana, recorrencia, status")
+          .select("titulo, hora, data, dias_da_semana, recorrencia, status, concluidos, exclusoes")
           .eq("user_id", user.user_id);
 
         if (eventsError) console.error(`Error fetching events for ${user.user_id}:`, eventsError);
 
-        const tzOffset = -3;
-        const localTime = new Date(todayTimestamp.getTime() + tzOffset * 3600 * 1000);
-        const currentDateStr = localTime.toISOString().split('T')[0];
-        const currentDayOfWeek = localTime.getUTCDay();
+        // Timezone Handling
+        const userTz = user.timezone || 'America/Sao_Paulo';
+        const formatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: userTz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+
+        const parts = formatter.formatToParts(todayTimestamp);
+        const getPart = (type: string) => parts.find(p => p.type === type)?.value;
+        const currentDateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+        const currentDayOfWeek = new Date(currentDateStr + 'T12:00:00Z').getUTCDay(); // 0-6
+        const localTime = new Date(`${currentDateStr}T${getPart('hour')}:${getPart('minute')}:${getPart('second')}`);
 
         const todaysEvents = (events || []).filter((e: any) => {
           const eventDate = e.data;

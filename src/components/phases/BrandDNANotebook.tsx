@@ -399,7 +399,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                     .h-32 { height: auto !important; }
                 }
             `}</style>
-            <div className="space-y-2 print:hidden">
+            <div key="progress-container" className="space-y-2 print:hidden">
                 <div className="flex justify-between items-center text-sm font-medium text-muted-foreground mb-1">
                     <span>Progresso do DNA</span>
                     <span>{progressMap[step]}%</span>
@@ -435,8 +435,12 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                     disabled={isSuggesting}
                                     className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
                                 >
-                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                    Sugerir com IA
+                                    {isSuggesting ? (
+                                        <Loader2 key="loader" className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles key="icon" className="w-3 h-3" />
+                                    )}
+                                    <span>Sugerir com IA</span>
                                 </Button>
                             </div>
                             <Input
@@ -459,8 +463,12 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                     disabled={isSuggesting}
                                     className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
                                 >
-                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                    Sugerir com IA
+                                    {isSuggesting ? (
+                                        <Loader2 key="loader" className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles key="icon" className="w-3 h-3" />
+                                    )}
+                                    <span>Sugerir com IA</span>
                                 </Button>
                             </div>
                             <Input
@@ -515,9 +523,11 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                             </div>
                         </div>
                         <div className="flex flex-col-reverse md:flex-row justify-end pt-4 gap-4">
-                            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="w-full md:w-auto h-12">Voltar ao Início</Button>
+                            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="w-full md:w-auto h-12">
+                                <span>Voltar ao Início</span>
+                            </Button>
                             <Button onClick={handleNextStep} className="gradient-primary text-white px-8 h-12 w-full md:w-auto">
-                                Próximo <ChevronRight className="ml-2 w-4 h-4" />
+                                <span>Próximo</span> <ChevronRight className="ml-2 w-4 h-4" />
                             </Button>
                         </div>
                     </CardContent>
@@ -543,8 +553,12 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                     disabled={isSuggesting}
                                     className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
                                 >
-                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                    Sugerir com IA
+                                    {isSuggesting ? (
+                                        <Loader2 key="loader" className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles key="icon" className="w-3 h-3" />
+                                    )}
+                                    <span>Sugerir com IA</span>
                                 </Button>
                             </div>
                             <AutoResizeTextarea
@@ -567,8 +581,12 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                     disabled={isSuggesting}
                                     className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
                                 >
-                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                    Sugerir com IA
+                                    {isSuggesting ? (
+                                        <Loader2 key="loader" className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles key="icon" className="w-3 h-3" />
+                                    )}
+                                    <span>Sugerir com IA</span>
                                 </Button>
                             </div>
                             <AutoResizeTextarea
@@ -591,8 +609,12 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                     disabled={isSuggesting}
                                     className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
                                 >
-                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                    Sugerir com IA
+                                    {isSuggesting ? (
+                                        <Loader2 key="loader" className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles key="icon" className="w-3 h-3" />
+                                    )}
+                                    <span>Sugerir com IA</span>
                                 </Button>
                             </div>
                             <AutoResizeTextarea
@@ -615,8 +637,12 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                     disabled={isSuggesting}
                                     className="text-[10px] h-6 px-2 text-accent flex items-center gap-1 hover:bg-accent/10"
                                 >
-                                    {isSuggesting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                    Sugerir com IA
+                                    {isSuggesting ? (
+                                        <Loader2 key="loader" className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <Sparkles key="icon" className="w-3 h-3" />
+                                    )}
+                                    <span>Sugerir com IA</span>
                                 </Button>
                             </div>
                             <AutoResizeTextarea
@@ -631,7 +657,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                         </div>
                         <div className="flex flex-col-reverse md:flex-row justify-between pt-4 gap-4 md:gap-0">
                             <Button variant="outline" onClick={() => setStep(1)} className="h-12 w-full md:w-auto">
-                                <ChevronLeft className="mr-2 w-4 h-4" /> Voltar
+                                <ChevronLeft className="mr-2 w-4 h-4" /> <span>Voltar</span>
                             </Button>
                             <Button
                                 onClick={handleGenerateDNA}
@@ -639,15 +665,15 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                 className="gradient-primary text-white px-10 h-12 text-lg font-bold shadow-lg w-full md:w-auto"
                             >
                                 {isGenerating ? (
-                                    <>
+                                    <div key="generating" className="flex items-center">
                                         <Loader2 className="mr-2 animate-spin w-5 h-5" />
-                                        Gerando DNA...
-                                    </>
+                                        <span>Gerando DNA...</span>
+                                    </div>
                                 ) : (
-                                    <>
+                                    <div key="ready" className="flex items-center">
                                         <Wand2 className="mr-2 w-5 h-5" />
-                                        Gerar DNA da Marca
-                                    </>
+                                        <span>Gerar DNA da Marca</span>
+                                    </div>
                                 )}
                             </Button>
                         </div>
@@ -716,7 +742,7 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                     handleInputChange("dna_pilares", newPilares);
                                 }}
                             >
-                                <Plus className="w-4 h-4 mr-2" /> Adicionar Assunto
+                                <Plus className="w-4 h-4 mr-2" /> <span>Adicionar Assunto</span>
                             </Button>
                         )}
                     </Card>
@@ -896,7 +922,11 @@ function ResultSection({ title, description, content, onSave, fullWidth, onDelet
                 </div>
                 <div className="flex gap-1">
                     <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
-                        {isEditing ? "Cancelar" : <Pencil className="w-4 h-4" />}
+                        {isEditing ? (
+                            <span key="cancel">Cancelar</span>
+                        ) : (
+                            <Pencil key="edit" className="w-4 h-4" />
+                        )}
                     </Button>
                     {onDelete && (
                         <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:bg-destructive/10">

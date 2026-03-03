@@ -18,7 +18,19 @@ serve(async (req: Request) => {
     )
 
     const payload = await req.json();
-    console.log("Webhook payload:", payload);
+
+    const logToDb = async (eventName: string, details: any) => {
+      try {
+        await supabaseClient.from('debug_logs').insert({
+          event_name: eventName,
+          details: { ...details, user_id: payload.record?.user_id || payload.record?.id }
+        });
+      } catch (e: any) {
+        console.error("Failed to log to DB:", e.message);
+      }
+    };
+
+    await logToDb("Webhook Received", payload);
 
     if (payload.type === 'UPDATE' && payload.table === 'profiles') {
       const newProfile = payload.record;
@@ -45,8 +57,8 @@ serve(async (req: Request) => {
         .in('key', [
           'whatsapp_backend_url',
           'whatsapp_token',
-          'whatsapp_msg_welcome',
-          'whatsapp_msg_day1',
+          'whatsapp_msg_trial',
+          'whatsapp_msg_onboarding_5min',
           'whatsapp_msg_post_purchase',
           'whatsapp_msg_day2',
           'whatsapp_msg_day3',
@@ -74,9 +86,9 @@ serve(async (req: Request) => {
       const getSetting = (k: string) => settings?.find((s: any) => s.key === k)?.value;
       const waUrl = getSetting('whatsapp_backend_url');
       const waToken = getSetting('whatsapp_token');
-      const msgTemplateWelcome = getSetting('whatsapp_msg_welcome');
+      const msgTemplateTrialWelcome = getSetting('whatsapp_msg_trial'); // For Trial Start
+      const msgTemplateOnboarding5min = getSetting('whatsapp_msg_onboarding_5min'); // Action 1
       const msgPostPurchaseTemplate = getSetting('whatsapp_msg_post_purchase');
-      const msgDay1Template = getSetting('whatsapp_msg_day1');
       const msgTemplatesDay2to7: Record<string, string> = {
         'day2': getSetting('whatsapp_msg_day2'),
         'day3': getSetting('whatsapp_msg_day3'),
@@ -110,8 +122,8 @@ serve(async (req: Request) => {
         return template.replace(/\{\{nome\}\}/gi, firstName).replace(/\{\{nome_completo\}\}/gi, full_name || 'Usuário');
       };
 
-      const actualWelcomeMessage = formatMsg(msgTemplateWelcome);
-      const actualDay1Message = formatMsg(msgDay1Template);
+      const actualTrialWelcomeMessage = formatMsg(msgTemplateTrialWelcome);
+      const actualOnboarding5minMessage = formatMsg(msgTemplateOnboarding5min);
       const actualPostPurchaseMessage = formatMsg(msgPostPurchaseTemplate);
 
       const apiUrl = `${waUrl.replace(/\/$/, '')}/api/messages/whatsmeow/sendTextPRO`;
@@ -123,26 +135,35 @@ serve(async (req: Request) => {
 
       const sendMessage = async (body: string, label: string) => {
         console.log(`Sending ${label} WhatsApp message to ${cleanNumber}`);
-        const waResponse = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${waToken}`
-          },
-          body: JSON.stringify({
-            number: cleanNumber,
-            openTicket: 0,
-            queueId: "45",
-            body: body
-          })
-        });
+        await logToDb(`Sending ${label}`, { number: cleanNumber, body_preview: body.substring(0, 50) });
 
-        const waData = await waResponse.text();
+        try {
+          const waResponse = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${waToken}`
+            },
+            body: JSON.stringify({
+              number: cleanNumber,
+              openTicket: 0,
+              queueId: "45",
+              body: body
+            })
+          });
 
-        if (!waResponse.ok) {
-          console.error(`WhatsApp API Error sending ${label} message: ${waResponse.status} ${waData}`);
-        } else {
-          console.log(`${label} message sent successfully.`);
+          const waData = await waResponse.text();
+
+          if (!waResponse.ok) {
+            console.error(`WhatsApp API Error sending ${label} message: ${waResponse.status} ${waData}`);
+            await logToDb(`WhatsApp API Error - ${label}`, { status: waResponse.status, error: waData });
+          } else {
+            console.log(`${label} message sent successfully.`);
+            await logToDb(`${label} Sent Successfully`, { response: waData });
+          }
+        } catch (fetchError: any) {
+          console.error(`Fetch error in ${label}:`, fetchError.message);
+          await logToDb(`${label} Fetch Error`, { error: fetchError.message });
         }
       };
 
@@ -163,8 +184,8 @@ serve(async (req: Request) => {
           })
           .eq('id', newProfile.id);
 
-        if (actualWelcomeMessage) {
-          await sendMessage(actualWelcomeMessage, "Welcome/Onboarding");
+        if (actualTrialWelcomeMessage) {
+          await sendMessage(actualTrialWelcomeMessage, "Trial Welcome (Immediate)");
         }
 
         const messagesToInsert = [];
@@ -194,18 +215,18 @@ serve(async (req: Request) => {
           { key: 'post_trial_day7', type: 'POST_TRIAL_D7', time: getScheduledTime(14, 15, 0) },
         ];
 
-        // FIRST_ACTION_5MIN (TRIAL_DAY1)
-        if (actualDay1Message) {
-          console.log("Scheduling Day 1 message for 5 minutes from now.");
+        // FIRST_ACTION_5MIN (TRIAL_D1) - Now using explicit 5-min template
+        if (actualOnboarding5minMessage) {
+          console.log("Scheduling Onboarding 5min message (Ação 1) for 5 minutes from now.");
           const sendAt = new Date();
           sendAt.setMinutes(sendAt.getMinutes() + 5);
           messagesToInsert.push({
-            user_id: newProfile.id,
+            user_id: newProfile.user_id,
             phone_number: cleanNumber,
-            message: actualDay1Message,
+            message: actualOnboarding5minMessage,
             send_at: sendAt.toISOString(),
             type: 'TRIAL_D1',
-            dedupe_key: `${newProfile.id}_TRIAL_D1`
+            dedupe_key: `${newProfile.user_id}_TRIAL_D1`
           });
         }
 
@@ -215,12 +236,12 @@ serve(async (req: Request) => {
             const actualMsg = formatMsg(template);
             if (actualMsg) {
               messagesToInsert.push({
-                user_id: newProfile.id,
+                user_id: newProfile.user_id,
                 phone_number: cleanNumber,
                 message: actualMsg,
                 send_at: sched.time,
                 type: sched.type,
-                dedupe_key: `${newProfile.id}_${sched.type}`
+                dedupe_key: `${newProfile.user_id}_${sched.type}`
               });
             }
           }
@@ -233,8 +254,11 @@ serve(async (req: Request) => {
 
           if (scheduleError) {
             console.error("Failed to schedule bulk messages:", scheduleError);
+            await logToDb("Schedule Error", { error: scheduleError });
+            throw scheduleError; // Throw so it's caught by the main try/catch and returns 400
           } else {
             console.log(`Scheduled ${messagesToInsert.length} messages successfully.`);
+            await logToDb("Schedule Success", { count: messagesToInsert.length });
           }
         }
       }
@@ -244,7 +268,7 @@ serve(async (req: Request) => {
         const { error: cancelError } = await supabaseClient
           .from('scheduled_messages')
           .delete()
-          .eq('user_id', newProfile.id)
+          .eq('user_id', newProfile.user_id)
           .like('type', 'TRIAL_%') // TRIAL_D1, TRIAL_D2, etc.
           .or('type.like.POST_TRIAL_%');
 
@@ -254,9 +278,6 @@ serve(async (req: Request) => {
           console.log(`Cancelled pending trial/post-trial messages for user ${newProfile.id}`);
         }
 
-        if (actualPostPurchaseMessage) {
-          await sendMessage(actualPostPurchaseMessage, "Post-Purchase Immediate");
-        }
 
         const baseDate = new Date();
         const getScheduledTime = (daysOffset: number, hoursUtc: number, minutesUtc: number = 0) => {
@@ -285,12 +306,12 @@ serve(async (req: Request) => {
             const actualMsg = formatMsg(template);
             if (actualMsg) {
               premiumMessagesToInsert.push({
-                user_id: newProfile.id,
+                user_id: newProfile.user_id,
                 phone_number: cleanNumber,
                 message: actualMsg,
                 send_at: sched.time,
                 type: sched.type,
-                dedupe_key: `${newProfile.id}_${sched.type}`
+                dedupe_key: `${newProfile.user_id}_${sched.type}`
               });
             }
           }
@@ -309,6 +330,7 @@ serve(async (req: Request) => {
         }
       }
 
+      await logToDb("Webhook Finished", { success: true });
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

@@ -93,7 +93,6 @@ export default function Admin() {
   const [whatsappMsgDaily, setWhatsappMsgDaily] = useState("");
   const [whatsappMsgTrial, setWhatsappMsgTrial] = useState("");
   const [whatsappMsg7Days, setWhatsappMsg7Days] = useState("");
-  const [whatsappMsgWelcome, setWhatsappMsgWelcome] = useState("");
   const [whatsappMsgDay1, setWhatsappMsgDay1] = useState("");
   const [whatsappMsgDay2, setWhatsappMsgDay2] = useState("");
   const [whatsappMsgDay3, setWhatsappMsgDay3] = useState("");
@@ -113,6 +112,7 @@ export default function Admin() {
   const [whatsappMsgPostTrialDay1, setWhatsappMsgPostTrialDay1] = useState("");
   const [whatsappMsgPostTrialDay3, setWhatsappMsgPostTrialDay3] = useState("");
   const [whatsappMsgPostTrialDay7, setWhatsappMsgPostTrialDay7] = useState("");
+  const [whatsappMsgOnboarding5min, setWhatsappMsgOnboarding5min] = useState("");
   const [whatsappMsgDailyReminder, setWhatsappMsgDailyReminder] = useState("");
   const [whatsappTestNumber, setWhatsappTestNumber] = useState("");
   const [isTestingWa, setIsTestingWa] = useState(false);
@@ -190,8 +190,6 @@ export default function Admin() {
     const wm7 = getSetting("whatsapp_msg_7days");
     if (wm7) setWhatsappMsg7Days(wm7.value);
 
-    const wmw = getSetting("whatsapp_msg_welcome");
-    if (wmw) setWhatsappMsgWelcome(wmw.value);
 
     const wmd1 = getSetting("whatsapp_msg_day1");
     if (wmd1) setWhatsappMsgDay1(wmd1.value);
@@ -249,6 +247,9 @@ export default function Admin() {
 
     const wmpTrialD7 = getSetting("whatsapp_msg_post_trial_day7");
     if (wmpTrialD7) setWhatsappMsgPostTrialDay7(wmpTrialD7.value);
+
+    const wmo5 = getSetting("whatsapp_msg_onboarding_5min");
+    if (wmo5) setWhatsappMsgOnboarding5min(wmo5.value);
 
     const wmdr = getSetting("whatsapp_msg_daily_reminder");
     if (wmdr) setWhatsappMsgDailyReminder(wmdr.value);
@@ -415,11 +416,6 @@ export default function Admin() {
           description: "Mensagem de 7 dias"
         },
         {
-          key: "whatsapp_msg_welcome",
-          value: whatsappMsgWelcome,
-          description: "Mensagem de boas-vindas (premium)"
-        },
-        {
           key: "whatsapp_msg_day1",
           value: whatsappMsgDay1,
           description: "Mensagem de Dia 1"
@@ -513,6 +509,11 @@ export default function Admin() {
           key: "whatsapp_msg_post_trial_day7",
           value: whatsappMsgPostTrialDay7,
           description: "Mensagem Pós-trial Não Comprou - D+7"
+        },
+        {
+          key: "whatsapp_msg_onboarding_5min",
+          value: whatsappMsgOnboarding5min,
+          description: "Mensagem 5 minutos após Trial (Ação 1)"
         },
         {
           key: "whatsapp_msg_daily_reminder",
@@ -1452,27 +1453,54 @@ export default function Admin() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-trial" className="text-foreground">2. Mensagem de Início de Trial</Label>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgTrial, "Trial")}
-                          disabled={isTestingWa}
-                        >
-                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                          Testar Envio
-                        </Button>
+                    <div className="space-y-4 pt-4 border-t border-border mt-4 mb-4">
+                      <h4 className="font-medium text-md text-foreground mb-3 text-purple-400">Sequência Boas-Vindas (Trial)</h4>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label htmlFor="wa-msg-trial" className="text-foreground">1. Início de Trial (Imediata)</Label>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => handleTestWhatsapp(whatsappMsgTrial, "Trial")}
+                            disabled={isTestingWa}
+                          >
+                            {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                            Testar Envio
+                          </Button>
+                        </div>
+                        <Textarea
+                          id="wa-msg-trial"
+                          placeholder="Enviada imediatamente quando o usuário inicia o Trial..."
+                          value={whatsappMsgTrial}
+                          onChange={(e) => setWhatsappMsgTrial(e.target.value)}
+                          className="bg-background border-border min-h-[80px]"
+                        />
                       </div>
-                      <Textarea
-                        id="wa-msg-trial"
-                        placeholder="Enviada quando o usuário iniciar o Trial..."
-                        value={whatsappMsgTrial}
-                        onChange={(e) => setWhatsappMsgTrial(e.target.value)}
-                        className="bg-background border-border min-h-[80px]"
-                      />
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label htmlFor="wa-msg-onboarding-5min" className="text-foreground text-purple-300">2. Ação 1 (5 minutos após cadastro)</Label>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => handleTestWhatsapp(whatsappMsgOnboarding5min, "Ação 5min")}
+                            disabled={isTestingWa}
+                          >
+                            {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                            Testar Envio
+                          </Button>
+                        </div>
+                        <Textarea
+                          id="wa-msg-onboarding-5min"
+                          placeholder="Enviada 5 minutos após o início do Trial..."
+                          value={whatsappMsgOnboarding5min}
+                          onChange={(e) => setWhatsappMsgOnboarding5min(e.target.value)}
+                          className="bg-background border-border min-h-[120px] border-purple-500/30"
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -1498,37 +1526,15 @@ export default function Admin() {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-welcome" className="text-foreground">4. Mensagem de Boas-vindas (Compra Premium)</Label>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgWelcome, "Boas-vindas")}
-                          disabled={isTestingWa}
-                        >
-                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                          Testar Envio
-                        </Button>
-                      </div>
-                      <Textarea
-                        id="wa-msg-welcome"
-                        placeholder="Enviada logo após a confirmação da assinatura premium..."
-                        value={whatsappMsgWelcome}
-                        onChange={(e) => setWhatsappMsgWelcome(e.target.value)}
-                        className="bg-background border-border min-h-[80px]"
-                      />
-                    </div>
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day1" className="text-foreground">5. Mensagem Dia 1</Label>
+                        <Label htmlFor="wa-msg-day1" className="text-foreground">4. Mensagem Dia 2</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay1, "Dia 1")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay1, "Dia 2")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1537,7 +1543,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day1"
-                        placeholder="Enviada 5 minutos após a mensagem de onboarding..."
+                        placeholder="Mensagem do Dia 2 de uso..."
                         value={whatsappMsgDay1}
                         onChange={(e) => setWhatsappMsgDay1(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
@@ -1546,7 +1552,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day2" className="text-foreground">6. Mensagem Dia 2</Label>
+                        <Label htmlFor="wa-msg-day2" className="text-foreground">5. Mensagem Dia 2</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1569,7 +1575,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day3" className="text-foreground">7. Mensagem Dia 3</Label>
+                        <Label htmlFor="wa-msg-day3" className="text-foreground">6. Mensagem Dia 3</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1592,7 +1598,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day4" className="text-foreground">8. Mensagem Dia 4</Label>
+                        <Label htmlFor="wa-msg-day4" className="text-foreground">7. Mensagem Dia 4</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1615,7 +1621,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day5" className="text-foreground">9. Mensagem Dia 5</Label>
+                        <Label htmlFor="wa-msg-day5" className="text-foreground">8. Mensagem Dia 5</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1638,7 +1644,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day6" className="text-foreground">10. Mensagem Dia 6</Label>
+                        <Label htmlFor="wa-msg-day6" className="text-foreground">9. Mensagem Dia 6</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1661,7 +1667,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day7-15h" className="text-foreground">11. Mensagem Dia 7 (15h)</Label>
+                        <Label htmlFor="wa-msg-day7-15h" className="text-foreground">10. Mensagem Dia 7 (15h)</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1684,7 +1690,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day7-19h" className="text-foreground">12. Mensagem Dia 7 (19h30)</Label>
+                        <Label htmlFor="wa-msg-day7-19h" className="text-foreground">11. Mensagem Dia 7 (19h30)</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1710,7 +1716,7 @@ export default function Admin() {
 
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <Label htmlFor="wa-msg-post-purchase" className="text-foreground">13. Pós-compra (Imediato - webhook approved)</Label>
+                          <Label htmlFor="wa-msg-post-purchase" className="text-foreground">12. Pós-compra (Imediato - webhook approved)</Label>
                           <Button
                             size="sm"
                             variant="outline"

@@ -421,11 +421,6 @@ export default function Admin() {
           description: "Mensagem de Dia 1"
         },
         {
-          key: "whatsapp_msg_day2",
-          value: whatsappMsgDay2,
-          description: "Mensagem de Dia 2"
-        },
-        {
           key: "whatsapp_msg_day3",
           value: whatsappMsgDay3,
           description: "Mensagem de Dia 3"
@@ -1430,28 +1425,6 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-daily" className="text-foreground">1. Mensagem Diária com Tarefas</Label>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDaily, "Diária")}
-                          disabled={isTestingWa}
-                        >
-                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                          Testar Envio
-                        </Button>
-                      </div>
-                      <Textarea
-                        id="wa-msg-daily"
-                        placeholder="Sua mensagem diária. Use variáveis como {{nome}} se aplicável..."
-                        value={whatsappMsgDaily}
-                        onChange={(e) => setWhatsappMsgDaily(e.target.value)}
-                        className="bg-background border-border min-h-[80px]"
-                      />
-                    </div>
 
                     <div className="space-y-4 pt-4 border-t border-border mt-4 mb-4">
                       <h4 className="font-medium text-md text-foreground mb-3 text-purple-400">Sequência Boas-Vindas (Trial)</h4>
@@ -1529,12 +1502,12 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day1" className="text-foreground">4. Mensagem Dia 2</Label>
+                        <Label htmlFor="wa-msg-day1" className="text-foreground">4. Mensagem Dia 1</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay1, "Dia 2")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay1, "Dia 1")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1543,7 +1516,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day1"
-                        placeholder="Mensagem do Dia 2 de uso..."
+                        placeholder="Mensagem do Dia 1 de uso..."
                         value={whatsappMsgDay1}
                         onChange={(e) => setWhatsappMsgDay1(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
@@ -1552,35 +1525,12 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day2" className="text-foreground">5. Mensagem Dia 2</Label>
+                        <Label htmlFor="wa-msg-day3" className="text-foreground">5. Mensagem Dia 2</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay2, "Dia 2")}
-                          disabled={isTestingWa}
-                        >
-                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                          Testar Envio
-                        </Button>
-                      </div>
-                      <Textarea
-                        id="wa-msg-day2"
-                        placeholder="Enviada no Dia 2..."
-                        value={whatsappMsgDay2}
-                        onChange={(e) => setWhatsappMsgDay2(e.target.value)}
-                        className="bg-background border-border min-h-[80px]"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day3" className="text-foreground">6. Mensagem Dia 3</Label>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay3, "Dia 3")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay3, "Dia 2")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1589,7 +1539,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day3"
-                        placeholder="Enviada no Dia 3..."
+                        placeholder="Enviada no Dia 2..."
                         value={whatsappMsgDay3}
                         onChange={(e) => setWhatsappMsgDay3(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
@@ -1598,12 +1548,12 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day4" className="text-foreground">7. Mensagem Dia 4</Label>
+                        <Label htmlFor="wa-msg-day4" className="text-foreground">6. Mensagem Dia 3</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay4, "Dia 4")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay4, "Dia 3")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1612,7 +1562,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day4"
-                        placeholder="Enviada no Dia 4..."
+                        placeholder="Enviada no Dia 3..."
                         value={whatsappMsgDay4}
                         onChange={(e) => setWhatsappMsgDay4(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
@@ -1621,12 +1571,12 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day5" className="text-foreground">8. Mensagem Dia 5</Label>
+                        <Label htmlFor="wa-msg-day5" className="text-foreground">7. Mensagem Dia 4</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay5, "Dia 5")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay5, "Dia 4")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1635,7 +1585,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day5"
-                        placeholder="Enviada no Dia 5..."
+                        placeholder="Enviada no Dia 4..."
                         value={whatsappMsgDay5}
                         onChange={(e) => setWhatsappMsgDay5(e.target.value)}
                         className="bg-background border-border min-h-[80px]"

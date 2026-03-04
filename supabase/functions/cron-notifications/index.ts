@@ -117,6 +117,11 @@ serve(async (req: Request) => {
                 }
 
                 if (hasAccess) {
+                    // Update to 'sending' to prevent other runs from picking it up
+                    await supabase.from("scheduled_messages")
+                        .update({ status: 'sending' })
+                        .eq("id", msg.id);
+
                     const success = await sendMessage(msg.phone_number, msg.message, `Scheduled (ID: ${msg.id}, Type: ${msg.type})`);
                     if (success) {
                         await supabase.from("scheduled_messages")

@@ -60,7 +60,7 @@ serve(async (req: Request) => {
     // Fetch active/trialing users
     let query = supabase
       .from("profiles")
-      .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at, trial_started_at");
+      .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at, trial_started_at, trial_ends_at, timezone");
 
     if (isTest && testUserId) {
       query = query.eq("user_id", testUserId);
@@ -101,15 +101,32 @@ serve(async (req: Request) => {
         // trialing -> Only if trial_day >= 2
         // active -> Daily
         const status = user.subscription_status;
-        const baseDateForTrial = user.trial_started_at ? new Date(user.trial_started_at) : new Date(user.created_at);
-        const trialStartsAtDay = new Date(baseDateForTrial.getFullYear(), baseDateForTrial.getMonth(), baseDateForTrial.getDate());
+        const userTz = user.timezone || 'America/Sao_Paulo';
 
-        const diffTime = startOfToday.getTime() - trialStartsAtDay.getTime();
+        // Use user's timezone for today's comparison
+        const nowBRT = new Date(new Date().toLocaleString("en-US", { timeZone: userTz }));
+        const startOfTodayBRT = new Date(nowBRT.getFullYear(), nowBRT.getMonth(), nowBRT.getDate());
+
+        const baseDateForTrial = user.trial_started_at ? new Date(user.trial_started_at) : new Date(user.created_at);
+        const trialStartsDayBRT = new Date(new Date(baseDateForTrial).toLocaleString("en-US", { timeZone: userTz }));
+        const startOfTrialDayBRT = new Date(trialStartsDayBRT.getFullYear(), trialStartsDayBRT.getMonth(), trialStartsDayBRT.getDate());
+
+        const diffTime = startOfTodayBRT.getTime() - startOfTrialDayBRT.getTime();
         const trialDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
         if (!isTest) {
+          // Check if trial is expired
+          if (user.subscription_plan === 'trial' && user.trial_ends_at) {
+            const trialEnd = new Date(user.trial_ends_at);
+            if (trialEnd < new Date()) {
+              console.log(`Skipping expired trial user ${user.user_id}`);
+              skipCount++;
+              continue;
+            }
+          }
+
           if (status === 'trialing' && trialDay < 2) {
-            console.log(`Skipping trialing user ${user.user_id} (Trial Day ${trialDay} < 2)`);
+            console.log(`Skipping trialing user ${user.user_id} (Trial Day ${trialDay} < 2 in ${userTz})`);
             skipCount++;
             continue;
           }
@@ -129,7 +146,6 @@ serve(async (req: Request) => {
         if (eventsError) console.error(`Error fetching events for ${user.user_id}:`, eventsError);
 
         // Timezone Handling
-        const userTz = user.timezone || 'America/Sao_Paulo';
         const formatter = new Intl.DateTimeFormat('en-US', {
           timeZone: userTz,
           year: 'numeric',

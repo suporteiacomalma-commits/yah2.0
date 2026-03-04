@@ -14,7 +14,7 @@ export interface AdminUser {
   created_at: string;
   role?: AppRole;
   subscription_plan?: 'trial' | 'premium';
-  subscription_status?: 'active' | 'expired' | 'cancelled';
+  subscription_status?: 'active' | 'trialing' | 'expired' | 'cancelled';
   trial_ends_at?: string;
   is_admin?: boolean;
   active_plan_id?: string | null;

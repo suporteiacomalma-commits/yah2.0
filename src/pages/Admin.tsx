@@ -90,10 +90,7 @@ export default function Admin() {
   const [whatsappUrl, setWhatsappUrl] = useState("");
   const [whatsappToken, setWhatsappToken] = useState("");
   const [showWhatsappToken, setShowWhatsappToken] = useState(false);
-  const [whatsappMsgDaily, setWhatsappMsgDaily] = useState("");
   const [whatsappMsgTrial, setWhatsappMsgTrial] = useState("");
-  const [whatsappMsg7Days, setWhatsappMsg7Days] = useState("");
-  const [whatsappMsgDay1, setWhatsappMsgDay1] = useState("");
   const [whatsappMsgDay2, setWhatsappMsgDay2] = useState("");
   const [whatsappMsgDay3, setWhatsappMsgDay3] = useState("");
   const [whatsappMsgDay4, setWhatsappMsgDay4] = useState("");
@@ -181,21 +178,12 @@ export default function Admin() {
     const wt = getSetting("whatsapp_token");
     if (wt) setWhatsappToken(wt.value);
 
-    const wmd = getSetting("whatsapp_msg_daily");
-    if (wmd) setWhatsappMsgDaily(wmd.value);
-
     const wmt = getSetting("whatsapp_msg_trial");
     if (wmt) setWhatsappMsgTrial(wmt.value);
 
-    const wm7 = getSetting("whatsapp_msg_7days");
-    if (wm7) setWhatsappMsg7Days(wm7.value);
+    const wmd2_val = getSetting("whatsapp_msg_day2");
+    if (wmd2_val) setWhatsappMsgDay2(wmd2_val.value);
 
-
-    const wmd1 = getSetting("whatsapp_msg_day1");
-    if (wmd1) setWhatsappMsgDay1(wmd1.value);
-
-    const wmd2 = getSetting("whatsapp_msg_day2");
-    if (wmd2) setWhatsappMsgDay2(wmd2.value);
 
     const wmd3 = getSetting("whatsapp_msg_day3");
     if (wmd3) setWhatsappMsgDay3(wmd3.value);
@@ -401,24 +389,14 @@ export default function Admin() {
           description: "Token de autorização do WhatsApp"
         },
         {
-          key: "whatsapp_msg_daily",
-          value: whatsappMsgDaily,
-          description: "Mensagem diária com tarefas"
-        },
-        {
           key: "whatsapp_msg_trial",
           value: whatsappMsgTrial,
           description: "Mensagem de início do trial"
         },
         {
-          key: "whatsapp_msg_7days",
-          value: whatsappMsg7Days,
-          description: "Mensagem de 7 dias"
-        },
-        {
-          key: "whatsapp_msg_day1",
-          value: whatsappMsgDay1,
-          description: "Mensagem de Dia 1"
+          key: "whatsapp_msg_day2",
+          value: whatsappMsgDay2,
+          description: "Mensagem de Dia 2"
         },
         {
           key: "whatsapp_msg_day3",
@@ -848,10 +826,10 @@ export default function Admin() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={userItem.subscription_status === 'active' ? "default" : "secondary"} className={
-                                userItem.subscription_status === 'active' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : ''
+                              <Badge variant={(userItem.subscription_status === 'active' || userItem.subscription_status === 'trialing') ? "default" : "secondary"} className={
+                                (userItem.subscription_status === 'active' || userItem.subscription_status === 'trialing') ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : ''
                               }>
-                                {userItem.subscription_status === 'active' ? 'Ativo' : 'Inativo'}
+                                {(userItem.subscription_status === 'active' || userItem.subscription_status === 'trialing') ? 'Ativo' : 'Inativo'}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -1478,12 +1456,12 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-7days" className="text-foreground">3. Mensagem de 7 Dias</Label>
+                        <Label htmlFor="wa-msg-day2" className="text-foreground">3. Mensagem Dia 2 (D+1)</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsg7Days, "7 Dias")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay2, "Dia 2")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1491,46 +1469,22 @@ export default function Admin() {
                         </Button>
                       </div>
                       <Textarea
-                        id="wa-msg-7days"
-                        placeholder="Enviada para avisar de 7 dias..."
-                        value={whatsappMsg7Days}
-                        onChange={(e) => setWhatsappMsg7Days(e.target.value)}
-                        className="bg-background border-border min-h-[80px]"
-                      />
-                    </div>
-
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day1" className="text-foreground">4. Mensagem Dia 1</Label>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay1, "Dia 1")}
-                          disabled={isTestingWa}
-                        >
-                          {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                          Testar Envio
-                        </Button>
-                      </div>
-                      <Textarea
-                        id="wa-msg-day1"
-                        placeholder="Mensagem do Dia 1 de uso..."
-                        value={whatsappMsgDay1}
-                        onChange={(e) => setWhatsappMsgDay1(e.target.value)}
+                        id="wa-msg-day2"
+                        placeholder="Mensagem do Dia 2 de uso (D+1)..."
+                        value={whatsappMsgDay2}
+                        onChange={(e) => setWhatsappMsgDay2(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day3" className="text-foreground">5. Mensagem Dia 2</Label>
+                        <Label htmlFor="wa-msg-day3" className="text-foreground">4. Mensagem Dia 3 (D+2)</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay3, "Dia 2")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay3, "Dia 3")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1539,7 +1493,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day3"
-                        placeholder="Enviada no Dia 2..."
+                        placeholder="Enviada no Dia 3 (D+2)..."
                         value={whatsappMsgDay3}
                         onChange={(e) => setWhatsappMsgDay3(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
@@ -1548,12 +1502,12 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day4" className="text-foreground">6. Mensagem Dia 3</Label>
+                        <Label htmlFor="wa-msg-day4" className="text-foreground">5. Mensagem Dia 4 (D+3)</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay4, "Dia 3")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay4, "Dia 4")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1562,7 +1516,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day4"
-                        placeholder="Enviada no Dia 3..."
+                        placeholder="Enviada no Dia 4 (D+3)..."
                         value={whatsappMsgDay4}
                         onChange={(e) => setWhatsappMsgDay4(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
@@ -1571,12 +1525,12 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day5" className="text-foreground">7. Mensagem Dia 4</Label>
+                        <Label htmlFor="wa-msg-day5" className="text-foreground">6. Mensagem Dia 5 (D+4)</Label>
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleTestWhatsapp(whatsappMsgDay5, "Dia 4")}
+                          onClick={() => handleTestWhatsapp(whatsappMsgDay5, "Dia 5")}
                           disabled={isTestingWa}
                         >
                           {isTestingWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
@@ -1585,7 +1539,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day5"
-                        placeholder="Enviada no Dia 4..."
+                        placeholder="Enviada no Dia 5 (D+4)..."
                         value={whatsappMsgDay5}
                         onChange={(e) => setWhatsappMsgDay5(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
@@ -1594,7 +1548,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day6" className="text-foreground">9. Mensagem Dia 6</Label>
+                        <Label htmlFor="wa-msg-day6" className="text-foreground">7. Mensagem Dia 6 (D+5)</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1608,7 +1562,7 @@ export default function Admin() {
                       </div>
                       <Textarea
                         id="wa-msg-day6"
-                        placeholder="Enviada no Dia 6..."
+                        placeholder="Enviada no Dia 6 (D+5)..."
                         value={whatsappMsgDay6}
                         onChange={(e) => setWhatsappMsgDay6(e.target.value)}
                         className="bg-background border-border min-h-[80px]"
@@ -1617,7 +1571,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day7-15h" className="text-foreground">10. Mensagem Dia 7 (15h)</Label>
+                        <Label htmlFor="wa-msg-day7-15h" className="text-foreground">8. Mensagem Dia 7 (15h)</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1640,7 +1594,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-day7-19h" className="text-foreground">11. Mensagem Dia 7 (19h30)</Label>
+                        <Label htmlFor="wa-msg-day7-19h" className="text-foreground">9. Mensagem Dia 7 (19h30)</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1666,7 +1620,7 @@ export default function Admin() {
 
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <Label htmlFor="wa-msg-post-purchase" className="text-foreground">12. Pós-compra (Imediato - webhook approved)</Label>
+                          <Label htmlFor="wa-msg-post-purchase" className="text-foreground">10. Pós-compra (Imediato - webhook approved)</Label>
                           <Button
                             size="sm"
                             variant="outline"
@@ -1690,7 +1644,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-purchase-day1" className="text-foreground">13.1 Pós-compra - Dia 1</Label>
+                        <Label htmlFor="wa-msg-post-purchase-day1" className="text-foreground">11.1 Pós-compra - Dia 1</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1713,7 +1667,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-purchase-day2" className="text-foreground">13.2 Pós-compra - Dia 2</Label>
+                        <Label htmlFor="wa-msg-post-purchase-day2" className="text-foreground">11.2 Pós-compra - Dia 2</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1736,7 +1690,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-purchase-day3" className="text-foreground">13.3 Pós-compra - Dia 3</Label>
+                        <Label htmlFor="wa-msg-post-purchase-day3" className="text-foreground">11.3 Pós-compra - Dia 3</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1759,7 +1713,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-purchase-day4" className="text-foreground">13.4 Pós-compra - Dia 4</Label>
+                        <Label htmlFor="wa-msg-post-purchase-day4" className="text-foreground">11.4 Pós-compra - Dia 4</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1782,7 +1736,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-purchase-day5" className="text-foreground">13.5 Pós-compra - Dia 5</Label>
+                        <Label htmlFor="wa-msg-post-purchase-day5" className="text-foreground">11.5 Pós-compra - Dia 5</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1805,7 +1759,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-purchase-day6" className="text-foreground">13.6 Pós-compra - Dia 6</Label>
+                        <Label htmlFor="wa-msg-post-purchase-day6" className="text-foreground">11.6 Pós-compra - Dia 6</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1828,7 +1782,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-purchase-day7" className="text-foreground">13.7 Pós-compra - Dia 7</Label>
+                        <Label htmlFor="wa-msg-post-purchase-day7" className="text-foreground">11.7 Pós-compra - Dia 7</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1851,7 +1805,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-trial-day1" className="text-foreground">14. Pós-trial Não Comprou - D+1 (24h após fim do trial)</Label>
+                        <Label htmlFor="wa-msg-post-trial-day1" className="text-foreground">12. Pós-trial Não Comprou - D+1 (24h após fim do trial)</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1874,7 +1828,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-trial-day3" className="text-foreground">15. Pós-trial Não Comprou - D+3</Label>
+                        <Label htmlFor="wa-msg-post-trial-day3" className="text-foreground">13. Pós-trial Não Comprou - D+3</Label>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1897,7 +1851,7 @@ export default function Admin() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <Label htmlFor="wa-msg-post-trial-day7" className="text-foreground">16. Pós-trial Não Comprou - D+7 (Última mensagem)</Label>
+                        <Label htmlFor="wa-msg-post-trial-day7" className="text-foreground">14. Pós-trial Não Comprou - D+7 (Última mensagem)</Label>
                         <Button
                           size="sm"
                           variant="outline"

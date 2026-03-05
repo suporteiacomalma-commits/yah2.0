@@ -191,9 +191,22 @@ serve(async (req: Request) => {
         const messagesToInsert = [];
         const baseDate = new Date();
         const getScheduledTime = (daysOffset: number, hoursUtc: number, minutesUtc: number = 0) => {
-          const d = new Date(baseDate);
-          d.setDate(d.getDate() + daysOffset);
-          d.setUTCHours(hoursUtc, minutesUtc, 0, 0);
+          // Use Intl to get the current date in Sao Paulo timezone
+          const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+          });
+          const parts = formatter.formatToParts(baseDate);
+          const getPart = (type: string) => parts.find(p => p.type === type)?.value;
+
+          // Construct a Date object representing midnight in Sao Paulo on the target day
+          const brtYear = parseInt(getPart('year') || '0');
+          const brtMonth = parseInt(getPart('month') || '0') - 1; // 0-indexed
+          const brtDay = parseInt(getPart('day') || '0');
+
+          const d = new Date(Date.UTC(brtYear, brtMonth, brtDay + daysOffset, hoursUtc, minutesUtc, 0, 0));
           return d.toISOString();
         };
 
@@ -205,14 +218,14 @@ serve(async (req: Request) => {
           { key: 'day4', type: 'TRIAL_D4', time: getScheduledTime(3, 22, 30) },
           { key: 'day5', type: 'TRIAL_D5', time: getScheduledTime(4, 22, 30) },
           { key: 'day6', type: 'TRIAL_D6', time: getScheduledTime(5, 22, 30) },
-          // TRIAL_DAY7_1500 (Dia 7, 15:00 BRT = 18:00 UTC)
-          { key: 'day7_15h', type: 'TRIAL_D7_1500', time: getScheduledTime(6, 18, 0) },
+          // TRIAL_DAY7_1500 -> Now 19:30 BRT (22:30 UTC) as per request
+          { key: 'day7_15h', type: 'TRIAL_D7_1500', time: getScheduledTime(6, 22, 30) },
           // TRIAL_DAY7_1930 (Dia 7, 19:30 BRT = 22:30 UTC)
           { key: 'day7_19h', type: 'TRIAL_D7_1930', time: getScheduledTime(6, 22, 30) },
-          // POST_TRIAL
-          { key: 'post_trial_day1', type: 'POST_TRIAL_D1', time: getScheduledTime(8, 15, 0) },
-          { key: 'post_trial_day3', type: 'POST_TRIAL_D3', time: getScheduledTime(10, 15, 0) },
-          { key: 'post_trial_day7', type: 'POST_TRIAL_D7', time: getScheduledTime(14, 15, 0) },
+          // POST_TRIAL -> Unified to 19:30 BRT (22:30 UTC)
+          { key: 'post_trial_day1', type: 'POST_TRIAL_D1', time: getScheduledTime(8, 22, 30) },
+          { key: 'post_trial_day3', type: 'POST_TRIAL_D3', time: getScheduledTime(10, 22, 30) },
+          { key: 'post_trial_day7', type: 'POST_TRIAL_D7', time: getScheduledTime(14, 22, 30) },
         ];
 
         // FIRST_ACTION_5MIN (TRIAL_D1) - Now using explicit 5-min template
@@ -281,9 +294,20 @@ serve(async (req: Request) => {
 
         const baseDate = new Date();
         const getScheduledTime = (daysOffset: number, hoursUtc: number, minutesUtc: number = 0) => {
-          const d = new Date(baseDate);
-          d.setDate(d.getDate() + daysOffset);
-          d.setUTCHours(hoursUtc, minutesUtc, 0, 0);
+          const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+          });
+          const parts = formatter.formatToParts(baseDate);
+          const getPart = (type: string) => parts.find(p => p.type === type)?.value;
+
+          const brtYear = parseInt(getPart('year') || '0');
+          const brtMonth = parseInt(getPart('month') || '0') - 1;
+          const brtDay = parseInt(getPart('day') || '0');
+
+          const d = new Date(Date.UTC(brtYear, brtMonth, brtDay + daysOffset, hoursUtc, minutesUtc, 0, 0));
           return d.toISOString();
         };
 

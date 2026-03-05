@@ -27,7 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2, MessageCircle, Send, X } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2, MessageCircle, Send, X, RefreshCcw, MessageSquare, AlertCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { PaymentHistoryDialog } from "@/components/admin/PaymentHistoryDialog";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
@@ -130,6 +130,35 @@ export default function Admin() {
   const [editingWhatsappId, setEditingWhatsappId] = useState<string | null>(null);
   const [editingWhatsappValue, setEditingWhatsappValue] = useState("");
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
+
+  // WhatsApp Logs State
+  const [waLogs, setWaLogs] = useState<any[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+  const fetchWhatsAppLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from('scheduled_messages')
+        .select('*, profiles(full_name, email)')
+        .order('send_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setWaLogs(data || []);
+    } catch (error: any) {
+      console.error("Error fetching WA logs:", error.message);
+      toast.error("Erro ao carregar logs do WhatsApp");
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'whatsapp-logs') {
+      fetchWhatsAppLogs();
+    }
+  }, [activeTab]);
 
   const filteredUsers = users.filter(user =>
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -242,6 +271,12 @@ export default function Admin() {
     const wmdr = getSetting("whatsapp_msg_daily_reminder");
     if (wmdr) setWhatsappMsgDailyReminder(wmdr.value);
   }, [settings]);
+
+  useEffect(() => {
+    if (activeTab === 'whatsapp-logs') {
+      fetchWhatsAppLogs();
+    }
+  }, [activeTab]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
@@ -678,7 +713,8 @@ export default function Admin() {
                     activeTab === 'dashboard' ? 'Painel' :
                       activeTab === 'users' ? 'Usuários' :
                         activeTab === 'settings' ? 'Integrações' :
-                          'Planos'
+                          activeTab === 'whatsapp-logs' ? 'Logs WhatsApp' :
+                            'Planos'
                   }</span>
                 </Button>
               </SheetTrigger>
@@ -699,6 +735,9 @@ export default function Admin() {
                   </Button>
                   <Button variant={activeTab === 'plans' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('plans')}>
                     <CreditCard className="h-4 w-4" /> Planos
+                  </Button>
+                  <Button variant={activeTab === 'whatsapp-logs' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('whatsapp-logs')}>
+                    <MessageSquare className="h-4 w-4" /> Logs WhatsApp
                   </Button>
                 </div>
               </SheetContent>
@@ -721,6 +760,10 @@ export default function Admin() {
             <TabsTrigger value="plans" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Planos
+            </TabsTrigger>
+            <TabsTrigger value="whatsapp-logs" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Logs WhatsApp
             </TabsTrigger>
           </TabsList>
 
@@ -1896,6 +1939,108 @@ export default function Admin() {
 
           <TabsContent value="plans" className="space-y-6">
             <PlanManagement />
+          </TabsContent>
+
+          <TabsContent value="whatsapp-logs" className="space-y-6">
+            <Card className="bg-card border-border">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <div>
+                  <CardTitle className="text-foreground">Logs do WhatsApp</CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    Monitore todas as mensagens agendadas e enviadas via WhatsApp.
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchWhatsAppLogs}
+                  disabled={isLoadingLogs}
+                >
+                  <RefreshCcw className={`h-4 w-4 mr-2 ${isLoadingLogs ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent border-border">
+                        <TableHead className="text-muted-foreground w-[200px]">Usuário</TableHead>
+                        <TableHead className="text-muted-foreground">Tipo/Mensagem</TableHead>
+                        <TableHead className="text-muted-foreground">Destinatário</TableHead>
+                        <TableHead className="text-muted-foreground">Status</TableHead>
+                        <TableHead className="text-muted-foreground">Agendado/Enviado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoadingLogs ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8">
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                            <p className="mt-2 text-sm text-muted-foreground">Carregando logs...</p>
+                          </TableCell>
+                        </TableRow>
+                      ) : waLogs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            Nenhum registro encontrado.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        waLogs.map((log) => (
+                          <TableRow key={log.id} className="hover:bg-muted/50 border-border">
+                            <TableCell className="font-medium text-foreground">
+                              <div className="flex flex-col">
+                                <span>{(log.profiles as any)?.full_name || "N/A"}</span>
+                                <span className="text-xs text-muted-foreground">{(log.profiles as any)?.email}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="max-w-[300px]">
+                              <div className="flex flex-col">
+                                <Badge variant="outline" className="w-fit text-[10px] mb-1">
+                                  {log.type}
+                                </Badge>
+                                <span className="text-xs truncate text-muted-foreground" title={log.message}>
+                                  {log.message}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {log.phone_number}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  className={
+                                    log.status === 'sent' ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20' :
+                                      log.status === 'error' ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' :
+                                        log.status === 'cancelled' ? 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20' :
+                                          'bg-blue-500/10 text-blue-500 hover:bg-blue-500/20'
+                                  }
+                                >
+                                  {log.status === 'sent' ? 'Enviado' :
+                                    log.status === 'error' ? 'Erro' :
+                                      log.status === 'pending' ? 'Pendente' :
+                                        log.status === 'cancelled' ? 'Cancelado' : log.status}
+                                </Badge>
+                                {log.error && (
+                                  <span title={log.error}>
+                                    <AlertCircle className="h-4 w-4 text-red-500" />
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-xs">
+                              {log.sent_at ? new Date(log.sent_at).toLocaleString('pt-BR') : new Date(log.send_at).toLocaleString('pt-BR')}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

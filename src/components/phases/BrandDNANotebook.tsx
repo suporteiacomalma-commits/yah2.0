@@ -70,7 +70,7 @@ export function BrandDNANotebook() {
             const isInitialPhase2 = !targetField && currentStep === 2;
 
             const currentVal = targetField ? (formData[targetField] || "") : "";
-            let requestedFieldsStr = targetField || (currentStep === 1 ? "Nicho e Produto" : "Dores, Sonhos, Transformação e Diferencial");
+            let requestedFieldsStr = (targetField as string) || (currentStep === 1 ? "Nicho e Produto" : "Dores, Sonhos, Transformação e Diferencial");
 
             const prompt = `Com base nestas informações de personalidade:
 Papel: ${brand.user_role}
@@ -83,8 +83,8 @@ DADOS DA TELA 1 (DNA):
 - Produto: ${formData.dna_produto || "Ainda não definido"}
 - Objetivo: ${formData.dna_objetivo || "Ainda não definido"}
 
-Solicitação: Sugira valores estratégicos para o(s) campo(s): ${requestedFieldsStr}.
-${currentVal ? `Valor atual do campo "${targetField}": ${currentVal}. Traga algo novo, mais profundo ou complementar.` : ''}
+Solicitação: Sugira valores estratégicos para o(s) campo(s): ${String(requestedFieldsStr)}.
+${currentVal ? `Valor atual do campo "${String(targetField)}": ${currentVal}. Traga algo novo, mais profundo ou complementar.` : ''}
 
 IMPORTANTE: Você deve preencher TODOS os campos solicitados no JSON abaixo com sugestões completas e impactantes.
 
@@ -295,18 +295,54 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
         }
     };
 
+    const handleRefineSubjects = async () => {
+        if (!brand?.id) return;
+        const toastId = toast.loading("IA analisando sua identidade para gerar assuntos autorais...");
+        setIsGenerating(true);
+        try {
+            const apiKey = getSetting("openai_api_key")?.value?.trim();
+            const { data, error } = await supabase.functions.invoke('generate-content-v2', {
+                body: {
+                    action: 'generate_dna_subjects',
+                    brandId: brand.id,
+                    apiKey
+                }
+            });
+
+            if (error) throw error;
+            if (!data?.assuntos) throw new Error("Resposta inválida da IA");
+
+            const newPilares = data.assuntos.map((item: any) => ({
+                title: item.assunto,
+                description: item.angulos.join("\n")
+            }));
+
+            await updateBrand.mutateAsync({
+                updates: { dna_pilares: newPilares }
+            });
+
+            setFormData(prev => ({ ...prev, dna_pilares: newPilares }));
+            toast.success("5 Assuntos Autorais gerados com sucesso!", { id: toastId });
+        } catch (error: any) {
+            console.error("Refine subjects error:", error);
+            toast.error("Erro ao refinar assuntos: " + error.message, { id: toastId });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleAddComplement = () => {
         const currentData = (formData.dna_persona_data as any) || {};
         const currentComplements = currentData.complements || [];
 
-        const newComplement = {
+        const newComp = {
             title: "Novo Complemento",
             description: "Clique no lápis para editar..."
         };
 
         const newData = {
             ...currentData,
-            complements: [...currentComplements, newComplement]
+            complements: [...currentComplements, newComp]
         };
 
         handleInputChange("dna_persona_data", newData);
@@ -317,36 +353,33 @@ SAÍDA APENAS EM JSON EM PORTUGUÊS.`;
         const cleanContent = (text: string) => {
             if (!text) return "Não preenchido";
             try {
-                if (text.trim().startsWith('[') || text.trim().startsWith('{')) {
+                if (typeof text === 'string' && (text.trim().startsWith('[') || text.trim().startsWith('{'))) {
                     const parsed = JSON.parse(text);
-                    if (Array.isArray(parsed)) {
-                        return parsed.map(item => typeof item === 'string' ? item : JSON.stringify(item)).join(", ");
-                    } else if (typeof parsed === 'object') {
-                        return Object.entries(parsed)
-                            .map(([key, val]) => `${key.replace(/_/g, ' ').toUpperCase()}:\n${val}`)
-                            .join("\n\n");
-                    }
+                    if (Array.isArray(parsed)) return parsed.map(p => p.title || p.name || p).join("\n");
+                    return text;
                 }
-            } catch (e) { }
-            return text;
+                return text;
+            } catch (e) {
+                return text;
+            }
         };
 
         const sections = [
             { title: "Tese Central", content: cleanContent(formData.dna_tese || "") },
-            {
-                title: "Pilares da Marca",
-                content: (formData.dna_pilares as any[])?.map(p => `${p.title}: ${p.description}`).join("\n\n") || "Não definido"
-            },
+
+            // Subject Pillars
+            ...((formData.dna_pilares as any[])?.map((pilar: any, idx: number) => ({
+                title: `Assunto ${idx + 1}: ${pilar.title}`,
+                content: cleanContent(pilar.description)
+            })) || []),
+
             { title: "Missão", content: cleanContent(formData.mission || "") },
             { title: "Visão", content: cleanContent(formData.vision || "") },
             { title: "Valores", content: cleanContent(formData.values || "") },
             { title: "Propósito", content: cleanContent(formData.purpose || "") },
             { title: "Nicho", content: cleanContent(formData.dna_nicho || "") },
-            { title: "Produto/Serviço", content: cleanContent(formData.dna_produto || "") },
-            { title: "Objetivo", content: cleanContent(formData.dna_objetivo || "") },
             { title: "Dor Principal", content: cleanContent(formData.dna_dor_principal || "") },
             { title: "Sonho Principal", content: cleanContent(formData.dna_sonho_principal || "") },
-            { title: "Transformação", content: cleanContent(formData.dna_transformacao || "") },
             { title: "Diferencial", content: cleanContent(formData.dna_diferencial || "") },
             { title: "Objeção Comum", content: cleanContent(formData.dna_objecao_comum || "") },
             { title: "UVP", content: cleanContent(formData.dna_uvp || "") },
@@ -447,15 +480,12 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                 placeholder="Ex: Marketing para terapeutas"
                                 value={formData.dna_nicho || ""}
                                 onChange={(e) => handleInputChange("dna_nicho", e.target.value)}
-                                className={cn(
-                                    "bg-background/50 border-border h-12 transition-all",
-                                    isSuggesting && !formData.dna_nicho && "animate-pulse border-accent/30"
-                                )}
+                                className="bg-background/50 border-border h-12 transition-all"
                             />
                         </div>
                         <div className="space-y-3 relative">
                             <div className="flex justify-between items-center">
-                                <Label className="text-base font-semibold text-white">3. Qual é o produto/serviço que você quer posicionar?</Label>
+                                <Label className="text-base font-semibold text-white">3. Qual é o seu produto ou serviço principal?</Label>
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -472,29 +502,26 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                 </Button>
                             </div>
                             <Input
-                                placeholder="Cursos online, produtos digitais, serviço de design, consultoria…"
+                                placeholder="Ex: Mentoria de Escrita Autoral"
                                 value={formData.dna_produto || ""}
                                 onChange={(e) => handleInputChange("dna_produto", e.target.value)}
-                                className={cn(
-                                    "bg-background/50 border-border h-12 transition-all",
-                                    isSuggesting && !formData.dna_produto && "animate-pulse border-accent/30"
-                                )}
+                                className="bg-background/50 border-border h-12 transition-all"
                             />
                         </div>
                         <div className="space-y-3">
-                            <Label className="text-base font-semibold text-white">4. Qual é o objetivo principal com sua marca?</Label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {OBJETIVO_OPTIONS.map((opt) => (
+                            <Label className="text-base font-semibold text-white">4. Qual seu objetivo atual com a marca?</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                {OBJETIVO_OPTIONS.map((option) => (
                                     <div
-                                        key={opt}
-                                        onClick={() => handleObjetivoChange(opt)}
+                                        key={option}
+                                        onClick={() => handleObjetivoChange(option)}
                                         className={cn(
                                             "flex items-center space-x-3 p-4 rounded-xl border-2 transition-all cursor-pointer",
-                                            formData.dna_objetivo === opt ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                                            formData.dna_objetivo === option ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                                         )}
                                     >
-                                        <Checkbox checked={formData.dna_objetivo === opt} />
-                                        <span className="font-medium">{opt}</span>
+                                        <Checkbox checked={formData.dna_objetivo === option} />
+                                        <span className="font-medium">{option}</span>
                                     </div>
                                 ))}
                                 <div className="md:col-span-2 space-y-2">
@@ -708,9 +735,21 @@ ${(formData.dna_persona_data as any)?.objections?.join("\n") || "N/A"}`
                                 <SparklesIcon className="w-5 h-5 text-accent" />
                                 🎯 SEÇÃO 2 — ASSUNTOS GERADOS PELA IA
                             </CardTitle>
-                            <p className="text-muted-foreground text-sm font-medium">
-                                Esses são os temas sobre os quais sua marca sempre vai falar. A YAh analisou sua personalidade e organizou os pilares principais.
-                            </p>
+                            <div className="flex items-center gap-4">
+                                <p className="text-muted-foreground text-sm font-medium flex-1">
+                                    Esses são os temas sobre os quais sua marca sempre vai falar. A YAh analisou sua personalidade e organizou os pilares principais.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleRefineSubjects}
+                                    disabled={isGenerating}
+                                    className="text-accent border-accent/20 hover:bg-accent/10 h-8 gap-2 shrink-0"
+                                >
+                                    {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                    <span>Refinar Assuntos com IA</span>
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

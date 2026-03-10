@@ -267,18 +267,18 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
 
 
     const generateWeeklyStructure = async () => {
-        const toastId = toast.loading("Gerando estrutura de 4 semanas com IA... Isso pode levar alguns segundos.");
+        const toastId = toast.loading("Gerando estrutura de 4 semanas com IA estratégica... Isso pode levar alguns segundos.");
         setIsGenerating(true);
         try {
-            // Retrieve API Key from settings (fallback for Edge Function)
+            if (!brand?.id) throw new Error("ID da marca não encontrado.");
+
             const apiKey = getSetting("openai_api_key")?.value?.trim();
 
-            // Call Supabase Edge Function
-            const { data: result, error } = await supabase.functions.invoke('generate-weekly-structure', {
+            const { data: result, error } = await supabase.functions.invoke('generate-content-v2', {
                 body: {
-                    brand,
-                    routine: routineData,
-                    apiKey // Pass the key to the function
+                    action: 'generate_planning',
+                    brandId: brand.id,
+                    apiKey
                 }
             });
 
@@ -289,41 +289,38 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
                 throw new Error("A IA retornou um formato inválido. Por favor, tente novamente.");
             }
 
-            // Post-process to ensure strict compliance and correct mapping
             const postingDaysSet = new Set(routineData.routine_posting_days || []);
             const finalWeeks = result.weeks.map((week: any) => {
                 const cleanedWeek: any = {};
                 DAYS_OF_WEEK.forEach((dayName, idx) => {
                     if (postingDaysSet.has(dayName)) {
-                        // Resilient mapping: check for index (0, "0"), Portuguese full name, or Portuguese short name
                         const aiContent =
                             week[idx] ||
                             week[idx.toString()] ||
                             week[dayName] ||
-                            week[dayName.substring(0, 3)] ||
-                            week[dayName.toLowerCase()] ||
                             { feed: {}, stories: {} };
 
                         cleanedWeek[idx] = {
                             feed: {
-                                format: aiContent.feed?.format || 'Carrossel',
-                                intention: aiContent.feed?.intention || 'Conexão',
-                                headline: aiContent.feed?.headline || 'Título pendente...',
-                                instruction: aiContent.feed?.instruction || 'Crie um post engajador.',
+                                format: aiContent.format || aiContent.feed?.format || 'Carrossel',
+                                intention: aiContent.intention || aiContent.feed?.intention || 'Conexão',
+                                headline: aiContent.titulo || aiContent.título || aiContent.feed?.headline || aiContent.feed?.título || 'Título pendente...',
+                                instruction: aiContent.angulo || aiContent.ângulo || aiContent.feed?.instruction || aiContent.feed?.ângulo || 'Crie um post engajador.',
+                                pilar: aiContent.tema || aiContent.feed?.tema || '',
                                 status: 'planned',
                                 notes: '',
                                 time: aiContent.feed?.time || routineData.routine_fixed_hours?.[0] || '',
                                 link: aiContent.feed?.link || ''
                             },
                             stories: {
-                                format: aiContent.stories?.format || 'Sequência',
-                                intention: aiContent.stories?.intention || 'Engajamento',
-                                headline: aiContent.stories?.headline || 'Headline pendente...',
-                                instruction: aiContent.stories?.instruction || 'Compartilhe nos stories.',
+                                format: 'Sequência',
+                                intention: 'Engajamento',
+                                headline: 'Headline pendente...',
+                                instruction: 'Compartilhe nos stories.',
                                 status: 'planned',
                                 notes: '',
-                                time: aiContent.stories?.time || routineData.routine_fixed_hours?.[0] || '',
-                                link: aiContent.stories?.link || ''
+                                time: routineData.routine_fixed_hours?.[0] || '',
+                                link: ''
                             }
                         };
                     } else {
@@ -342,7 +339,7 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
 
             setWeeklyData(finalWeeks);
             setScreen("vision");
-            toast.success("Estratégia semanal gerada com sucesso!", { id: toastId });
+            toast.success("Planejamento estratégico de 4 semanas gerado!", { id: toastId });
 
             if (onComplete) {
                 setTimeout(() => {
@@ -409,61 +406,57 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
 
 
     const handleWriteScript = async (tab: DetailTab, blockIndex?: number, adjustment?: string) => {
-        const toastId = toast.loading(adjustment ? "Ajustando roteiro..." : "Gerando roteiro detalhado...");
+        const toastId = toast.loading(adjustment ? "Ajustando roteiro..." : "Redigindo conteúdo autêntico...");
         setIsWritingScript(true);
         try {
+            if (!brand?.id) throw new Error("ID da marca não encontrado.");
             const apiKey = getSetting("openai_api_key")?.value?.trim();
-            if (!apiKey) throw new Error("API Key não configurada");
 
             const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
             const block = (blockIndex === undefined || blockIndex === 0)
                 ? dayData
                 : dayData.extraBlocks[blockIndex - 1];
 
-            let prompt = "";
+            const postData = {
+                dia: DAYS_OF_WEEK[selectedDayIndex],
+                formato: block.format,
+                intencao: block.intention,
+                tema: block.pilar || block.instruction || '',
+                titulo: block.headline,
+                angulo: block.instruction || '',
+                pilar: block.pilar || ''
+            };
 
-            if (adjustment && block.notes) {
-                prompt = `Aqui está o roteiro atual:
-                
-                ${block.notes}
-                
-                REAJUSTE este roteiro seguindo esta nova instrução: "${adjustment}".
-                
-                Mantenha a estrutura, mas aplique o ajuste solicitado.`;
-            } else {
-                prompt = `Gere um roteiro detalhado para um ${tab === 'feed' ? 'Post de Feed' : 'Stories'} do Instagram.
-                Título/Tema: ${block.headline}
-                Formato: ${block.format}
-                Intenção: ${block.intention}
-                DNA da Marca: ${brand?.dna_tese}
-                Instrução da IA: ${block.instruction || "Crie um conteúdo estratégico."}
-                
-                Gere um roteiro estruturado, direto e persuasivo.`;
-            }
-
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [
-                        { role: "system", content: "Expert em copywriting e roteirização para redes sociais. Você foca em manter a voz da marca e a estratégia do conteúdo. NÃO use markdown, negrito (**), itálico ou qualquer formatação especial. Apenas texto puro e direto." },
-                        { role: "user", content: prompt }
-                    ]
-                })
+            const { data: result, error } = await supabase.functions.invoke('generate-content-v2', {
+                body: {
+                    action: 'generate_script',
+                    brandId: brand.id,
+                    postData,
+                    adjustment,
+                    apiKey
+                }
             });
 
-            const data = await response.json();
-            const script = data.choices[0].message.content;
-            handleDataChange(tab, "notes", script, blockIndex);
-            toast.success(adjustment ? "Roteiro ajustado com sucesso!" : "Roteiro sugerido com sucesso!", { id: toastId });
+            if (error) throw error;
+
+            const safeStr = (val: any) => typeof val === 'object' ? JSON.stringify(val, null, 2) : (val || '');
+
+            // Combine everything except legenda into the script field
+            const parts = [];
+            if (result.gancho || result.hook) parts.push(`🪝 GANCHO:\n${safeStr(result.gancho || result.hook)}`);
+            if (result.roteiro || result.script) parts.push(`📝 ROTEIRO:\n${safeStr(result.roteiro || result.script)}`);
+            if (result.cta) parts.push(`📣 CTA:\n${safeStr(result.cta)}`);
+
+            const formattedScript = parts.join('\n\n');
+
+            handleDataChange(tab, "notes", formattedScript, blockIndex);
+            // DO NOT update caption here, per user request "não na parte de baixo"
+
+            toast.success(adjustment ? "Conteúdo ajustado!" : "Conteúdo redigido com sucesso!", { id: toastId });
             setAdjustingBlock(null);
             setAdjustmentText("");
         } catch (error: any) {
-            toast.error("Erro ao gerar roteiro: " + error.message, { id: toastId });
+            toast.error("Erro ao redigir conteúdo: " + error.message, { id: toastId });
         } finally {
             setIsWritingScript(false);
         }
@@ -473,39 +466,38 @@ export function WeeklyFixedNotebook({ onComplete }: { onComplete?: () => void })
         const toastId = toast.loading("Sugerindo legenda estratégica...");
         setIsWritingCaption(true);
         try {
+            if (!brand?.id) throw new Error("ID da marca não encontrado.");
             const apiKey = getSetting("openai_api_key")?.value?.trim();
-            if (!apiKey) throw new Error("API Key não configurada");
 
             const dayData = weeklyData[currentWeek - 1][selectedDayIndex][tab];
             const block = (blockIndex === undefined || blockIndex === 0)
                 ? dayData
                 : dayData.extraBlocks[blockIndex - 1];
 
-            const prompt = `Escreva uma legenda envolvente para o Instagram sobre este tema: "${block.headline}".
-            Intenção: ${block.intention}.
-            Use o tom de voz da marca: ${brand?.user_tone_selected?.join(", ") || "autêntico e profissional"}.
-            Inclua emojis e 3-5 hashtags relevantes.
-            Formatação: Quebras de linha limpas.`;
+            const postData = {
+                dia: DAYS_OF_WEEK[selectedDayIndex],
+                formato: block.format,
+                intencao: block.intention,
+                tema: block.pilar || block.instruction || '',
+                titulo: block.headline,
+                angulo: block.instruction || '',
+                pilar: block.pilar || ''
+            };
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [
-                        { role: "system", content: "Expert em social media e copywriting. Você cria legendas que engajam e convertem." },
-                        { role: "user", content: prompt }
-                    ]
-                })
+            const { data: result, error } = await supabase.functions.invoke('generate-content-v2', {
+                body: {
+                    action: 'generate_script',
+                    brandId: brand.id,
+                    postData,
+                    apiKey
+                }
             });
 
-            const data = await response.json();
-            const caption = data.choices[0].message.content;
+            if (error) throw error;
+
+            const caption = result.legenda || result.caption || result.título || '';
             handleDataChange(tab, "caption", caption, blockIndex);
-            toast.success("Legenda sugerida com sucesso!", { id: toastId });
+            toast.success("Legenda sugerida!", { id: toastId });
         } catch (error: any) {
             toast.error("Erro ao gerar legenda: " + error.message, { id: toastId });
         } finally {
@@ -1632,24 +1624,33 @@ ${block.caption || 'Sem legenda.'}`;
                                                 onChange={(e) => handleDataChange(detailTab, "notes", e.target.value, bIdx)}
                                             />
                                         </div>
+                                        <div className="flex justify-end pt-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    if (block.notes) {
+                                                        setAdjustingBlock({ tab: detailTab, index: bIdx || 0 });
+                                                    } else {
+                                                        handleWriteScript(detailTab, bIdx);
+                                                    }
+                                                }}
+                                                disabled={isWritingScript || isGenerating}
+                                                className={cn(
+                                                    "h-7 px-3 text-[10px] font-bold border border-accent/20 hover:bg-accent/10 text-accent transition-all",
+                                                    !block.notes && "bg-accent/5 border-accent/40"
+                                                )}
+                                            >
+                                                {isWritingScript ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : (block.notes ? <Wand2 className="w-3 h-3 mr-1.5" /> : <Sparkles className="w-3 h-3 mr-1.5" />)}
+                                                {isWritingScript ? "Gerando..." : (block.notes ? "Ajustar Roteiro" : "Sugerir Roteiro")}
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     {detailTab === 'feed' && (
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Legenda do Post</Label>
-                                                <div className="flex items-center gap-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => handleWriteCaption(detailTab, bIdx)}
-                                                        disabled={isWritingCaption}
-                                                        className="h-6 px-2 text-[10px] text-accent hover:text-accent hover:bg-accent/10"
-                                                    >
-                                                        {isWritingCaption ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
-                                                        {isWritingCaption ? "Gerando..." : "Sugerir Legenda"}
-                                                    </Button>
-                                                </div>
                                             </div>
                                             <div className="relative">
                                                 {isWritingCaption && (
@@ -1664,6 +1665,18 @@ ${block.caption || 'Sem legenda.'}`;
                                                     value={block.caption || ""}
                                                     onChange={(e) => handleDataChange(detailTab, "caption", e.target.value, bIdx)}
                                                 />
+                                            </div>
+                                            <div className="flex justify-end pt-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleWriteCaption(detailTab, bIdx)}
+                                                    disabled={isWritingCaption}
+                                                    className="h-7 px-3 text-[10px] font-bold border border-accent/20 hover:bg-accent/10 text-accent transition-all"
+                                                >
+                                                    {isWritingCaption ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : <Sparkles className="w-3 h-3 mr-1.5" />}
+                                                    {isWritingCaption ? "Gerando..." : "Sugerir Legenda"}
+                                                </Button>
                                             </div>
                                         </div>
                                     )}
@@ -1700,24 +1713,6 @@ ${block.caption || 'Sem legenda.'}`;
                                         ) : (
                                             <div className="grid grid-cols-2 gap-3">
                                                 <Button
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        if (block.notes) {
-                                                            setAdjustingBlock({ tab: detailTab, index: bIdx || 0 });
-                                                        } else {
-                                                            handleWriteScript(detailTab, bIdx);
-                                                        }
-                                                    }}
-                                                    disabled={isWritingScript || isGenerating}
-                                                    className={cn(
-                                                        "h-10 text-xs font-bold border-accent/30 hover:bg-accent/5",
-                                                        !block.notes && "border-accent/60 bg-accent/5"
-                                                    )}
-                                                >
-                                                    {isWritingScript ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : (block.notes ? <Settings className="w-3.5 h-3.5 mr-2 text-accent" /> : <Sparkles className="w-3.5 h-3.5 mr-2 text-accent" />)}
-                                                    {isWritingScript ? "Processando..." : (block.notes ? "Ajustar Roteiro" : "Sugerir Roteiro")}
-                                                </Button>
-                                                <Button
                                                     className="bg-accent/10 hover:bg-accent/20 text-accent border border-accent/20 h-10 text-xs font-bold"
                                                     onClick={() => handleSaveToAgenda(detailTab, bIdx)}
                                                 >
@@ -1725,11 +1720,11 @@ ${block.caption || 'Sem legenda.'}`;
                                                     Salvar na Agenda
                                                 </Button>
                                                 <Button
-                                                    className="bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 h-10 text-xs font-bold col-span-2"
+                                                    className="bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/20 h-10 text-xs font-bold"
                                                     onClick={() => handleExportWhatsApp(detailTab, bIdx)}
                                                 >
                                                     <Share2 className="w-3.5 h-3.5 mr-2" />
-                                                    Exportar para WhatsApp
+                                                    Exportar
                                                 </Button>
                                             </div>
                                         )}
@@ -1782,7 +1777,7 @@ ${block.caption || 'Sem legenda.'}`;
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-            </div>
+            </div >
         );
     };
 

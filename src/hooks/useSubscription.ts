@@ -79,6 +79,12 @@ export function useSubscription() {
                 }
             }
 
+            // Also check subscription_status directly as a safety measure
+            if (data.subscription_status === 'expired') {
+                isExpired = true;
+                daysRemaining = 0;
+            }
+
             // Override expired status if premium
             if (data.subscription_plan === 'premium') {
                 isExpired = false;

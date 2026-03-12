@@ -110,8 +110,10 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
           {/* Premium Status Display */}
           <div className="flex flex-col items-end">
             {profile?.subscription_plan === 'trial' && profile?.trial_ends_at && (
-              <span className="text-[10px] font-medium text-purple-400 mb-1 animate-pulse mr-1">
-                Seu acesso completo termina em {Math.ceil((new Date(profile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias
+              <span className={`text-[10px] font-medium mb-1 mr-1 ${Math.ceil((new Date(profile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 0 ? 'text-destructive' : 'text-purple-400 animate-pulse'}`}>
+                {Math.ceil((new Date(profile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 0
+                  ? "Seu período de teste expirou"
+                  : `Seu acesso completo termina em ${Math.ceil((new Date(profile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias`}
               </span>
             )}
             <div
@@ -129,7 +131,11 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-purple-500 group-hover:rotate-12 transition-transform" />
-                  <span className="font-bold text-sm capitalize">Trial</span>
+                  <span className="font-bold text-sm capitalize">
+                    {Math.ceil((new Date(profile?.trial_ends_at || 0).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 0
+                      ? "Expirado"
+                      : "Trial"}
+                  </span>
                 </>
               )}
             </div>

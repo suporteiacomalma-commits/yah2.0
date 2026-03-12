@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, Lock, Crown, CheckCircle2, X } from "lucide-react";
+import { Loader2, Lock, Crown, CheckCircle2, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, signOut } = useAuth();
     const { subscription, isLoading: subLoading, isExpired, isPremium, isAdmin } = useSubscription();
     const navigate = useNavigate();
     const location = useLocation();
@@ -76,8 +76,8 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
 
         return (
             <>
-                <div className="pointer-events-none blur-[2px]">{children}</div>
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+                <div className="blur-[2px]">{children}</div>
+                <div className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
                     <Card className="max-w-md w-full bg-[#09090B] border-white/10 shadow-2xl relative z-10">
                         <Button
                             variant="ghost"
@@ -123,6 +123,14 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
                             >
                                 <Crown className="w-4 h-4 mr-2" />
                                 Ativar Premium Agora
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => signOut()}
+                                className="w-full h-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            >
+                                <LogOut className="w-4 h-4 mr-2" />
+                                Sair da conta
                             </Button>
                             <p className="text-[10px] text-center text-muted-foreground">
                                 Entre em contato com o administrador para ativar sua conta.

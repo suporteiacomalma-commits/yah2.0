@@ -46,15 +46,30 @@ export function JourneyTab({ data }: JourneyTabProps) {
         );
     };
 
-    const RetentionIcon = ({ active, label }: { active: boolean, label: string }) => (
-        <div className="flex flex-col items-center gap-0.5" title={`${label}: ${active ? 'Retido' : 'Não Retido'}`}>
+    const RetentionDay = ({ active, label, isFuture }: { active: boolean, label: string, isFuture: boolean }) => (
+        <div className="flex flex-col items-center gap-0.5" title={`${label}: ${isFuture ? 'Futuro' : (active ? 'Acessou' : 'Não acessou')}`}>
             <span className="text-[9px] text-muted-foreground font-mono">{label}</span>
-            {active ?
-                <CheckCircle className="w-3 h-3 text-green-500" /> :
-                <div className="w-3 h-3 rounded-full border border-white/10 bg-white/5" />
-            }
+            <div className={`w-3.5 h-3.5 rounded-full transition-all duration-300 ${
+                isFuture 
+                    ? 'border border-white/10 bg-white/5' 
+                    : active 
+                        ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' 
+                        : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+            }`} />
         </div>
     );
+
+    const isDayInFuture = (createdAt: string, dayOffset: number) => {
+        const registrationDate = new Date(createdAt);
+        registrationDate.setHours(0, 0, 0, 0);
+        const targetDate = new Date(registrationDate);
+        targetDate.setDate(registrationDate.getDate() + dayOffset);
+        
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        return targetDate > now;
+    };
 
     return (
         <Card className="bg-card/50 border-white/5 backdrop-blur-sm">
@@ -73,7 +88,7 @@ export function JourneyTab({ data }: JourneyTabProps) {
                             <TableHead>Cadastro</TableHead>
                             <TableHead>Último Login</TableHead>
                             <TableHead className="text-center">Frequência</TableHead>
-                            <TableHead className="text-center">Retenção (Trial)</TableHead>
+                            <TableHead className="text-center">Retenção (D1-D7)</TableHead>
                             <TableHead className="text-center">Risco</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -110,9 +125,13 @@ export function JourneyTab({ data }: JourneyTabProps) {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center justify-center gap-2">
-                                            <RetentionIcon active={user.d1_retention} label="D1" />
-                                            <RetentionIcon active={user.d3_retention} label="D3" />
-                                            <RetentionIcon active={user.d7_retention} label="D7" />
+                                            <RetentionDay active={user.d1} label="D1" isFuture={isDayInFuture(user.created_at, 0)} />
+                                            <RetentionDay active={user.d2} label="D2" isFuture={isDayInFuture(user.created_at, 1)} />
+                                            <RetentionDay active={user.d3} label="D3" isFuture={isDayInFuture(user.created_at, 2)} />
+                                            <RetentionDay active={user.d4} label="D4" isFuture={isDayInFuture(user.created_at, 3)} />
+                                            <RetentionDay active={user.d5} label="D5" isFuture={isDayInFuture(user.created_at, 4)} />
+                                            <RetentionDay active={user.d6} label="D6" isFuture={isDayInFuture(user.created_at, 5)} />
+                                            <RetentionDay active={user.d7} label="D7" isFuture={isDayInFuture(user.created_at, 6)} />
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-center">

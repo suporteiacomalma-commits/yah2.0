@@ -116,13 +116,14 @@ serve(async (req: Request) => {
 
         if (!isTest) {
           // Check if trial is expired
-          if (user.subscription_plan === 'trial' && user.trial_ends_at) {
-            const trialEnd = new Date(user.trial_ends_at);
-            if (trialEnd < new Date()) {
-              console.log(`Skipping expired trial user ${user.user_id}`);
-              skipCount++;
-              continue;
-            }
+          const isTrialExpired = user.subscription_plan === 'trial' && 
+                               user.trial_ends_at && 
+                               new Date(user.trial_ends_at) < new Date();
+
+          if (isTrialExpired) {
+            console.log(`Skipping expired trial user ${user.user_id}`);
+            skipCount++;
+            continue;
           }
 
           if (status === 'trialing' && trialDay < 2) {

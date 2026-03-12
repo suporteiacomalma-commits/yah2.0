@@ -54,9 +54,13 @@ export interface DashboardStats {
         weekly_minutes: number;
         days_since_last_login: number;
         weekly_frequency: number;
-        d1_retention: boolean;
-        d3_retention: boolean;
-        d7_retention: boolean;
+        d1: boolean;
+        d2: boolean;
+        d3: boolean;
+        d4: boolean;
+        d5: boolean;
+        d6: boolean;
+        d7: boolean;
     }>;
 }
 

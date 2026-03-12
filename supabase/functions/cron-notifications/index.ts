@@ -101,7 +101,7 @@ serve(async (req: Request) => {
                 // 1) Fetch user profile to check subscription status (getAccess logic)
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('subscription_status, subscription_plan')
+                    .select('subscription_status, subscription_plan, trial_ends_at')
                     .eq('user_id', msg.user_id)
                     .single();
 
@@ -109,7 +109,11 @@ serve(async (req: Request) => {
 
                 // Rule: Only trialing or active can receive messages.
                 // Exceptions might exist for specific marketing/post-trial types.
-                let hasAccess = (status === 'trialing' || status === 'active');
+                const isTrialExpired = profile?.subscription_plan === 'trial' && 
+                                     profile?.trial_ends_at && 
+                                     new Date(profile.trial_ends_at) < new Date();
+
+                let hasAccess = (status === 'trialing' || status === 'active') && !isTrialExpired;
 
                 // Special case: Allow POST_TRIAL messages even if expired
                 if (msg.type && msg.type.startsWith('POST_TRIAL_')) {

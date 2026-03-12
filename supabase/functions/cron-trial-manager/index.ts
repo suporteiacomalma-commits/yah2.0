@@ -29,7 +29,8 @@ serve(async (req: Request) => {
         const { data: expiredUsers, error: fetchError } = await supabase
             .from("profiles")
             .select("id, user_id, full_name")
-            .eq("subscription_status", "trialing")
+            .or("subscription_status.eq.trialing,subscription_status.eq.active") // Check both statuses
+            .eq("subscription_plan", "trial") // Ensure it only affects trial plans
             .lt("trial_ends_at", now);
 
         if (fetchError) {

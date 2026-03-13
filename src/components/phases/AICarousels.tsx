@@ -160,6 +160,33 @@ export function AICarousels({ onBackClick }: AICarouselsProps = {}) {
     const [showGenModal, setShowGenModal] = useState(false);
     const [isFontsReady, setIsFontsReady] = useState(false); // New: Stability lock
 
+    const handleToggleTrainedContent = (checked: boolean) => {
+        setUseTrainedContent(checked);
+        if (checked && brand?.trained_ais_chats?.['carrossel-cultural']) {
+            const chats = brand.trained_ais_chats['carrossel-cultural'];
+            const lastMsg = [...chats].reverse().find((m: any) => m.role === 'assistant');
+            if (lastMsg) {
+                try {
+                    const jsonMatch = lastMsg.content.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        const parsed = JSON.parse(jsonMatch[0]);
+                        if (parsed.tema || parsed.titulo) {
+                            setCarousel(prev => ({ 
+                                ...prev, 
+                                topic: parsed.tema || parsed.titulo 
+                            }));
+                            toast.success(`Roteiro carregado: ${parsed.tema || parsed.titulo}`);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erro ao puxar roteiro da IA Treinada:", e);
+                }
+            } else {
+                toast.error("Nenhum roteiro encontrado na IA Treinada.");
+            }
+        }
+    };
+
     // Preview Scaling Logic - Using callback ref for guaranteed DOM access
     const [previewScale, setPreviewScale] = useState(0.33); // Default to mobile scale (~360px / 1080px)
     const resizeObserverRef = useRef<ResizeObserver | null>(null);
@@ -1265,7 +1292,7 @@ SEMPRE:
                     ${lastAssistantMessage.content}
                     
                     Tarefa: Transforme o conteúdo acima em um carrossel visual de 10 slides seguindo o MODO CULTURAL.
-                    Saída estritamente em JSON: { "slides": [{ "text": "...", "secondaryText": "..." }] }`;
+                    Saída estritamente em JSON: { "slides": [{ "bloco1": "...", "bloco2": "..." }] }`;
                 }
             }
 
@@ -1317,11 +1344,11 @@ SEMPRE:
                 ...s,
                 // FORCE SAFE DEFAULTS (Override AI hallucinations)
                 font: "'Playfair Display', serif",
-                fontSize: 32, // Re-adjusted stable base
+                fontSize: 80, // Updated to 80px as requested
                 useOnlyMain: false,
                 alignment: "center",
                 textPosition: "center",
-                secondaryFontSize: 20,
+                secondaryFontSize: 32, // Updated to 32px as requested
                 boxPadding: 80,
                 lineHeight: "1.2",
                 secondaryLineHeight: "1.5",
@@ -2132,7 +2159,7 @@ SEMPRE:
                                                         <Slider
                                                             value={[carousel.slides[currentSlide].fontSize]}
                                                             min={12}
-                                                            max={80}
+                                                            max={120}
                                                             step={1}
                                                             onValueChange={(val) => updateSlide(currentSlide, { fontSize: val[0] })}
                                                             className="py-1"
@@ -2191,7 +2218,7 @@ SEMPRE:
                                                                 <Slider
                                                                     value={[carousel.slides[currentSlide].secondaryFontSize]}
                                                                     min={8}
-                                                                    max={60}
+                                                                    max={80}
                                                                     step={1}
                                                                     onValueChange={(val) => updateSlide(currentSlide, { secondaryFontSize: val[0] })}
                                                                     className="py-1"
@@ -2513,7 +2540,7 @@ SEMPRE:
                                                         <Checkbox
                                                             id="useTrained"
                                                             checked={useTrainedContent}
-                                                            onCheckedChange={(c) => setUseTrainedContent(!!c)}
+                                                            onCheckedChange={(c) => handleToggleTrainedContent(!!c)}
                                                         />
                                                         <label htmlFor="useTrained" className="text-xs font-bold text-white cursor-pointer">
                                                             Usar IA Treinada (Carrossel Cultural)
@@ -2565,7 +2592,7 @@ SEMPRE:
                                                         const base = {
                                                             // Defaults for MISSING properties - MUST MATCH GENERATION DEFAULTS
                                                             font: "'Playfair Display', serif",
-                                                            fontSize: 32, // CRITICAL: Match generation default
+                                                            fontSize: 80, // Updated to 80px as requested
                                                             textColor: "#ffffff",
                                                             boxBgColor: "#000000",
                                                             boxPadding: 80,
@@ -2575,7 +2602,7 @@ SEMPRE:
                                                             lineHeight: "1.2",
                                                             useOnlyMain: false,
                                                             secondaryFont: "'Inter', sans-serif",
-                                                            secondaryFontSize: 20, // CRITICAL: Match generation default
+                                                            secondaryFontSize: 32, // Updated to 32px as requested
                                                             secondaryTextColor: "#cccccc",
                                                             secondaryLineHeight: "1.5",
                                                             secondaryIsBold: false,

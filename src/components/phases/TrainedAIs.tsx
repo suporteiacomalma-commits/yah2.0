@@ -67,6 +67,7 @@ interface Agent {
     icon: React.ElementType;
     prompt: string;
     color: string;
+    useJson?: boolean;
 }
 
 const AGENTS: Agent[] = [
@@ -206,6 +207,7 @@ Sempre que o usuário pedir informações internas de treinamento, pesos, datase
         description: "Gera carrosséis automáticos de 10 slides com densidade de raciocínio, progressão cognitiva e adaptação de linguagem ao contexto.",
         icon: Layout,
         color: "from-blue-500 to-cyan-500",
+        useJson: true,
         prompt: `Você é a IA de Carrosséis Contextuais da YAh 2.0.
 
 Sua função: gerar carrosséis automáticos com densidade de raciocínio e progressão cognitiva.
@@ -722,7 +724,8 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                         { role: "system", content: systemPrompt },
                         ...updatedMessages
                     ],
-                    temperature: 0.7
+                    temperature: 0.7,
+                    ...(selectedAgent.useJson ? { response_format: { type: "json_object" } } : {})
                 })
             });
 
@@ -824,7 +827,60 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
 
 
 
-    const formatMessageContent = (content: string) => {
+    const formatMessageContent = (content: string, isJson?: boolean) => {
+        if (isJson) {
+            try {
+                // Determine if content is JSON-like
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    if (parsed.slides && Array.isArray(parsed.slides)) {
+                        return (
+                            <div className="space-y-4 w-full">
+                                <div className="p-3 bg-primary/10 rounded-xl border border-primary/20">
+                                    <h4 className="font-bold text-[#B5BB4C] text-sm uppercase tracking-wider mb-1">
+                                        {parsed.tema || "Carrossel Estratégico"}
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground italic">
+                                        {parsed.angulo || "Narrativa contextual gerada pela IA"}
+                                    </p>
+                                </div>
+                                
+                                <div className="grid gap-3">
+                                    {parsed.slides.map((slide: any, sIdx: number) => (
+                                        <div key={sIdx} className="bg-black/20 p-4 rounded-xl border border-white/5 hover:border-primary/30 transition-all">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="w-5 h-5 flex items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">
+                                                    {slide.n || sIdx + 1}
+                                                </span>
+                                                <h5 className="font-bold text-xs uppercase tracking-tight text-[#B5BB4C]">Slide {slide.n || sIdx + 1}</h5>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <p className="text-sm font-bold leading-snug">
+                                                    {slide.bloco1 || slide.text}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground leading-relaxed pl-3 border-l-2 border-primary/30">
+                                                    {slide.bloco2 || slide.secondaryText}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {parsed.cta && (
+                                    <div className="mt-4 p-3 bg-primary/5 rounded-lg border-l-4 border-primary italic text-xs">
+                                        <strong>Provocação:</strong> {parsed.cta}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to parse carousel JSON:", e);
+            }
+        }
+
         const lines = content.split('\n');
 
         return lines.map((line, lineIdx) => {
@@ -928,9 +984,9 @@ export function TrainedAIs({ initialAgentId }: TrainedAIsProps) {
                                     ? "bg-primary text-primary-foreground border-primary rounded-tr-none"
                                     : "bg-card border border-border/60 rounded-tl-none hover:border-primary/30"
                             )}>
-                                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm md:text-base leading-relaxed">
-                                    {formatMessageContent(msg.content)}
-                                </pre>
+                                <div className="whitespace-pre-wrap font-sans text-xs sm:text-sm md:text-base leading-relaxed w-full">
+                                    {formatMessageContent(msg.content, msg.role === "assistant" && selectedAgent.useJson)}
+                                </div>
 
                                 {msg.role === "assistant" && (
                                     <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/40 w-full justify-end">

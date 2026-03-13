@@ -109,7 +109,7 @@ serve(async (req: Request) => {
 
                 // Rule: Only trialing or active can receive messages.
                 // Exceptions might exist for specific marketing/post-trial types.
-                const isTrialExpired = profile?.subscription_plan === 'trial' && 
+                const isTrialExpired = (profile?.subscription_plan === 'trial' || status === 'trialing') && 
                                      profile?.trial_ends_at && 
                                      new Date(profile.trial_ends_at) < new Date();
 

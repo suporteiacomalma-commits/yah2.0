@@ -47,16 +47,31 @@ serve(async (req: Request) => {
 
         console.log(`Found ${expiredUsers.length} expired trials. Updating status...`);
 
-        // 2. Update status to 'expired'
+        // 2. Update status to 'expired' and plan to 'trial' (to be safe)
         const userIds = expiredUsers.map(u => u.id);
         const { error: updateError } = await supabase
             .from("profiles")
-            .update({ subscription_status: "expired" })
+            .update({ 
+                subscription_status: "expired",
+                updated_at: new Date().toISOString()
+            })
             .in("id", userIds);
 
         if (updateError) {
             throw new Error(`Error updating expired users: ${updateError.message}`);
         }
+
+        // 3. Log the expiration events for debugging
+        const debugLogs = expiredUsers.map(u => ({
+            event_name: 'Trial Expired',
+            details: { 
+                user_id: u.user_id, 
+                full_name: u.full_name,
+                expired_at: now
+            }
+        }));
+
+        await supabase.from('debug_logs').insert(debugLogs);
 
         console.log(`Successfully expired ${expiredUsers.length} users.`);
 

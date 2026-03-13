@@ -65,10 +65,13 @@ serve(async (req: Request) => {
     if (isTest && testUserId) {
       query = query.eq("user_id", testUserId);
     } else {
+      const now = new Date().toISOString();
       query = query
         .or('subscription_status.eq.active,subscription_status.eq.trialing')
         .neq("whatsapp", null)
-        .neq("whatsapp", "");
+        .neq("whatsapp", "")
+        // Prevent sending to expired trials even if status is still trialing/active
+        .or(`trial_ends_at.is.null,trial_ends_at.gte.${now}`);
     }
 
     let { data: users, error: usersError } = await query;
@@ -114,25 +117,19 @@ serve(async (req: Request) => {
         const diffTime = startOfTodayBRT.getTime() - startOfTrialDayBRT.getTime();
         const trialDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-        if (!isTest) {
-          // Check if trial is expired
-          const isTrialExpired = user.subscription_plan === 'trial' && 
-                               user.trial_ends_at && 
-                               new Date(user.trial_ends_at) < new Date();
+        const isTrialExpired = (user.subscription_plan === 'trial' || status === 'trialing') && 
+                             user.trial_ends_at && 
+                             new Date(user.trial_ends_at) < new Date();
 
-          if (isTrialExpired) {
-            console.log(`Skipping expired trial user ${user.user_id}`);
+        if (!isTest) {
+          if (isTrialExpired || (status !== 'active' && status !== 'trialing')) {
+            console.log(`Skipping user ${user.user_id} (Status: ${status}, Expired: ${isTrialExpired})`);
             skipCount++;
             continue;
           }
 
           if (status === 'trialing' && trialDay < 2) {
             console.log(`Skipping trialing user ${user.user_id} (Trial Day ${trialDay} < 2 in ${userTz})`);
-            skipCount++;
-            continue;
-          }
-          if (status !== 'active' && status !== 'trialing') {
-            console.log(`Skipping user ${user.user_id} (Status: ${status})`);
             skipCount++;
             continue;
           }

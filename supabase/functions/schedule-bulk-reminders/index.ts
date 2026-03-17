@@ -139,8 +139,11 @@ serve(async (req: Request) => {
           }).join('\n');
         }
 
-        // Content logic
+        const isPlaceholder = (s: string) => !s || s.toLowerCase().includes("pendente...") || s === "Sem tema definido";
+        
         let contentStr = "•  Nenhum conteúdo planejado para hoje.";
+        let hasActualContent = false;
+
         if (brandData?.weekly_structure_data) {
           const weeklyData = brandData.weekly_structure_data as any[];
           const weekIdx = 0; // Dashboard alignment
@@ -148,13 +151,26 @@ serve(async (req: Request) => {
             const dayData = weeklyData[weekIdx][dayOfWeek];
             const mainFeed = dayData.feed?.headline;
             const mainStory = dayData.stories?.headline;
-            if (mainFeed || mainStory) {
+            
+            const hasActualFeed = mainFeed && !isPlaceholder(mainFeed);
+            const hasActualStory = mainStory && !isPlaceholder(mainStory);
+
+            if (hasActualFeed || hasActualStory) {
               contentStr = `•  Feed: ${mainFeed || 'Sem tema definido'}\n•  Stories: ${mainStory || 'Sem tema definido'}`;
+              hasActualContent = true;
             }
           }
         }
 
         const nomeFirstName = (user.full_name || "").split(" ")[0] || "Usuário";
+        
+        const hasEvents = todaysEvents.length > 0;
+
+        if (!hasEvents && !hasActualContent) {
+          // Skip scheduling for this day
+          continue;
+        }
+
         const messageToSend = reminderTemplate
           .replace(/\{\{nome\}\}/g, nomeFirstName)
           .replace(/\{\{nome_completo\}\}/g, user.full_name || "")

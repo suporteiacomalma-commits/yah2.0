@@ -27,7 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2, MessageCircle, Send, X, RefreshCcw, MessageSquare, AlertCircle } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2, MessageCircle, Send, X, RefreshCcw, MessageSquare, AlertCircle, Sparkles } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { PaymentHistoryDialog } from "@/components/admin/PaymentHistoryDialog";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
@@ -134,6 +134,7 @@ export default function Admin() {
   // WhatsApp Logs State
   const [waLogs, setWaLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [viewingFullMessage, setViewingFullMessage] = useState<string | null>(null);
 
   const fetchWhatsAppLogs = async () => {
     setIsLoadingLogs(true);
@@ -2000,7 +2001,11 @@ export default function Admin() {
                                 <Badge variant="outline" className="w-fit text-[10px] mb-1">
                                   {log.type}
                                 </Badge>
-                                <span className="text-xs truncate text-muted-foreground" title={log.message}>
+                                <span 
+                                  className="text-xs truncate text-muted-foreground cursor-pointer hover:text-primary transition-colors" 
+                                  title="Clique para ver mensagem completa"
+                                  onClick={() => setViewingFullMessage(log.message)}
+                                >
                                   {log.message}
                                 </span>
                               </div>
@@ -2168,6 +2173,25 @@ export default function Admin() {
                 "Sim, excluir usuário"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!viewingFullMessage} onOpenChange={(open) => !open && setViewingFullMessage(null)}>
+        <DialogContent className="sm:max-w-[600px] bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-500" />
+              Conteúdo Completo da Mensagem
+            </DialogTitle>
+            <DialogDescription>
+              Abaixo está o conteúdo exato que foi agendado/enviado para o WhatsApp do usuário. 
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 p-4 border border-border rounded-lg bg-background whitespace-pre-wrap font-mono text-sm max-h-[400px] overflow-y-auto">
+            {viewingFullMessage}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setViewingFullMessage(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

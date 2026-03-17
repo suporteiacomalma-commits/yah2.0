@@ -242,7 +242,11 @@ serve(async (req: Request) => {
 
             const mainFeed = dayData.feed?.headline;
             const mainStory = dayData.stories?.headline;
-            if (mainFeed || mainStory) {
+            const isPlaceholder = (s: string) => !s || s.toLowerCase().includes("pendente...") || s === "Sem tema definido";
+            const hasActualFeed = mainFeed && !isPlaceholder(mainFeed);
+            const hasActualStory = mainStory && !isPlaceholder(mainStory);
+
+            if (hasActualFeed || hasActualStory) {
               contentBlocks.push(`•  Feed: ${mainFeed || 'Sem tema definido'}\n•  Stories: ${mainStory || 'Sem tema definido'}`);
             }
           }
@@ -261,6 +265,15 @@ serve(async (req: Request) => {
         let whatsappToSend = user.whatsapp;
         if (isTest) {
           whatsappToSend = reqBody.test_whatsapp;
+        }
+
+        const hasEvents = todaysEvents.length > 0;
+        const hasContent = contentBlocks.length > 0;
+
+        if (!hasEvents && !hasContent && !isTest) {
+          console.log(`Skipping user ${user.user_id} - No events and no content planned for today.`);
+          skipCount++;
+          continue;
         }
 
         // Send via Whatsapp Proxy

@@ -29,7 +29,7 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
         }
 
         setError(null); // Clear previous errors
-        const result = await createPixPayment(planId, email, cpf);
+        const result = await createPixPayment({ planId, email, cpf, fullName, phone });
 
         if (result.success) {
             setQrCodeImage(result.qrCode);

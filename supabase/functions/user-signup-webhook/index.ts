@@ -277,6 +277,10 @@ serve(async (req: Request) => {
       }
 
       if (justBecamePremium) {
+        if (actualPostPurchaseMessage) {
+          await sendMessage(actualPostPurchaseMessage, "Post-Purchase (Immediate)");
+        }
+
         // 1. Cancel pending TRIAL and POST_TRIAL messages
         const { error: cancelError } = await supabaseClient
           .from('scheduled_messages')

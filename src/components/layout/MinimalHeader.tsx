@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -44,13 +46,19 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
 
   const [cpf, setCpf] = useState(profile?.tax_id || "");
   const [phone, setPhone] = useState(profile?.phone || "");
+  const [email, setEmail] = useState(profile?.email || "");
+  const [fullName, setFullName] = useState(profile?.full_name || "");
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card">("pix");
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
 
   useEffect(() => {
-    if (profile?.tax_id) setCpf(profile.tax_id);
-    if (profile?.phone) setPhone(profile.phone);
+    if (profile) {
+      setCpf(profile.tax_id || '');
+      setPhone(profile.phone || '');
+      setEmail(profile.email || '');
+      setFullName(profile.full_name || '');
+    }
   }, [profile]);
 
   const { plans: premiumPlans, isLoading: plansLoading } = usePlans(true);
@@ -62,16 +70,16 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
   }, [setIsPurchaseOpen]);
 
   const handlePurchase = async (plan: any) => {
-    if (!cpf || !phone) {
+    if (!email || !cpf || !phone || !fullName) {
       import("sonner").then(({ toast }) => {
-        toast.error("Por favor, preencha o CPF e o Telefone para continuar.");
+        toast.error("Por favor, preencha o Nome Completo, Email, CPF e Telefone para continuar.");
       });
       return;
     }
 
     // Save to profile if changed
-    if (cpf !== profile?.tax_id || phone !== profile?.cellphone) {
-      await updateProfile.mutateAsync({ tax_id: cpf, cellphone: phone });
+    if (cpf !== profile?.tax_id || phone !== profile?.phone || fullName !== profile?.full_name) {
+      await updateProfile.mutateAsync({ tax_id: cpf, phone: phone, full_name: fullName });
     }
 
     if (paymentMethod === "pix") {
@@ -220,26 +228,51 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase opacity-70">CPF / CNPJ</label>
-                <input
-                  type="text"
-                  placeholder="000.000.000-00"
-                  value={cpf}
-                  onChange={(e) => setCpf(e.target.value)}
+                <Label htmlFor="fullName" className="text-xs font-medium text-muted-foreground uppercase opacity-70">Nome Completo</Label>
+                <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nome Completo"
                   className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase opacity-70">Telefone</label>
-                <input
-                  type="text"
-                  placeholder="(00) 00000-0000"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                <Label htmlFor="email" className="text-xs font-medium text-muted-foreground uppercase opacity-70">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all"
                 />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cpf" className="text-xs font-medium text-muted-foreground uppercase opacity-70">CPF / CNPJ</Label>
+                  <Input
+                    id="cpf"
+                    type="text"
+                    placeholder="000.000.000-00"
+                    value={cpf}
+                    onChange={(e) => setCpf(e.target.value)}
+                    className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-xs font-medium text-muted-foreground uppercase opacity-70">Telefone</Label>
+                  <Input
+                    id="phone"
+                    type="text"
+                    placeholder="(00) 00000-0000"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-background/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
+                </div>
               </div>
             </div>
 
@@ -280,8 +313,8 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 <MercadoPagoCheckout
                   planId={selectedPlan.id}
                   amount={selectedPlan.amount}
-                  email={profile?.email || ""}
-                  fullName={profile?.full_name || ""}
+                  email={email}
+                  fullName={fullName}
                   cpf={cpf}
                   phone={phone}
                   onSuccess={() => {
@@ -308,8 +341,8 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                 <MercadoPagoPixCheckout
                   planId={selectedPlan.id}
                   amount={selectedPlan.amount}
-                  email={profile?.email || ""}
-                  fullName={profile?.full_name || ""}
+                  email={email}
+                  fullName={fullName}
                   cpf={cpf}
                   phone={phone}
                   onSuccess={() => {

@@ -142,7 +142,7 @@ export default function Admin() {
         .from('scheduled_messages')
         .select('*, profiles(full_name, email)')
         .order('send_at', { ascending: false })
-        .limit(100);
+        .limit(500);
 
       if (error) throw error;
       setWaLogs(data || []);

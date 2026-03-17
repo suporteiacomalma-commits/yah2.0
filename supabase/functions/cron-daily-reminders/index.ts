@@ -60,7 +60,7 @@ serve(async (req: Request) => {
     // Fetch active/trialing users
     let query = supabase
       .from("profiles")
-      .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at, trial_started_at, trial_ends_at, timezone");
+      .select("user_id, full_name, whatsapp, subscription_plan, subscription_status, created_at, trial_started_at, trial_ends_at, timezone, next_renewal");
 
     if (isTest && testUserId) {
       query = query.eq("user_id", testUserId);
@@ -117,13 +117,16 @@ serve(async (req: Request) => {
         const diffTime = startOfTodayBRT.getTime() - startOfTrialDayBRT.getTime();
         const trialDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-        const isTrialExpired = (user.subscription_plan === 'trial' || status === 'trialing') && 
-                             user.trial_ends_at && 
-                             new Date(user.trial_ends_at) < new Date();
+        const isTrial = user.subscription_plan === 'trial' || status === 'trialing';
+        const isPremium = user.subscription_plan === 'premium' && status === 'active';
+
+        const now = new Date();
+        const trialExpired = isTrial && user.trial_ends_at && new Date(user.trial_ends_at) < now;
+        const premiumExpired = isPremium && user.next_renewal && new Date(user.next_renewal) < now;
 
         if (!isTest) {
-          if (isTrialExpired || (status !== 'active' && status !== 'trialing')) {
-            console.log(`Skipping user ${user.user_id} (Status: ${status}, Expired: ${isTrialExpired})`);
+          if (trialExpired || premiumExpired || (status !== 'active' && status !== 'trialing')) {
+            console.log(`Skipping user ${user.user_id} (Status: ${status}, Trial Exp: ${trialExpired}, Premium Exp: ${premiumExpired})`);
             skipCount++;
             continue;
           }

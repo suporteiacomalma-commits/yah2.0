@@ -60,24 +60,27 @@ export function useMercadoPago() {
         }
     };
 
-    const createPixPayment = async (planId: string, email: string, cpf: string) => {
+    const createPixPayment = async (params: { planId: string, email: string, cpf: string, fullName?: string, phone?: string }) => {
         setIsProcessing(true);
+        const requestBody = {
+            ...params,
+            paymentMethodId: "pix",
+            userId: user?.id,
+            installments: 1
+        };
+
+        console.log("Mercado Pago PIX Request payload:", requestBody);
+
         try {
             const { data, error } = await supabase.functions.invoke("mercado-pago-process", {
-                body: {
-                    planId,
-                    email,
-                    cpf,
-                    paymentMethodId: "pix",
-                    userId: user?.id,
-                    installments: 1
-                }
+                body: requestBody
             });
 
             if (error) throw error;
 
             // Handle handled backend errors (returned as 200 OK)
             if (data.success === false) {
+                console.error("Backend returned success=false:", data);
                 throw new Error(data.error || "Erro desconhecido do servidor");
             }
 

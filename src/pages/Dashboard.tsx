@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { expandRecurringEvents } from "@/components/calendar/utils/recurrenceUtils";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { DashboardBlockConfig, DEFAULT_DASHBOARD_BLOCKS } from "@/components/admin/DashboardBlockManager";
+import { Progress } from "@/components/ui/progress";
 
 
 // Phases to display in the dashboard (skipping 5 and 9 as per design/existing logic)
@@ -188,7 +189,7 @@ export default function Dashboard() {
   if (brandLoading || profileLoading || settingsLoading) {
     return (
       <div className="min-h-screen bg-[#141414] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#B6BC45]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#A2CC00]" />
       </div>
     );
   }
@@ -231,56 +232,128 @@ export default function Dashboard() {
 
           {blocks.filter(b => b.visible !== false).map(block => {
             switch (block.id) {
+              case 'date_header':
+                return (
+                  <div key={block.id} className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6 relative overflow-hidden">
+                    <div className="flex justify-between items-center mb-4">
+                      <p className="text-[10px] font-bold text-[#999] uppercase tracking-[0.2em]">
+                        {format(new Date(), "EEEE", { locale: ptBR })}
+                      </p>
+                      <p className="text-[10px] font-bold text-[#999] uppercase tracking-[0.2em] opacity-60">SEMANA</p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <h2 className="text-[18px] sm:text-[20px] font-semibold text-[#EEEDE9] flex items-center gap-2">
+                        <span>{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</span>
+                        <span className="text-[#999] opacity-30">·</span>
+                        <span>{format(new Date(), "yyyy")}</span>
+                      </h2>
+
+                      <div className="flex items-center gap-1.5">
+                        {['SEG', 'TER', 'QUA', 'QUI', 'SEX'].map((day, idx) => {
+                          const currentDayIdx = new Date().getDay(); // 0 Sunday, 1 Monday...
+                          // Map: idx 0(SEG)->1, 1(TER)->2, 2(QUA)->3, 3(QUI)->4, 4(SEX)->5
+                          const isToday = (idx + 1) === currentDayIdx;
+                          
+                          return (
+                            <div
+                              key={day}
+                              className={cn(
+                                "w-9 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all duration-300",
+                                isToday 
+                                  ? "bg-[#A2CC00] text-[#141414] shadow-[0_4px_12px_rgba(217,255,0,0.25)]" 
+                                  : "bg-[#252525] text-[#999] border border-[#333] hover:border-[#A2CC00]/30"
+                              )}
+                            >
+                              {day}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              case 'welcome_msg':
+                return (
+                  <div key={block.id} className="mb-2">
+                    <h1 className="text-2xl font-semibold text-[#EEEDE9] mb-2">
+                      Bom te ver por aqui, <span className="text-[#A2CC00]">{profile?.user_name || profile?.full_name?.split(' ')[0] || "Criador"}</span><span className="text-[#A2CC00]">!</span>
+                    </h1>
+                    <p className="text-sm text-[#999]">Vamos continuar estruturando sua rotina, marca e presença digital.</p>
+                  </div>
+                );
+              case 'daily_progress':
+                const totalTasksCount = todaysTasks.length;
+                const completedTasksCount = todaysTasks.filter(t => t.status === "Concluído").length;
+                const remainingTasksCount = totalTasksCount - completedTasksCount;
+                const progressPercent = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
+
+                return (
+                  <div key={block.id} className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6 relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-[10px] font-bold text-[#999] uppercase tracking-[0.2em] mb-1">PROGRESSO DO DIA</p>
+                        <h2 className="text-[18px] font-semibold text-[#EEEDE9]">{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</h2>
+                      </div>
+                      <div className="text-[42px] font-black text-[#A2CC00] leading-none tracking-tighter">
+                        {progressPercent}%
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 mb-4">
+                      <Progress value={progressPercent} className="h-2 bg-[#252525] [&>div]:bg-[#A2CC00]" />
+                    </div>
+
+                    <div className="flex gap-4 text-[13px] font-medium text-[#999]">
+                      <span><strong className="text-[#EEEDE9]">{completedTasksCount}</strong> feitas</span>
+                      <span><strong className="text-[#EEEDE9]">{remainingTasksCount}</strong> restantes</span>
+                      <span><strong className="text-[#EEEDE9]">{totalTasksCount}</strong> total</span>
+                    </div>
+                  </div>
+                );
               case 'header':
                 return (
                   <div key={block.id}>
-                              {/* Header - Boas Vindas */}
-          <section className="space-y-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-[#EEEDE9] mb-2">
-                Bom te ver por aqui, <span className="text-[#B6BC45]">{profile?.user_name || profile?.full_name?.split(' ')[0] || "Criador"}</span><span className="text-[#B6BC45]">!</span>
-              </h1>
-              <p className="text-sm text-[#999]">Vamos continuar estruturando sua rotina, marca e presença digital.</p>
-            </div>
+                    {/* Header - Jornada e Dicas (Sem boas vindas) */}
+                    <section className="space-y-4">
+                      {!isJourneyComplete && (
+                        <button
+                          onClick={handleContinueJourney}
+                          className="w-full font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 text-[15px] bg-gradient-to-br from-[#A2CC00] to-[#A6E600] text-[#141414] shadow-[0_4px_12px_rgba(217,255,0,0.2)] hover:shadow-[0_6px_16px_rgba(217,255,0,0.3)] hover:-translate-y-0.5"
+                        >
+                          {getContinueButtonText()}
+                        </button>
+                      )}
 
-            {!isJourneyComplete && (
-              <button
-                onClick={handleContinueJourney}
-                className="w-full font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 text-[15px] bg-gradient-to-br from-[#B6BC45] to-[#9DA139] text-[#141414] shadow-[0_4px_12px_rgba(182,188,69,0.2)] hover:shadow-[0_6px_16px_rgba(182,188,69,0.3)] hover:-translate-y-0.5"
-              >
-                {getContinueButtonText()}
-              </button>
-            )}
+                      {isJourneyComplete && (
+                        <div className="bg-[#1E1E1E] border border-[#A2CC00]/20 rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+                          <button
+                            onClick={() => setTipsExpanded(!tipsExpanded)}
+                            className="w-full flex items-center justify-between p-6 hover:bg-white/[0.02] transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-[#A2CC00]/10 rounded-lg flex items-center justify-center">
+                                <Sparkles className="w-5 h-5 text-[#A2CC00]" />
+                              </div>
+                              <h3 className="text-[17px] font-bold text-[#EEEDE9]">Confira as próximas dicas</h3>
+                            </div>
+                            {tipsExpanded ? (
+                              <ChevronUp className="w-5 h-5 text-[#999]" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-[#999]" />
+                            )}
+                          </button>
 
-            {isJourneyComplete && (
-              <div className="bg-[#1E1E1E] border border-[#B6BC45]/20 rounded-2xl overflow-hidden mt-4 animate-in fade-in slide-in-from-top-4 duration-500">
-                <button
-                  onClick={() => setTipsExpanded(!tipsExpanded)}
-                  className="w-full flex items-center justify-between p-6 hover:bg-white/[0.02] transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-[#B6BC45]/10 rounded-lg flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-[#B6BC45]" />
-                    </div>
-                    <h3 className="text-[17px] font-bold text-[#EEEDE9]">Confira as próximas dicas</h3>
-                  </div>
-                  {tipsExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-[#999]" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-[#999]" />
-                  )}
-                </button>
-
-                {tipsExpanded && (
-                  <div className="px-6 pb-6 space-y-4 text-[14px] text-[#999] leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300">
-                    <p className="border-l-2 border-[#B6BC45]/30 pl-4 py-1 text-[#EEEDE9]/90 font-medium">
-                      {currentTip}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
+                          {tipsExpanded && (
+                            <div className="px-6 pb-6 space-y-4 text-[14px] text-[#999] leading-relaxed animate-in fade-in slide-in-from-top-2 duration-300">
+                              <p className="border-l-2 border-[#A2CC00]/30 pl-4 py-1 text-[#EEEDE9]/90 font-medium">
+                                {currentTip}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </section>
                   </div>
                 );
               case 'actions':
@@ -290,26 +363,26 @@ export default function Dashboard() {
           <section className="grid grid-cols-2 gap-4">
             <Link
               to="/assistant"
-              className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6 text-center hover:-translate-y-1 hover:border-[#B6BC45] hover:shadow-[0_8px_24px_rgba(182,188,69,0.15)] transition-all duration-300 group relative overflow-hidden"
+              className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6 text-center hover:-translate-y-1 hover:border-[#A2CC00] hover:shadow-[0_8px_24px_rgba(217,255,0,0.15)] transition-all duration-300 group relative overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[#B6BC45] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[#A2CC00] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <span className="text-4xl block mb-3">🧠</span>
               <h3 className="text-[15px] font-semibold text-[#EEEDE9] mb-1.5">Assistente</h3>
               <p className="text-xs text-[#999] mb-3 leading-snug">Fale, organize e receba avisos</p>
-              <span className="inline-block bg-[#2A2A2A] border border-[#3A3A3A] text-[#B6BC45] text-[13px] font-medium px-4 py-2 rounded-lg group-hover:bg-[#B6BC45] group-hover:text-[#141414] transition-colors">
+              <span className="inline-block bg-[#2A2A2A] border border-[#3A3A3A] text-[#A2CC00] text-[13px] font-medium px-4 py-2 rounded-lg group-hover:bg-[#A2CC00] group-hover:text-[#141414] transition-colors">
                 Abrir
               </span>
             </Link>
 
             <Link
               to="/ideia-inbox"
-              className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6 text-center hover:-translate-y-1 hover:border-[#B6BC45] hover:shadow-[0_8px_24px_rgba(182,188,69,0.15)] transition-all duration-300 group relative overflow-hidden"
+              className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6 text-center hover:-translate-y-1 hover:border-[#A2CC00] hover:shadow-[0_8px_24px_rgba(217,255,0,0.15)] transition-all duration-300 group relative overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[#B6BC45] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-[#A2CC00] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <span className="text-4xl block mb-3">💡</span>
               <h3 className="text-[15px] font-semibold text-[#EEEDE9] mb-1.5">Ideias</h3>
               <p className="text-xs text-[#999] mb-3 leading-snug">Alívio cognitivo + organização</p>
-              <span className="inline-block bg-[#2A2A2A] border border-[#3A3A3A] text-[#B6BC45] text-[13px] font-medium px-4 py-2 rounded-lg group-hover:bg-[#B6BC45] group-hover:text-[#141414] transition-colors">
+              <span className="inline-block bg-[#2A2A2A] border border-[#3A3A3A] text-[#A2CC00] text-[13px] font-medium px-4 py-2 rounded-lg group-hover:bg-[#A2CC00] group-hover:text-[#141414] transition-colors">
                 Capturar
               </span>
             </Link>
@@ -322,14 +395,14 @@ export default function Dashboard() {
                               {/* Seu Dia Hoje */}
           <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[12px] font-bold text-[#B6BC45] uppercase tracking-widest">SEU DIA HOJE</h2>
+              <h2 className="text-[12px] font-bold text-[#A2CC00] uppercase tracking-widest">SEU DIA HOJE</h2>
               <span className="text-[14px] text-[#999] font-medium">{format(new Date(), "dd 'de' MMMM", { locale: ptBR })}</span>
             </div>
 
             <div className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-1 min-h-[120px] relative overflow-hidden flex flex-col justify-center">
               {tasksLoading ? (
                 <div className="flex justify-center py-6">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#B6BC45]" />
+                  <Loader2 className="w-6 h-6 animate-spin text-[#A2CC00]" />
                 </div>
               ) : todaysTasks.length > 0 ? (
                 <div className="space-y-1">
@@ -345,7 +418,7 @@ export default function Dashboard() {
                       >
                         <div className={cn(
                           "w-[22px] h-[22px] min-w-[22px] border-2 rounded-[6px] flex items-center justify-center transition-all duration-300",
-                          isCompleted ? "bg-[#B6BC45] border-[#B6BC45]" : "border-[#3A3A3A] group-hover:border-[#B6BC45]/50"
+                          isCompleted ? "bg-[#A2CC00] border-[#A2CC00]" : "border-[#3A3A3A] group-hover:border-[#A2CC00]/50"
                         )}>
                           {isCompleted && <Check className="w-3.5 h-3.5 text-[#141414] stroke-[4]" />}
                         </div>
@@ -358,7 +431,7 @@ export default function Dashboard() {
                           </span>
                           {timeStr && (
                             <div className="flex items-center gap-1.5 text-[11px] text-[#999] font-semibold mt-0.5">
-                              <Clock className="w-3 h-3 text-[#B6BC45]" />
+                              <Clock className="w-3 h-3 text-[#A2CC00]" />
                               {timeStr}
                             </div>
                           )}
@@ -444,8 +517,8 @@ export default function Dashboard() {
                     key={phaseId}
                     className={cn(
                       "group bg-gradient-to-br from-[#1E1E1E] to-[#252525] border border-[#2A2A2A] rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:translate-x-1",
-                      isCurrent && "border-[#B6BC45]/50 shadow-[0_0_15px_rgba(182,188,69,0.05)]",
-                      !isLocked && "hover:border-[#B6BC45] cursor-pointer"
+                      isCurrent && "border-[#A2CC00]/50 shadow-[0_0_15px_rgba(217,255,0,0.05)]",
+                      !isLocked && "hover:border-[#A2CC00] cursor-pointer"
                     )}
                     onClick={() => {
                       if (isLocked) {
@@ -456,7 +529,7 @@ export default function Dashboard() {
                     }}
                   >
                     {!isLocked && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#B6BC45] opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#A2CC00] opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
 
                     <div className="flex items-center mb-3">
@@ -465,7 +538,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <div className="text-[15px] font-semibold text-[#EEEDE9]">{displayTitle}</div>
-                        <div className="text-xs text-[#B6BC45] uppercase tracking-wider font-bold opacity-80">{displayShortTitle}</div>
+                        <div className="text-xs text-[#A2CC00] uppercase tracking-wider font-bold opacity-80">{displayShortTitle}</div>
                       </div>
                     </div>
 
@@ -483,24 +556,24 @@ export default function Dashboard() {
 
                     <div className="bg-[#2A2A2A] h-1.5 rounded-full overflow-hidden mb-3">
                       <div
-                        className="h-full bg-gradient-to-r from-[#B6BC45] to-[#C8CF5A] rounded-full transition-all duration-1000 ease-out"
+                        className="h-full bg-gradient-to-r from-[#A2CC00] to-[#EAFF70] rounded-full transition-all duration-1000 ease-out"
                         style={{ width: progressWidth }}
                       />
                     </div>
 
                     {isCurrent && (
-                      <p className="text-xs text-[#B6BC45] font-medium mb-2">Próximo passo: Continuar progresso</p>
+                      <p className="text-xs text-[#A2CC00] font-medium mb-2">Próximo passo: Continuar progresso</p>
                     )}
 
                     <div className="flex gap-2 mt-3">
                       {!isLocked ? (
                         <>
                           {isCompleted ? (
-                            <button className="flex-1 bg-[#2A2A2A] border border-[#3A3A3A] text-[#EEEDE9] text-[13px] py-2.5 rounded-lg hover:bg-[#B6BC45] hover:text-[#141414] hover:border-[#B6BC45] transition-colors font-medium">
+                            <button className="flex-1 bg-[#2A2A2A] border border-[#3A3A3A] text-[#EEEDE9] text-[13px] py-2.5 rounded-lg hover:bg-[#A2CC00] hover:text-[#141414] hover:border-[#A2CC00] transition-colors font-medium">
                               {(phaseId === 3 || phaseId === 4) ? "Organizar" : "Ver documento"}
                             </button>
                           ) : (
-                            <button className="flex-1 bg-[#B6BC45] border border-[#B6BC45] text-[#141414] text-[13px] py-2.5 rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-all font-semibold">
+                            <button className="flex-1 bg-[#A2CC00] border border-[#A2CC00] text-[#141414] text-[13px] py-2.5 rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-all font-semibold">
                               {(phaseId === 3 || phaseId === 4) ? "Organizar" :
                                 phaseId === 6 ? "Entrar" :
                                   phaseId === 7 ? "Criar" :
@@ -533,7 +606,7 @@ export default function Dashboard() {
                   <div key={block.id}>
                               {/* Hoje você pode falar - Dynamic Content from Weekly Planner */}
           <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5">
-            <h2 className="text-lg font-semibold text-[#B6BC45] mb-4">Hoje você pode falar no digital sobre:</h2>
+            <h2 className="text-lg font-semibold text-[#A2CC00] mb-4">Hoje você pode falar no digital sobre:</h2>
 
             {(() => {
               // Get current day index (0-6)
@@ -555,7 +628,7 @@ export default function Dashboard() {
                 return (
                   <div className="py-4 text-center text-[#999] text-sm italic">
                     Nenhum conteúdo planejado para hoje.
-                    <button onClick={() => navigate('/phase/3')} className="ml-2 text-[#B6BC45] hover:underline underline-offset-4">
+                    <button onClick={() => navigate('/phase/3')} className="ml-2 text-[#A2CC00] hover:underline underline-offset-4">
                       Ir para o Planejador
                     </button>
                   </div>
@@ -567,7 +640,7 @@ export default function Dashboard() {
                   {/* Feed Section */}
                   <div className="border-b border-[#2A2A2A] pb-4 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-sm font-semibold text-[#B6BC45]">Feed</div>
+                      <div className="text-sm font-semibold text-[#A2CC00]">Feed</div>
                       {hasFeed && (
                         <span className="text-[10px] bg-[#2A2A2A] text-[#999] px-2 py-0.5 rounded border border-[#3A3A3A]">
                           {feed?.format || 'Formato indefinido'}
@@ -580,8 +653,8 @@ export default function Dashboard() {
                         className="cursor-pointer hover:bg-white/5 p-2 -m-2 rounded-lg transition-colors group"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="text-[14px] text-[#EEEDE9] font-medium mb-1 group-hover:text-[#B6BC45] transition-colors">{feed?.headline || 'Sem título definido'}</div>
-                          <span className="text-[10px] text-[#B6BC45] opacity-0 group-hover:opacity-100 transition-opacity">Editar</span>
+                          <div className="text-[14px] text-[#EEEDE9] font-medium mb-1 group-hover:text-[#A2CC00] transition-colors">{feed?.headline || 'Sem título definido'}</div>
+                          <span className="text-[10px] text-[#A2CC00] opacity-0 group-hover:opacity-100 transition-opacity">Editar</span>
                         </div>
                         <div className="text-[13px] text-[#999]">
                           <span className="opacity-70">Intenção:</span> {feed?.intention || '-'}
@@ -595,7 +668,7 @@ export default function Dashboard() {
                   {/* Stories Section */}
                   <div className="border-b border-[#2A2A2A] pb-4 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-sm font-semibold text-[#B6BC45]">Stories</div>
+                      <div className="text-sm font-semibold text-[#A2CC00]">Stories</div>
                       {hasStories && (
                         <span className="text-[10px] bg-[#2A2A2A] text-[#999] px-2 py-0.5 rounded border border-[#3A3A3A]">
                           {stories?.format || 'Formato indefinido'}
@@ -608,8 +681,8 @@ export default function Dashboard() {
                         className="cursor-pointer hover:bg-white/5 p-2 -m-2 rounded-lg transition-colors group"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="text-[14px] text-[#EEEDE9] font-medium mb-1 group-hover:text-[#B6BC45] transition-colors">{stories?.headline || 'Sem título definido'}</div>
-                          <span className="text-[10px] text-[#B6BC45] opacity-0 group-hover:opacity-100 transition-opacity">Editar</span>
+                          <div className="text-[14px] text-[#EEEDE9] font-medium mb-1 group-hover:text-[#A2CC00] transition-colors">{stories?.headline || 'Sem título definido'}</div>
+                          <span className="text-[10px] text-[#A2CC00] opacity-0 group-hover:opacity-100 transition-opacity">Editar</span>
                         </div>
                         <div className="text-[13px] text-[#999]">
                           <span className="opacity-70">Intenção:</span> {stories?.intention || '-'}
@@ -631,18 +704,18 @@ export default function Dashboard() {
                               {/* Calendar Section - Using MiniCalendar Component */}
           <Link
             to="/calendar"
-            className="flex items-center justify-between gap-4 bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5 hover:border-[#B6BC45] hover:shadow-[0_4px_16px_rgba(182,188,69,0.15)] transition-all duration-300 group"
+            className="flex items-center justify-between gap-4 bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5 hover:border-[#A2CC00] hover:shadow-[0_4px_16px_rgba(217,255,0,0.15)] transition-all duration-300 group"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-[#2A2A2A] border border-[#3A3A3A] rounded-xl flex items-center justify-center group-hover:bg-[#B6BC45] group-hover:text-[#141414] group-hover:border-[#B6BC45] transition-colors text-[#B6BC45]">
+              <div className="w-12 h-12 bg-[#2A2A2A] border border-[#3A3A3A] rounded-xl flex items-center justify-center group-hover:bg-[#A2CC00] group-hover:text-[#141414] group-hover:border-[#A2CC00] transition-colors text-[#A2CC00]">
                 <CalendarDays className="w-6 h-6" />
               </div>
               <div className="text-left">
-                <h3 className="text-[15px] font-semibold text-[#EEEDE9] mb-0.5 group-hover:text-[#B6BC45] transition-colors">Calendário - gestão de rotinas</h3>
+                <h3 className="text-[15px] font-semibold text-[#EEEDE9] mb-0.5 group-hover:text-[#A2CC00] transition-colors">Calendário - gestão de rotinas</h3>
                 <p className="text-xs text-[#999]">Visão geral, rotinas, compromisso e tarefas</p>
               </div>
             </div>
-            <span className="bg-[#B6BC45] text-[#141414] text-[13px] font-bold px-4 py-2 rounded-lg hover:shadow-lg hover:scale-105 transition-all">
+            <span className="bg-[#A2CC00] text-[#141414] text-[13px] font-bold px-4 py-2 rounded-lg hover:shadow-lg hover:scale-105 transition-all">
               Criar
             </span>
           </Link>
@@ -673,7 +746,7 @@ export default function Dashboard() {
             <p className="text-[13px] text-[#999] mb-4">Descubra todas as funcionalidades e otimize sua jornada</p>
             <button
               onClick={() => navigate("/explore-map")}
-              className="bg-[#B6BC45] text-[#141414] font-semibold py-2.5 px-6 rounded-lg text-sm hover:scale-105 hover:shadow-[0_4px_16px_rgba(182,188,69,0.3)] transition-all duration-200"
+              className="bg-[#A2CC00] text-[#141414] font-semibold py-2.5 px-6 rounded-lg text-sm hover:scale-105 hover:shadow-[0_4px_16px_rgba(217,255,0,0.3)] transition-all duration-200"
             >
               Explorar Mapa
             </button>

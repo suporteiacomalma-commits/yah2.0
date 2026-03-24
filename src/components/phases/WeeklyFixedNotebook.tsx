@@ -1177,15 +1177,15 @@ ${block.caption || 'Sem legenda.'}`;
             <div className="space-y-8 animate-in slide-in-from-right-4 duration-500 max-w-2xl mx-auto relative">
                 {isGenerating && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                        <div className="bg-[#1E1E1E] border border-[#B6BC45]/30 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 mx-4 animate-in fade-in zoom-in duration-300">
+                        <div className="bg-[#1E1E1E] border border-[#A2CC00]/30 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center space-y-6 mx-4 animate-in fade-in zoom-in duration-300">
                             <div className="relative">
-                                <div className="absolute inset-0 bg-[#B6BC45]/20 blur-xl rounded-full" />
-                                <Loader2 className="w-16 h-16 text-[#B6BC45] animate-spin mx-auto relative z-10" />
+                                <div className="absolute inset-0 bg-[#A2CC00]/20 blur-xl rounded-full" />
+                                <Loader2 className="w-16 h-16 text-[#A2CC00] animate-spin mx-auto relative z-10" />
                             </div>
                             <div className="space-y-2">
                                 <h3 className="text-xl font-bold text-[#EEEDE9]">Gerando sua estrutura de 4 semanas...</h3>
                                 <p className="text-sm text-[#999] leading-relaxed">
-                                    Por favor, <span className="text-[#B6BC45] font-semibold">não saia desta tela ou feche o app</span> para garantir que tudo seja gerado corretamente.
+                                    Por favor, <span className="text-[#A2CC00] font-semibold">não saia desta tela ou feche o app</span> para garantir que tudo seja gerado corretamente.
                                 </p>
                             </div>
                         </div>

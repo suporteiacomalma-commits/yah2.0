@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export type DashboardBlockId = 
+  | 'date_header'
+  | 'welcome_msg'
+  | 'daily_progress'
   | 'header'
   | 'actions'
   | 'today_tasks'
@@ -23,14 +26,17 @@ export interface DashboardBlockConfig {
 }
 
 export const DEFAULT_DASHBOARD_BLOCKS: DashboardBlockConfig[] = [
-  { id: 'header', title: 'Boas Vindas + Dicas', visible: true, order: 0 },
-  { id: 'actions', title: 'Ícones Principais (Assistente, Ideias)', visible: true, order: 1 },
-  { id: 'today_tasks', title: 'Seu Dia Hoje', visible: true, order: 2 },
-  { id: 'journey', title: 'Jornada Digital (Fases)', visible: true, order: 3 },
-  { id: 'weekly_planner', title: 'Hoje você pode falar (Planejamento Semanal)', visible: true, order: 4 },
-  { id: 'calendar_link', title: 'Link para o Calendario', visible: true, order: 5 },
-  { id: 'mini_calendar', title: 'MiniCalendário (Mês)', visible: true, order: 6 },
-  { id: 'map', title: 'Mapa Yah', visible: true, order: 7 },
+  { id: 'date_header', title: 'Cabeçalho de Data (Calendário Semanal)', visible: true, order: 0 },
+  { id: 'welcome_msg', title: 'Mensagem de Boas-Vindas', visible: true, order: 1 },
+  { id: 'daily_progress', title: 'Progresso do Dia (Porcentagem)', visible: true, order: 2 },
+  { id: 'header', title: 'Jornada e Dicas', visible: true, order: 3 },
+  { id: 'actions', title: 'Ícones Principais (Assistente, Ideias)', visible: true, order: 4 },
+  { id: 'today_tasks', title: 'Seu Dia Hoje', visible: true, order: 5 },
+  { id: 'journey', title: 'Jornada Digital (Fases)', visible: true, order: 6 },
+  { id: 'weekly_planner', title: 'Hoje você pode falar (Planejamento Semanal)', visible: true, order: 7 },
+  { id: 'calendar_link', title: 'Link para o Calendario', visible: true, order: 8 },
+  { id: 'mini_calendar', title: 'MiniCalendário (Mês)', visible: true, order: 9 },
+  { id: 'map', title: 'Mapa Yah', visible: true, order: 10 },
 ];
 
 export function DashboardBlockManager() {
@@ -172,7 +178,7 @@ export function DashboardBlockManager() {
           )})}
         </div>
 
-        <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2 bg-[#B6BC45] hover:bg-[#9DA139] text-[#141414]">
+        <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2 bg-[#A2CC00] hover:bg-[#A6E600] text-[#141414]">
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Salvar Configurações da Dashboard
         </Button>

@@ -45,8 +45,20 @@ import {
     Instagram,
     Sparkles,
     Rocket,
-    Briefcase
+    Briefcase,
+    XCircle
 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useSubscription } from "@/hooks/useSubscription";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -504,9 +516,31 @@ export default function Profile() {
 }
 
 function SubscriptionSection() {
-    const { subscription, isLoading: subLoading } = useSubscription();
+    const { subscription, isLoading: subLoading, refetch } = useSubscription();
     const [transactions, setTransactions] = useState<any[]>([]);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
+
+    const handleCancelSubscription = async () => {
+        setIsCancelling(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('cancel-subscription');
+
+            if (error) throw error;
+
+            if (data?.success) {
+                toast.success("Assinatura cancelada com sucesso!");
+                if (refetch) refetch();
+            } else {
+                throw new Error(data?.error || "Erro ao cancelar assinatura");
+            }
+        } catch (error: any) {
+            console.error("Error cancelling subscription:", error);
+            toast.error(error.message || "Erro ao processar cancelamento. Tente novamente ou contate o suporte.");
+        } finally {
+            setIsCancelling(false);
+        }
+    };
 
     useEffect(() => {
         const fetchTransactions = async () => {
@@ -581,75 +615,105 @@ function SubscriptionSection() {
             <CardContent className="space-y-6">
                 {/* Current Plan Info */}
                 <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-accent/5 border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <div className="p-6 rounded-2xl bg-white/5 border border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 transition-all hover:bg-white/[0.07]">
+                        <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-lg shadow-primary/5">
                                 {subLoading ? (
-                                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
                                 ) : (
-                                    <Target className="w-5 h-5 text-primary" />
+                                    <Target className="w-6 h-6 text-primary" />
                                 )}
                             </div>
-                            <div>
-                                <h4 className="font-bold text-lg capitalize">
+                            <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <h4 className="font-bold text-xl tracking-tight">
+                                        {subLoading ? (
+                                            <span className="animate-pulse bg-white/10 h-7 w-32 block rounded" />
+                                        ) : (
+                                            (!subscription || subscription.plan === 'trial') ? 'Período de Teste' :
+                                                subscription.plan === 'premium' ? 'Plano Premium' :
+                                                    `Plano ${subscription.plan}`
+                                        )}
+                                    </h4>
                                     {subLoading ? (
-                                        <span className="animate-pulse bg-white/10 h-6 w-32 block rounded" />
+                                        <span className="animate-pulse bg-white/10 h-5 w-16 block rounded" />
                                     ) : (
-                                        (!subscription || subscription.plan === 'trial') ? 'Período de Teste' :
-                                            subscription.plan === 'premium' ? 'Plano Premium' :
-                                                `Plano ${subscription.plan}`
+                                        <span className={cn(
+                                            "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                                            subscription?.status === 'active' ? "bg-green-500/10 text-green-500 border-green-500/20" : 
+                                            subscription?.status === 'cancelled' ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                                            "bg-red-500/10 text-red-500 border-red-500/20"
+                                        )}>
+                                            {subscription?.status === 'active' ? 'Ativo' : 
+                                             subscription?.status === 'cancelled' ? 'Cancelado' :
+                                             subscription?.status === 'expired' ? 'Expirado' : 'Inativo'}
+                                        </span>
                                     )}
-                                </h4>
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                        <span>Status:</span>
-                                        {subLoading ? (
-                                            <span className="animate-pulse bg-white/10 h-4 w-16 block rounded" />
-                                        ) : (
-                                            <span className={cn(
-                                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
-                                                subscription?.status === 'active' ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
-                                            )}>
-                                                {subscription?.status === 'active' ? 'Ativo' : subscription?.status === 'expired' ? 'Expirado' : 'Inativo'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                        {subLoading ? (
-                                            <span className="animate-pulse bg-white/10 h-3 w-40 block rounded mt-1" />
-                                        ) : (
-                                            <>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    {subLoading ? (
+                                        <span className="animate-pulse bg-white/10 h-4 w-40 block rounded mt-1" />
+                                    ) : (
+                                        <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-lg border border-white/5">
+                                            <Info className="w-3.5 h-3.5 text-muted-foreground/60" />
+                                            <span>
                                                 {subscription?.plan === 'premium' ? 'Renova em:' : 'Expira em:'}
-                                                <span className="text-foreground font-medium">
-                                                    {renewalDate ? format(new Date(renewalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Vitalício / Indefinido'}
+                                                <span className="text-foreground font-semibold ml-1">
+                                                    {renewalDate ? format(new Date(renewalDate), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Vitalício'}
                                                 </span>
-                                            </>
-                                        )}
-                                    </div>
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
-                        <Button
-                            variant="outline"
-                            className="gap-2 border-primary/20 hover:bg-primary/5 text-primary"
-                            onClick={handleContactSupport}
-                        >
-                            <Mail className="w-4 h-4" />
-                            Suporte Financeiro
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                            <Button
+                                variant="outline"
+                                className="h-11 px-6 gap-2 border-white/10 hover:bg-white/10 text-foreground transition-all active:scale-95"
+                                onClick={handleContactSupport}
+                            >
+                                <Mail className="w-4 h-4 text-primary" />
+                                Suporte
+                            </Button>
+
+                            {subscription?.plan === 'premium' && subscription?.status === 'active' && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            disabled={isCancelling}
+                                            className="h-11 px-4 gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all active:scale-95"
+                                        >
+                                            {isCancelling ? <Loader2 className="w-4 h-4 animate-spin text-destructive" /> : <XCircle className="w-4 h-4" />}
+                                            Cancelar Assinatura
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="bg-[#0f1115] border-white/10 shadow-2xl">
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle className="text-xl font-bold">Cancelar renovação automática?</AlertDialogTitle>
+                                            <AlertDialogDescription className="text-muted-foreground leading-relaxed pt-2">
+                                                Você continuará tendo acesso a todos os recursos <span className="text-primary font-bold">Premium</span> até o final do período atual em <span className="text-white font-medium">{renewalDate ? format(new Date(renewalDate), "dd/MM/yyyy") : ''}</span>. 
+                                                <br /><br />
+                                                Nenhuma nova cobrança será realizada após o cancelamento.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter className="pt-4">
+                                            <AlertDialogCancel className="bg-white/5 border-white/10 hover:bg-white/10 transition-all">Manter Assinatura</AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={handleCancelSubscription}
+                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all"
+                                            >
+                                                Confirmar Cancelamento
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                        </div>
                     </div>
 
-                    {subscription?.plan === 'premium' && subscription?.status === 'active' && (
-                        <div className="flex items-start gap-3 text-xs text-muted-foreground bg-blue-500/5 p-4 rounded-xl border border-blue-500/10">
-                            <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                            <p className="leading-relaxed">
-                                <span className="text-blue-400 font-bold block mb-1">Renovação Automática</span>
-                                Sua assinatura será renovada automaticamente no dia {renewalDate ? format(new Date(renewalDate), "dd/MM/yyyy") : ''}.
-                                Caso não deseje continuar, você pode cancelar a qualquer momento antes dessa data para evitar cobranças futuras.
-                            </p>
-                        </div>
-                    )}
                 </div>
 
                 {/* History */}

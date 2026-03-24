@@ -13,6 +13,8 @@ import { ptBR } from "date-fns/locale";
 import { MiniCalendar } from "@/components/workspace/MiniCalendar";
 import { cn } from "@/lib/utils";
 import { expandRecurringEvents } from "@/components/calendar/utils/recurrenceUtils";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { DashboardBlockConfig, DEFAULT_DASHBOARD_BLOCKS } from "@/components/admin/DashboardBlockManager";
 
 
 // Phases to display in the dashboard (skipping 5 and 9 as per design/existing logic)
@@ -42,6 +44,7 @@ export default function Dashboard() {
   const { profile, isLoading: profileLoading } = useProfile();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { getSetting, isLoading: settingsLoading } = useSystemSettings();
 
   const [todaysTasks, setTodaysTasks] = useState<any[]>([]);
   const [tasksLoading, setTasksLoading] = useState(true);
@@ -182,7 +185,7 @@ export default function Dashboard() {
     return `Continuar: ${phaseNames[nextPhaseId] || "Jornada"}`;
   };
 
-  if (brandLoading || profileLoading) {
+  if (brandLoading || profileLoading || settingsLoading) {
     return (
       <div className="min-h-screen bg-[#141414] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-[#B6BC45]" />
@@ -195,6 +198,27 @@ export default function Dashboard() {
   const dailyTipIndex = dayOfYear % DAILY_TIPS.length;
   const currentTip = DAILY_TIPS[dailyTipIndex];
 
+
+  const configSetting = getSetting("dashboard_blocks_config");
+  let blocks = DEFAULT_DASHBOARD_BLOCKS;
+  if (configSetting?.value) {
+    try {
+      const parsed = JSON.parse(configSetting.value) as DashboardBlockConfig[];
+      const merged = parsed.map(block => {
+        const defaultBlock = DEFAULT_DASHBOARD_BLOCKS.find(b => b.id === block.id);
+        return { ...defaultBlock, ...block };
+      });
+      DEFAULT_DASHBOARD_BLOCKS.forEach(defaultBlock => {
+        if (!merged.find(b => b.id === defaultBlock.id)) {
+          merged.push({ ...defaultBlock, order: merged.length });
+        }
+      });
+      blocks = merged.sort((a, b) => a.order - b.order);
+    } catch {
+      // fallback
+    }
+  }
+
   return (
     <MinimalLayout brandName={brand?.name}>
       {/* 
@@ -204,7 +228,13 @@ export default function Dashboard() {
       <div className="flex-1 bg-[#141414] text-[#EEEDE9] font-sans p-5 sm:p-6 pb-20">
         <div className="max-w-[480px] mx-auto w-full space-y-8 animate-fade-in">
 
-          {/* Header - Boas Vindas */}
+
+          {blocks.filter(b => b.visible !== false).map(block => {
+            switch (block.id) {
+              case 'header':
+                return (
+                  <div key={block.id}>
+                              {/* Header - Boas Vindas */}
           <section className="space-y-4">
             <div>
               <h1 className="text-2xl font-semibold text-[#EEEDE9] mb-2">
@@ -251,8 +281,12 @@ export default function Dashboard() {
               </div>
             )}
           </section>
-
-          {/* Ícones Principais */}
+                  </div>
+                );
+              case 'actions':
+                return (
+                  <div key={block.id}>
+                              {/* Ícones Principais */}
           <section className="grid grid-cols-2 gap-4">
             <Link
               to="/assistant"
@@ -280,8 +314,12 @@ export default function Dashboard() {
               </span>
             </Link>
           </section>
-
-          {/* Seu Dia Hoje */}
+                  </div>
+                );
+              case 'today_tasks':
+                return (
+                  <div key={block.id}>
+                              {/* Seu Dia Hoje */}
           <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-[12px] font-bold text-[#B6BC45] uppercase tracking-widest">SEU DIA HOJE</h2>
@@ -342,8 +380,12 @@ export default function Dashboard() {
               )}
             </div>
           </section>
-
-          {/* Jornada Digital */}
+                  </div>
+                );
+              case 'journey':
+                return (
+                  <div key={block.id}>
+                              {/* Jornada Digital */}
           <section id="journey" className="space-y-4">
             <h2 className="text-lg font-semibold text-[#EEEDE9]">Fases da sua jornada digital</h2>
 
@@ -484,8 +526,12 @@ export default function Dashboard() {
               })}
             </div>
           </section>
-
-          {/* Hoje você pode falar - Dynamic Content from Weekly Planner */}
+                  </div>
+                );
+              case 'weekly_planner':
+                return (
+                  <div key={block.id}>
+                              {/* Hoje você pode falar - Dynamic Content from Weekly Planner */}
           <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5">
             <h2 className="text-lg font-semibold text-[#B6BC45] mb-4">Hoje você pode falar no digital sobre:</h2>
 
@@ -577,10 +623,12 @@ export default function Dashboard() {
               );
             })()}
           </section>
-
-
-
-          {/* Calendar Section - Using MiniCalendar Component */}
+                  </div>
+                );
+              case 'calendar_link':
+                return (
+                  <div key={block.id}>
+                              {/* Calendar Section - Using MiniCalendar Component */}
           <Link
             to="/calendar"
             className="flex items-center justify-between gap-4 bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5 hover:border-[#B6BC45] hover:shadow-[0_4px_16px_rgba(182,188,69,0.15)] transition-all duration-300 group"
@@ -598,8 +646,12 @@ export default function Dashboard() {
               Criar
             </span>
           </Link>
-
-          <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-1 overflow-hidden">
+                  </div>
+                );
+              case 'mini_calendar':
+                return (
+                  <div key={block.id}>
+                              <section className="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-1 overflow-hidden">
             {/* 
                We simply render the MiniCalendar here. It has its own complex logic that is hard to inline.
                We trust it fits relatively well, or we accept a slight visual deviation in favor of functionality.
@@ -609,8 +661,12 @@ export default function Dashboard() {
               <MiniCalendar />
             </div>
           </section>
-
-          {/* Mapa Yah */}
+                  </div>
+                );
+              case 'map':
+                return (
+                  <div key={block.id}>
+                              {/* Mapa Yah */}
           <section className="bg-gradient-to-br from-[#2A2A2A] to-[#1E1E1E] border border-[#3A3A3A] rounded-2xl p-6 text-center animate-fade-in mb-8">
             <Map className="w-12 h-12 mx-auto text-[#EEEDE9] mb-4 opacity-80" />
             <h2 className="text-base font-semibold text-[#EEEDE9] mb-2">Mapa de como aproveitar melhor a Yah</h2>
@@ -622,7 +678,12 @@ export default function Dashboard() {
               Explorar Mapa
             </button>
           </section>
-
+                  </div>
+                );
+              default:
+                return null;
+            }
+          })}
         </div>
       </div>
     </MinimalLayout>

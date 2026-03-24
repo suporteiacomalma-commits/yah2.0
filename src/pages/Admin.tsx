@@ -27,10 +27,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2, MessageCircle, Send, X, RefreshCcw, MessageSquare, AlertCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, Users, Shield, Loader2, Settings, Key, Save, Eye, EyeOff, Edit2, CreditCard, Search, Menu, History, Trash2, MessageCircle, Send, X, RefreshCcw, MessageSquare, AlertCircle, Sparkles, LayoutDashboard } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { PaymentHistoryDialog } from "@/components/admin/PaymentHistoryDialog";
 import { AnalyticsDashboard } from "@/components/dashboard/AnalyticsDashboard";
+import { DashboardBlockManager } from "@/components/admin/DashboardBlockManager";
 import { toast } from "sonner";
 import type { AppRole } from "@/hooks/useUserRole";
 import type { AdminUser } from "@/hooks/useAdminUsers";
@@ -713,7 +714,8 @@ export default function Admin() {
                   <span className="capitalize">{
                     activeTab === 'dashboard' ? 'Painel' :
                       activeTab === 'users' ? 'Usuários' :
-                        activeTab === 'settings' ? 'Integrações' :
+                      activeTab === 'settings' ? 'Integrações' :
+                        activeTab === 'dashboard-config' ? 'Blocos Dashboard' :
                           activeTab === 'whatsapp-logs' ? 'Logs WhatsApp' :
                             'Planos'
                   }</span>
@@ -733,6 +735,9 @@ export default function Admin() {
                   </Button>
                   <Button variant={activeTab === 'settings' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('settings')}>
                     <Key className="h-4 w-4" /> Integrações
+                  </Button>
+                  <Button variant={activeTab === 'dashboard-config' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('dashboard-config')}>
+                    <LayoutDashboard className="h-4 w-4" /> Blocos
                   </Button>
                   <Button variant={activeTab === 'plans' ? 'secondary' : 'ghost'} className="justify-start gap-2" onClick={() => setActiveTab('plans')}>
                     <CreditCard className="h-4 w-4" /> Planos
@@ -758,6 +763,10 @@ export default function Admin() {
               <Key className="h-4 w-4" />
               Integrações
             </TabsTrigger>
+            <TabsTrigger value="dashboard-config" className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Blocos
+            </TabsTrigger>
             <TabsTrigger value="plans" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Planos
@@ -770,6 +779,10 @@ export default function Admin() {
 
           <TabsContent value="dashboard" className="space-y-6">
             <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="dashboard-config" className="space-y-6">
+            <DashboardBlockManager />
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">

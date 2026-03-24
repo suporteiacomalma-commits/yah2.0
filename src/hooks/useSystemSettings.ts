@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -55,7 +56,7 @@ export function useSystemSettings() {
         },
     });
 
-    const getSetting = (key: string) => settings.find((s) => s.key === key);
+    const getSetting = useCallback((key: string) => settings.find((s) => s.key === key), [settings]);
 
     return {
         settings,

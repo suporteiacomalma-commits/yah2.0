@@ -29,7 +29,19 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
         }
 
         setError(null); // Clear previous errors
-        const result = await createPixPayment({ planId, email, cpf, fullName, phone });
+        
+        // Try to get device ID from SDK if it was loaded elsewhere, 
+        // or just let it be undefined as it's optional but recommended
+        const deviceId = (window as any).MP_DEVICE_SESSION_ID || (window as any).mercadopago?.getDeviceId?.();
+
+        const result = await createPixPayment({ 
+            planId, 
+            email, 
+            cpf, 
+            fullName, 
+            phone,
+            deviceId
+        });
 
         if (result.success) {
             setQrCodeImage(result.qrCode);

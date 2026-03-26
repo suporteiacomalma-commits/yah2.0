@@ -81,6 +81,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                             paymentMethodId: formData.payment_method_id,
                             issuerId: formData.issuer_id,
                             installments: formData.installments,
+                            deviceId: formData.device_id,
                             email,
                             fullName,
                             cpf,

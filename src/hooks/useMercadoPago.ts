@@ -31,6 +31,7 @@ export function useMercadoPago() {
         fullName?: string;
         cpf?: string;
         phone?: string;
+        deviceId?: string;
     }) => {
         setIsProcessing(true);
         try {
@@ -60,7 +61,14 @@ export function useMercadoPago() {
         }
     };
 
-    const createPixPayment = async (params: { planId: string, email: string, cpf: string, fullName?: string, phone?: string }) => {
+    const createPixPayment = async (params: { 
+        planId: string, 
+        email: string, 
+        cpf: string, 
+        fullName?: string, 
+        phone?: string,
+        deviceId?: string
+    }) => {
         setIsProcessing(true);
         const requestBody = {
             ...params,

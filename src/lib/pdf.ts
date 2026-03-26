@@ -33,7 +33,7 @@ export const generatePDF = ({ title, sections, fileName = "documento.pdf" }: Gen
     // Title
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
-    doc.setTextColor(162, 204, 0); // #A2CC00 - Brand Green
+    doc.setTextColor(182, 188, 69); // #B6BC45 - Brand Green
 
     // Split title if too long
     const titleLines = doc.splitTextToSize(title, contentWidth);

@@ -178,7 +178,7 @@ export function DashboardBlockManager() {
           )})}
         </div>
 
-        <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2 bg-[#A2CC00] hover:bg-[#A6E600] text-[#141414]">
+        <Button onClick={handleSave} disabled={isSaving} className="w-full gap-2 bg-[#B6BC45] hover:bg-[#A6E600] text-[#141414]">
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Salvar Configurações da Dashboard
         </Button>

@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
                     <Button
                         onClick={() => window.location.reload()}
-                        className="bg-[#A2CC00] text-[#141414] hover:bg-[#A6E600] mb-8"
+                        className="bg-[#B6BC45] text-[#141414] hover:bg-[#A6E600] mb-8"
                     >
                         <RefreshCw className="w-4 h-4 mr-2" />
                         Recarregar Página

@@ -61,6 +61,53 @@ serve(async (req) => {
                     console.error("Activation Error in Webhook:", activationError);
                 } else {
                     console.log(`Successfully activated plan for MP payment ${paymentId}`);
+
+                    // 4. Send WhatsApp Notification
+                    try {
+                        const { data: transaction } = await supabaseClient
+                            .from("payment_transactions")
+                            .select("user_id")
+                            .eq("external_id", String(paymentId))
+                            .single();
+
+                        if (transaction?.user_id) {
+                            const { data: profile } = await supabaseClient
+                                .from("profiles")
+                                .select("full_name, user_name, whatsapp")
+                                .eq("user_id", transaction.user_id)
+                                .single();
+
+                            if (profile?.whatsapp) {
+                                const { data: settingsData } = await supabaseClient
+                                    .from("system_settings")
+                                    .select("key, value")
+                                    .in("key", ["whatsapp_token", "whatsapp_backend_url", "whatsapp_msg_post_purchase"]);
+
+                                const waSettings = Object.fromEntries(settingsData?.map((s: any) => [s.key, s.value]) || []);
+                                
+                                if (waSettings.whatsapp_token && waSettings.whatsapp_backend_url && waSettings.whatsapp_msg_post_purchase) {
+                                    const message = waSettings.whatsapp_msg_post_purchase.replace("{{nome}}", profile.full_name || profile.user_name || "Cliente");
+                                    
+                                    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-proxy`, {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                                        },
+                                        body: JSON.stringify({
+                                            url: waSettings.whatsapp_backend_url,
+                                            token: waSettings.whatsapp_token,
+                                            number: profile.whatsapp,
+                                            body: message,
+                                        }),
+                                    });
+                                    console.log(`WhatsApp notification sent to ${profile.whatsapp}`);
+                                }
+                            }
+                        }
+                    } catch (waError) {
+                        console.error("Error sending WhatsApp notification:", waError);
+                    }
                 }
             } else if (status === "rejected" || status === "cancelled" || status === "refunded") {
                 await supabaseClient.rpc("process_payment_activation", {

@@ -45,11 +45,23 @@ export function useMercadoPago() {
             if (error) throw error;
 
             if (data.success) {
-                toast.success("Pagamento aprovado! Seu plano Premium foi ativado.");
+                switch (data.status) {
+                    case "approved":
+                        toast.success("Pagamento aprovado! Seu plano Premium foi ativado.");
+                        break;
+                    case "in_process":
+                        toast.info("Seu pagamento está em análise. Assim que for aprovado, seu plano será ativado automaticamente.");
+                        break;
+                    case "pending":
+                        toast.info("Seu pagamento está pendente. Por favor, acompanhe o status no Mercado Pago.");
+                        break;
+                    default:
+                        toast.warning(`Status do pagamento: ${data.status}`);
+                }
                 return { success: true, status: data.status };
             } else {
-                toast.error(`Pagamento não aprovado: ${data.status}`);
-                return { success: false, status: data.status };
+                toast.error(`Pagamento não aprovado: ${data.status || data.error}`);
+                return { success: false, status: data.status, error: data.error };
             }
 
         } catch (error: any) {

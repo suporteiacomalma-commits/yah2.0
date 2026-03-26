@@ -292,7 +292,7 @@ export default function ExploreMap() {
                     {/* ACORDEÕES DETALHADOS */}
                     <section className="space-y-4">
                         <h2 className="text-lg font-bold flex items-center gap-2 mb-6">
-                            <Sparkles className="w-5 h-5 text-[#A2CC00]" />
+                            <Sparkles className="w-5 h-5 text-[#B6BC45]" />
                             Módulos da Jornada
                         </h2>
 
@@ -312,16 +312,16 @@ export default function ExploreMap() {
                                 {expandedCard === mod.id && (
                                     <div className="px-5 pb-6 space-y-6 border-t border-white/5 pt-6 animate-in fade-in slide-in-from-top-2 duration-300">
                                         <div>
-                                            <h4 className="text-[11px] font-bold text-[#A2CC00] uppercase tracking-widest mb-2">O que é</h4>
+                                            <h4 className="text-[11px] font-bold text-[#B6BC45] uppercase tracking-widest mb-2">O que é</h4>
                                             <p className="text-[13px] text-[#BBB] leading-relaxed">{mod.details.que}</p>
                                         </div>
 
                                         <div>
-                                            <h4 className="text-[11px] font-bold text-[#A2CC00] uppercase tracking-widest mb-2">Para que serve</h4>
+                                            <h4 className="text-[11px] font-bold text-[#B6BC45] uppercase tracking-widest mb-2">Para que serve</h4>
                                             <ul className="space-y-1.5">
                                                 {mod.details.serve.map((item, i) => (
                                                     <li key={i} className="text-[13px] text-[#BBB] flex items-center gap-2">
-                                                        <div className="w-1 h-1 rounded-full bg-[#A2CC00]" />
+                                                        <div className="w-1 h-1 rounded-full bg-[#B6BC45]" />
                                                         {item}
                                                     </li>
                                                 ))}
@@ -330,15 +330,15 @@ export default function ExploreMap() {
 
                                         {mod.details.como && (
                                             <div>
-                                                <h4 className="text-[11px] font-bold text-[#A2CC00] uppercase tracking-widest mb-2">Como funciona</h4>
+                                                <h4 className="text-[11px] font-bold text-[#B6BC45] uppercase tracking-widest mb-2">Como funciona</h4>
                                                 <p className="text-[13px] text-[#BBB] leading-relaxed">{mod.details.como}</p>
                                             </div>
                                         )}
 
                                         {mod.details.alimenta && (
                                             <div>
-                                                <h4 className="text-[11px] font-bold text-[#A2CC00] uppercase tracking-widest mb-2">Conexão</h4>
-                                                <p className="text-[13px] text-[#A2CC00] font-medium leading-relaxed">{mod.details.alimenta}</p>
+                                                <h4 className="text-[11px] font-bold text-[#B6BC45] uppercase tracking-widest mb-2">Conexão</h4>
+                                                <p className="text-[13px] text-[#B6BC45] font-medium leading-relaxed">{mod.details.alimenta}</p>
                                             </div>
                                         )}
 
@@ -349,15 +349,15 @@ export default function ExploreMap() {
                                                     <p className="text-xs font-bold">{mod.details.tempo}</p>
                                                 </div>
                                             )}
-                                            <div className="flex-[2] bg-[#A2CC00]/10 rounded-xl p-3 border border-[#A2CC00]/20">
-                                                <h4 className="text-[9px] font-bold text-[#A2CC00] uppercase mb-1">Dica Estratégica</h4>
+                                            <div className="flex-[2] bg-[#B6BC45]/10 rounded-xl p-3 border border-[#B6BC45]/20">
+                                                <h4 className="text-[9px] font-bold text-[#B6BC45] uppercase mb-1">Dica Estratégica</h4>
                                                 <p className="text-[11px] text-[#EEEDE9] leading-tight italic">{mod.details.dica}</p>
                                             </div>
                                         </div>
 
                                         <button
                                             onClick={() => navigate(mod.details.link)}
-                                            className="w-full bg-[#A2CC00] text-[#141414] font-bold py-3.5 rounded-xl text-sm hover:transform hover:scale-[1.02] transition-all duration-200"
+                                            className="w-full bg-[#B6BC45] text-[#141414] font-bold py-3.5 rounded-xl text-sm hover:transform hover:scale-[1.02] transition-all duration-200"
                                         >
                                             {mod.details.action} →
                                         </button>
@@ -371,8 +371,8 @@ export default function ExploreMap() {
                     <section className="pt-8 space-y-10">
                         <div className="text-center">
                             <h2 className="text-2xl font-bold mb-2 flex items-center justify-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-[#A2CC00]/10 flex items-center justify-center">
-                                    <Check className="w-5 h-5 text-[#A2CC00]" />
+                                <div className="w-8 h-8 rounded-lg bg-[#B6BC45]/10 flex items-center justify-center">
+                                    <Check className="w-5 h-5 text-[#B6BC45]" />
                                 </div>
                                 Como aproveitar 100% do Yah
                             </h2>
@@ -380,7 +380,7 @@ export default function ExploreMap() {
 
                         {/* BLOCO 1 */}
                         <div className="bg-[#1E1E1E] border border-white/5 rounded-2xl p-6 space-y-5">
-                            <h3 className="text-sm font-bold uppercase tracking-widest text-[#A2CC00]">Vá alimentando aos poucos</h3>
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-[#B6BC45]">Vá alimentando aos poucos</h3>
                             <div className="space-y-3">
                                 {[
                                     "Jogue compromissos no Cérebro",
@@ -394,7 +394,7 @@ export default function ExploreMap() {
                                     >
                                         <div className={cn(
                                             "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
-                                            checklist.habitos[i] ? "bg-[#A2CC00] border-[#A2CC00]" : "border-white/10 group-hover:border-[#A2CC00]/50"
+                                            checklist.habitos[i] ? "bg-[#B6BC45] border-[#B6BC45]" : "border-white/10 group-hover:border-[#B6BC45]/50"
                                         )}>
                                             {checklist.habitos[i] && <Check className="w-4 h-4 text-[#141414]" />}
                                         </div>
@@ -412,7 +412,7 @@ export default function ExploreMap() {
                         {/* BLOCO 2 - PRAZOS */}
                         <div className="bg-[#1E1E1E] border border-white/5 rounded-2xl p-4 sm:p-6 space-y-5">
                             <div className="flex items-center gap-3 border-b border-white/5 pb-3">
-                                <h3 className="text-[12px] font-bold uppercase tracking-widest text-[#A2CC00]">Defina prazos sugeridos</h3>
+                                <h3 className="text-[12px] font-bold uppercase tracking-widest text-[#B6BC45]">Defina prazos sugeridos</h3>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 {[
@@ -429,7 +429,7 @@ export default function ExploreMap() {
                                             type="date"
                                             value={checklist.deadlines[field.id as keyof ChecklistState['deadlines']]}
                                             onChange={(e) => handleDeadlineChange(field.id as keyof ChecklistState['deadlines'], e.target.value)}
-                                            className="bg-white/[0.03] border border-white/10 rounded-xl h-12 px-4 text-sm font-medium text-[#EEEDE9] focus:border-[#A2CC00]/50 focus:bg-white/[0.06] outline-none transition-all w-full min-w-0 max-w-full block appearance-none color-scheme-dark"
+                                            className="bg-white/[0.03] border border-white/10 rounded-xl h-12 px-4 text-sm font-medium text-[#EEEDE9] focus:border-[#B6BC45]/50 focus:bg-white/[0.06] outline-none transition-all w-full min-w-0 max-w-full block appearance-none color-scheme-dark"
                                         />
                                     </div>
                                 ))}
@@ -442,7 +442,7 @@ export default function ExploreMap() {
 
                         {/* BLOCO 3 */}
                         <div className="bg-[#1E1E1E] border border-white/5 rounded-2xl p-6 space-y-5">
-                            <h3 className="text-sm font-bold uppercase tracking-widest text-[#A2CC00]">Rotina de Postagem</h3>
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-[#B6BC45]">Rotina de Postagem</h3>
                             <div className="space-y-4">
                                 {[
                                     "Defina quantos dias vai postar",
@@ -457,7 +457,7 @@ export default function ExploreMap() {
                                     >
                                         <div className={cn(
                                             "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
-                                            checklist.routine[i] ? "bg-[#A2CC00] border-[#A2CC00]" : "border-white/10 group-hover:border-[#A2CC00]/50"
+                                            checklist.routine[i] ? "bg-[#B6BC45] border-[#B6BC45]" : "border-white/10 group-hover:border-[#B6BC45]/50"
                                         )}>
                                             {checklist.routine[i] && <Check className="w-4 h-4 text-[#141414]" />}
                                         </div>
@@ -472,7 +472,7 @@ export default function ExploreMap() {
                         {/* SAVE BUTTON */}
                         <button
                             onClick={saveRoadmap}
-                            className="w-full bg-[#A2CC00] text-[#141414] font-bold py-4 rounded-2xl text-[15px] shadow-[0_8px_32px_rgba(217,255,0,0.3)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+                            className="w-full bg-[#B6BC45] text-[#141414] font-bold py-4 rounded-2xl text-[15px] shadow-[0_8px_32px_rgba(217,255,0,0.3)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
                         >
                             <Save className="w-5 h-5" />
                             Salvar meu Plano de Ação
@@ -480,7 +480,7 @@ export default function ExploreMap() {
                     </section>
 
                     {/* VISUALIZAÇÃO DE CONEXÕES FOOTER */}
-                    <section className="bg-gradient-to-br from-[#A2CC00]/10 to-transparent border border-[#A2CC00]/20 rounded-2xl p-8 text-center">
+                    <section className="bg-gradient-to-br from-[#B6BC45]/10 to-transparent border border-[#B6BC45]/20 rounded-2xl p-8 text-center">
                         <h3 className="text-lg font-bold text-[#EEEDE9] mb-3">Tudo se Conecta</h3>
                         <p className="text-[13px] text-[#999] leading-relaxed">Cada dado que você insere alimenta o Cérebro da sua Marca. Com o tempo, a Yah se torna cada vez mais parecida com você, antecipando suas necessidades e otimizando sua rotina.</p>
                     </section>

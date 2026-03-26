@@ -79,7 +79,7 @@ export function WeekView({ currentDate, events, onEdit }: WeekViewProps) {
                     {weekDays.map((day) => (
                         <div key={day.toISOString()} className="py-4 text-center border-r border-white/5 last:border-0">
                             <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">
-                                {format(day, "EEE", { locale: ptBR })}
+                                {format(day, "EEE", { locale: ptBR }).replace('.', '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase()}
                             </div>
                             <div className={cn(
                                 "text-sm font-black inline-flex items-center justify-center w-7 h-7 rounded-lg",

@@ -27,7 +27,7 @@ export function MonthView({ currentMonth, events, onSelectDay, selectedDate }: M
         <div className="bg-slate-900/40 border border-white/5 rounded-2xl md:rounded-3xl shadow-2xl p-2 md:p-4">
             {/* Days of Week Header */}
             <div className="grid grid-cols-7 border-b border-white/5 bg-white/5 rounded-t-xl md:rounded-t-2xl overflow-hidden">
-                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
+                {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"].map((day) => (
                     <div
                         key={day}
                         className="py-2 md:py-4 text-center text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] md:tracking-[0.2em]"

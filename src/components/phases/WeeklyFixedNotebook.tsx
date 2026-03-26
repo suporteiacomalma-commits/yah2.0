@@ -82,6 +82,16 @@ const DAYS_OF_WEEK = [
     "Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"
 ];
 
+const SHORT_DAY_NAMES: Record<string, string> = {
+    "Domingo": "DOM",
+    "Segunda": "SEG",
+    "Terça": "TER",
+    "Quarta": "QUA",
+    "Quinta": "QUI",
+    "Sexta": "SEX",
+    "Sábado": "SAB"
+};
+
 const INTENTION_OPTIONS = [
     "Identificação", "Educação", "Cultura", "Conexão", "Vendas Invisíveis", "Inspiração"
 ];
@@ -1236,7 +1246,7 @@ ${block.caption || 'Sem legenda.'}`;
                                                     }
                                                 }}
                                             />
-                                            <Label htmlFor={`post-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{day.substring(0, 3)}</Label>
+                                            <Label htmlFor={`post-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{SHORT_DAY_NAMES[day]}</Label>
                                         </div>
                                     ))}
                                 </div>
@@ -1256,7 +1266,7 @@ ${block.caption || 'Sem legenda.'}`;
                                                     else handleRoutineChange("routine_planning_days", current.filter(d => d !== day));
                                                 }}
                                             />
-                                            <Label htmlFor={`plan-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{day.substring(0, 3)}</Label>
+                                            <Label htmlFor={`plan-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{SHORT_DAY_NAMES[day]}</Label>
                                         </div>
                                     ))}
                                 </div>
@@ -1285,7 +1295,7 @@ ${block.caption || 'Sem legenda.'}`;
                                                     else handleRoutineChange("routine_execution_days", current.filter(d => d !== day));
                                                 }}
                                             />
-                                            <Label htmlFor={`exec-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{day.substring(0, 3)}</Label>
+                                            <Label htmlFor={`exec-${day}`} className="text-[10px] uppercase font-bold cursor-pointer opacity-70">{SHORT_DAY_NAMES[day]}</Label>
                                         </div>
                                     ))}
                                 </div>
@@ -1452,7 +1462,7 @@ ${block.caption || 'Sem legenda.'}`;
                                         <div className={cn(
                                             "w-12 text-[10px] font-bold uppercase",
                                             hasContent ? "text-accent" : "text-muted-foreground/60"
-                                        )}>{day.substring(0, 3)}</div>
+                                        )}>{SHORT_DAY_NAMES[day]}</div>
                                         <div className={cn(
                                             "flex-1 text-sm font-semibold",
                                             hasContent ? "text-foreground" : "text-muted-foreground/40"

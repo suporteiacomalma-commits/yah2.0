@@ -59,13 +59,13 @@ export function AddActivityDialog({
   const [isSaving, setIsSaving] = useState(false);
 
   const WEEK_DAYS = [
-    { id: 0, label: "D", full: "Domingo" },
-    { id: 1, label: "S", full: "Segunda" },
-    { id: 2, label: "T", full: "Terça" },
-    { id: 3, label: "Q", full: "Quarta" },
-    { id: 4, label: "Q", full: "Quinta" },
-    { id: 5, label: "S", full: "Sexta" },
-    { id: 6, label: "S", full: "Sábado" },
+    { id: 1, label: "SEG", full: "Segunda-feira" },
+    { id: 2, label: "TER", full: "Terça-feira" },
+    { id: 3, label: "QUA", full: "Quarta-feira" },
+    { id: 4, label: "QUI", full: "Quinta-feira" },
+    { id: 5, label: "SEX", full: "Sexta-feira" },
+    { id: 6, label: "SAB", full: "Sábado" },
+    { id: 0, label: "DOM", full: "Domingo" },
   ];
 
   useEffect(() => {
@@ -279,28 +279,35 @@ export function AddActivityDialog({
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Recorrência</label>
-              <Select value={recurrence} onValueChange={(v) => setRecurrence(v as RecurrenceType)}>
-                <SelectTrigger className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
-                  <div className="flex items-center gap-2">
-                    <Repeat className="w-4 h-4" />
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10">
-                  {["Nenhuma", "Diária", "Semanal", "Mensal", "Anual"].map(rec => (
-                    <SelectItem key={rec} value={rec} className="font-bold">{rec}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Repetir?</label>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {(["Nenhuma", "Diária", "Semanal", "Mensal", "Anual"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setRecurrence(option)}
+                    className={cn(
+                      "h-10 rounded-xl text-[10px] font-bold uppercase tracking-tighter border transition-all flex flex-col items-center justify-center gap-0.5",
+                      recurrence === option
+                        ? "bg-[#B6BC45]/20 text-[#B6BC45] border-[#B6BC45]/30 shadow-lg shadow-[#B6BC45]/5"
+                        : "bg-white/5 text-muted-foreground border-white/5 hover:bg-white/10"
+                    )}
+                  >
+                    <span>{option === "Nenhuma" ? "Não" : option}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {recurrence !== "Nenhuma" && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Repetir nos dias</label>
-              <div className="flex justify-between gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl">
+          {recurrence === "Semanal" && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[#B6BC45] ml-1 flex items-center gap-2">
+                <Repeat className="w-3 h-3" />
+                Selecione os dias da semana
+              </label>
+              <div className="flex justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded-2xl">
                 {WEEK_DAYS.map((day) => {
                   const isSelected = selectedDays.includes(day.id);
                   return (
@@ -309,10 +316,10 @@ export function AddActivityDialog({
                       type="button"
                       onClick={() => toggleDay(day.id)}
                       className={cn(
-                        "flex-1 h-10 rounded-xl text-[10px] font-black transition-all",
+                        "flex-1 h-11 rounded-xl text-xs font-black transition-all duration-300",
                         isSelected
-                          ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.05]"
-                          : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                          ? "bg-[#B6BC45] text-slate-950 shadow-xl shadow-[#B6BC45]/20 scale-[1.05]"
+                          : "text-muted-foreground hover:bg-white/10 hover:text-white"
                       )}
                       title={day.full}
                     >

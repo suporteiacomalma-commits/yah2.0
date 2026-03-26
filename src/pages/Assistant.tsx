@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send, MessageSquareText, Trash2, ArrowLeft } from "lucide-react";
+import { Mic, Image as ImageIcon, Sparkles, Loader2, Brain, X, Keyboard, Search, Send, MessageSquareText, Trash2, ArrowLeft, Repeat } from "lucide-react";
 import { format, addDays, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
@@ -31,6 +31,15 @@ const LIFE_BLOCKS = [
     { name: "Estudos", color: "bg-indigo-500" },
     { name: "Outro", color: "bg-gray-500" },
 ];
+const WEEK_DAYS = [
+    { id: 1, label: "SEG", full: "Segunda" },
+    { id: 2, label: "TER", full: "Terça" },
+    { id: 3, label: "QUA", full: "Quarta" },
+    { id: 4, label: "QUI", full: "Quinta" },
+    { id: 5, label: "SEX", full: "Sexta" },
+    { id: 6, label: "SAB", full: "Sábado" },
+    { id: 0, label: "DOM", full: "Domingo" },
+];
 
 interface EventoConfirmacao {
     titulo: string;
@@ -44,6 +53,7 @@ interface EventoConfirmacao {
     timezone: string;
     status: string;
     prioridade: "Baixa" | "Média" | "Alta";
+    dias_da_semana?: number[];
 }
 
 export default function Assistant() {
@@ -292,7 +302,8 @@ Input normalizado do usuário: "${normalizedText}"`;
                     rrule: e.rrule || null,
                     timezone: e.timezone || "America/Sao_Paulo",
                     status: status,
-                    prioridade: e.prioridade || "Média"
+                    prioridade: e.prioridade || "Média",
+                    dias_da_semana: []
                 };
             });
 
@@ -341,8 +352,8 @@ Input normalizado do usuário: "${normalizedText}"`;
         try {
             // Check for strict required fields (re-verify step)
             for (const event of confirmEvents) {
-                if (event.is_recurring && (!event.rrule || !event.data)) {
-                    toast.error(`O evento "${event.titulo}" tem falhas na regra de recorrência. Corrija ou não defina como recorrente.`);
+                if (event.is_recurring && !event.data) {
+                    toast.error(`O evento "${event.titulo}" precisa de uma data definida.`);
                     setIsProcessing(false);
                     return;
                 }
@@ -360,6 +371,7 @@ Input normalizado do usuário: "${normalizedText}"`;
                 timezone: event.timezone,
                 status: "Pendente",
                 prioridade: event.prioridade,
+                dias_da_semana: event.recorrencia === "Semanal" ? event.dias_da_semana : [],
                 duracao: 60, // Default duration for AI extracted events
                 user_id: user.id
             }));
@@ -713,19 +725,66 @@ Input normalizado do usuário: "${normalizedText}"`;
                                                 </Select>
                                             </div>
 
-                                            <div className="space-y-2">
+                                            <div className="space-y-3">
                                                 <Label className="text-[10px] uppercase font-black tracking-[0.3em] text-white/40 ml-1">Repetir?</Label>
-                                                <Select value={event.recorrencia} onValueChange={v => updateEvent(index, { recorrencia: v })}>
-                                                    <SelectTrigger className="bg-white/10 border-white/10 h-10 rounded-xl focus:ring-0 px-3 md:px-4 font-bold text-sm text-white">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-black/95 backdrop-blur-3xl border-white/10 text-white rounded-xl">
-                                                        {["Nenhuma", "Diária", "Semanal", "Mensal", "Anual"].map(rep => (
-                                                            <SelectItem key={rep} value={rep} className="focus:bg-white/10 py-2.5">{rep}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                                                    {(["Nenhuma", "Diária", "Semanal", "Mensal", "Anual"] as const).map((option) => (
+                                                        <button
+                                                            key={option}
+                                                            type="button"
+                                                            onClick={() => updateEvent(index, { 
+                                                                recorrencia: option,
+                                                                is_recurring: option !== "Nenhuma",
+                                                                rrule: null
+                                                            })}
+                                                            className={cn(
+                                                                "h-10 rounded-xl text-[10px] font-bold uppercase tracking-tighter border transition-all flex flex-col items-center justify-center gap-0.5",
+                                                                event.recorrencia === option
+                                                                    ? "bg-[#B6BC45]/20 text-[#B6BC45] border-[#B6BC45]/30 shadow-lg shadow-[#B6BC45]/5"
+                                                                    : "bg-white/10 text-white/40 border-white/10 hover:bg-white/20"
+                                                            )}
+                                                        >
+                                                            <span>{option === "Nenhuma" ? "Não" : option}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
+
+                                            {event.recorrencia === "Semanal" && (
+                                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#B6BC45] ml-1 flex items-center gap-2">
+                                                        <Repeat className="w-3 h-3" />
+                                                        Selecione os dias da semana
+                                                    </label>
+                                                    <div className="flex justify-between gap-2 p-2 bg-white/5 border border-white/10 rounded-2xl">
+                                                        {WEEK_DAYS.map((day) => {
+                                                            const isSelected = (event.dias_da_semana || []).includes(day.id);
+                                                            return (
+                                                                <button
+                                                                    key={day.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const currentDays = event.dias_da_semana || [];
+                                                                        const nextDays = currentDays.includes(day.id)
+                                                                            ? currentDays.filter(d => d !== day.id)
+                                                                            : [...currentDays, day.id].sort();
+                                                                        updateEvent(index, { dias_da_semana: nextDays });
+                                                                    }}
+                                                                    className={cn(
+                                                                        "flex-1 h-11 rounded-xl text-xs font-black transition-all duration-300",
+                                                                        isSelected
+                                                                            ? "bg-[#B6BC45] text-slate-950 shadow-xl shadow-[#B6BC45]/20 scale-[1.05]"
+                                                                            : "text-white/40 hover:bg-white/10 hover:text-white"
+                                                                    )}
+                                                                    title={day.full}
+                                                                >
+                                                                    {day.label}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

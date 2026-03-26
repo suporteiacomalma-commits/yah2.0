@@ -51,7 +51,8 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
     const groups: { title: string; events: CerebroEvent[] }[] = [];
 
     if (view === "day") {
-        groups.push({ title: format(date, "EEEE, d 'de' MMMM", { locale: ptBR }), events: dateRangeEvents });
+        const dayLabel = format(date, "EEE", { locale: ptBR }).replace('.', '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        groups.push({ title: `${dayLabel}, ${format(date, "d 'de' MMMM", { locale: ptBR })}`, events: dateRangeEvents });
     } else {
         // Group by day for other views
         const dayMap = new Map<string, CerebroEvent[]>();
@@ -63,8 +64,9 @@ export function ListView({ date, view, events, onToggleStatus, onEdit, onDelete 
 
         Array.from(dayMap.keys()).sort().forEach(dateStr => {
             const dateObj = new Date(dateStr + 'T12:00:00');
+            const dayLabel = format(dateObj, "EEE", { locale: ptBR }).replace('.', '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
             groups.push({
-                title: format(dateObj, "EEEE, d 'de' MMMM", { locale: ptBR }),
+                title: `${dayLabel}, ${format(dateObj, "d 'de' MMMM", { locale: ptBR })}`,
                 events: dayMap.get(dateStr) || []
             });
         });

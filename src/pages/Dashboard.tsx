@@ -250,10 +250,11 @@ export default function Dashboard() {
                       </h2>
 
                       <div className="flex items-center gap-1.5">
-                        {['SEG', 'TER', 'QUA', 'QUI', 'SEX'].map((day, idx) => {
+                        {['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'].map((day, idx) => {
                           const currentDayIdx = new Date().getDay(); // 0 Sunday, 1 Monday...
-                          // Map: idx 0(SEG)->1, 1(TER)->2, 2(QUA)->3, 3(QUI)->4, 4(SEX)->5
-                          const isToday = (idx + 1) === currentDayIdx;
+                          // Map: 0:SEG(1), 1:TER(2), 2:QUA(3), 3:QUI(4), 4:SEX(5), 5:SAB(6), 6:DOM(0)
+                          const dayValue = (idx + 1) % 7;
+                          const isToday = dayValue === currentDayIdx;
                           
                           return (
                             <div

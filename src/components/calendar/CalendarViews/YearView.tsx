@@ -39,8 +39,8 @@ export function YearView({ currentDate, events, onSelectMonth }: YearViewProps) 
                         </h4>
 
                         <div className="grid grid-cols-7 gap-1">
-                            {["D", "S", "T", "Q", "Q", "S", "S"].map((d, i) => (
-                                <div key={i} className="text-[8px] font-black text-white/20 text-center mb-1">{d}</div>
+                            {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SAB"].map((d, i) => (
+                                <div key={i} className="text-[6px] font-black text-white/20 text-center mb-1">{d}</div>
                             ))}
 
                             {Array.from({ length: pad }).map((_, i) => (

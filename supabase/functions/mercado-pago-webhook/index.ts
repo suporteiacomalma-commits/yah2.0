@@ -73,11 +73,13 @@ serve(async (req) => {
                         if (transaction?.user_id) {
                             const { data: profile } = await supabaseClient
                                 .from("profiles")
-                                .select("full_name, user_name, whatsapp")
+                                .select("full_name, user_name, whatsapp, cellphone, phone")
                                 .eq("user_id", transaction.user_id)
                                 .single();
 
-                            if (profile?.whatsapp) {
+                            const rawNumber = profile?.whatsapp || profile?.cellphone || profile?.phone;
+
+                            if (rawNumber) {
                                 const { data: settingsData } = await supabaseClient
                                     .from("system_settings")
                                     .select("key, value")
@@ -88,6 +90,12 @@ serve(async (req) => {
                                 if (waSettings.whatsapp_token && waSettings.whatsapp_backend_url && waSettings.whatsapp_msg_post_purchase) {
                                     const message = waSettings.whatsapp_msg_post_purchase.replace("{{nome}}", profile.full_name || profile.user_name || "Cliente");
                                     
+                                    // Clean and format number (adding 55 prefix if missing)
+                                    let cleanNumber = rawNumber.replace(/\D/g, "");
+                                    if (cleanNumber.length === 10 || cleanNumber.length === 11) {
+                                        cleanNumber = `55${cleanNumber}`;
+                                    }
+
                                     await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-proxy`, {
                                         method: "POST",
                                         headers: {
@@ -97,11 +105,11 @@ serve(async (req) => {
                                         body: JSON.stringify({
                                             url: waSettings.whatsapp_backend_url,
                                             token: waSettings.whatsapp_token,
-                                            number: profile.whatsapp,
+                                            number: cleanNumber,
                                             body: message,
                                         }),
                                     });
-                                    console.log(`WhatsApp notification sent to ${profile.whatsapp}`);
+                                    console.log(`WhatsApp notification sent to ${cleanNumber}`);
                                 }
                             }
                         }

@@ -79,7 +79,7 @@ serve(async (req: Request) => {
             .select("*")
             .eq("status", "pending")
             .lte("send_at", now.toISOString())
-            .limit(50); // process 50 at a time
+            .limit(10); // process 10 at a time to avoid timeouts (sequential process)
 
         if (pendingError) {
             console.error("Error fetching scheduled messages:", pendingError);
@@ -116,7 +116,7 @@ serve(async (req: Request) => {
                 let hasAccess = (status === 'trialing' || status === 'active') && !isTrialExpired;
 
                 // Special case: Allow POST_TRIAL messages even if expired
-                if (msg.type && msg.type.startsWith('POST_TRIAL_')) {
+                if (msg.type && (msg.type.startsWith('POST_TRIAL_') || msg.type === 'POST_PURCHASE_MANUAL')) {
                     hasAccess = true;
                 }
 

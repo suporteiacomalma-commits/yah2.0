@@ -71,6 +71,21 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
 
         console.log("Subscribing to payment status for:", internalId);
 
+        const checkCurrentStatus = async () => {
+            const { data, error } = await (supabase as any)
+                .from('payment_transactions')
+                .select('status')
+                .eq('id', internalId)
+                .single();
+            
+            if (data && (data.status === 'approved' || data.status === 'completed')) {
+                setIsApproved(true);
+                toast.success("Pagamento confirmado via PIX!");
+            }
+        };
+
+        checkCurrentStatus();
+
         const channel = supabase
             .channel(`payment-status-${internalId}`)
             .on(
@@ -83,7 +98,7 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
                 },
                 (payload) => {
                     console.log("Payment update received:", payload);
-                    if (payload.new && payload.new.status === 'approved') {
+                    if (payload.new && (payload.new.status === 'approved' || payload.new.status === 'completed')) {
                         setIsApproved(true);
                         toast.success("Pagamento confirmado via PIX!");
                     }

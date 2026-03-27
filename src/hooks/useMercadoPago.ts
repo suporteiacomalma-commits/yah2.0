@@ -47,6 +47,7 @@ export function useMercadoPago() {
             if (data.success) {
                 switch (data.status) {
                     case "approved":
+                    case "completed":
                         toast.success("Pagamento aprovado! Seu plano Premium foi ativado.");
                         break;
                     case "in_process":
@@ -58,7 +59,7 @@ export function useMercadoPago() {
                     default:
                         toast.warning(`Status do pagamento: ${data.status}`);
                 }
-                return { success: true, status: data.status, internalId: data.internalId };
+                return { success: true, status: data.status, internalId: data.internalId, isApproved: data.status === "approved" || data.status === "completed" };
             } else {
                 toast.error(`Pagamento não aprovado: ${data.status || data.error}`);
                 return { success: false, status: data.status, error: data.error };

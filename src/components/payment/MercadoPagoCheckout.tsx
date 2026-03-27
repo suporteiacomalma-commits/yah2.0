@@ -147,6 +147,21 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
     useEffect(() => {
         if (!internalId || isApproved) return;
 
+        const checkCurrentStatus = async () => {
+            const { data, error } = await (supabase as any)
+                .from('payment_transactions')
+                .select('status')
+                .eq('id', internalId)
+                .single();
+            
+            if (data && (data.status === 'approved' || data.status === 'completed')) {
+                setIsApproved(true);
+                toast.success("Pagamento aprovado!");
+            }
+        };
+
+        checkCurrentStatus();
+
         const channel = supabase
             .channel(`card-payment-status-${internalId}`)
             .on(
@@ -158,7 +173,7 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                     filter: `id=eq.${internalId}`
                 },
                 (payload) => {
-                    if (payload.new && payload.new.status === 'approved') {
+                    if (payload.new && (payload.new.status === 'approved' || payload.new.status === 'completed')) {
                         setIsApproved(true);
                         toast.success("Pagamento aprovado!");
                     }

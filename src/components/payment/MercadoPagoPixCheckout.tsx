@@ -3,6 +3,8 @@ import { useMercadoPago } from "@/hooks/useMercadoPago";
 import { Loader2, Copy, CheckCircle2, AlertCircle, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { PaymentSuccess } from "./PaymentSuccess";
 
 interface MercadoPagoPixCheckoutProps {
     planId: string;
@@ -21,6 +23,8 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
     const [ticketUrl, setTicketUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [isApproved, setIsApproved] = useState(false);
+    const [internalId, setInternalId] = useState<string | null>(null);
 
     const generatePix = async () => {
         if (!cpf) {
@@ -47,9 +51,9 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
             setQrCodeImage(result.qrCode);
             setQrCodeCopyPaste(result.qrCodePaste);
             setTicketUrl(result.ticketUrl);
+            setInternalId(result.internalId);
             toast.success("PIX gerado com sucesso!");
         } else {
-            setError(result.error || "Falha ao gerar o PIX.");
         }
     };
 
@@ -61,6 +65,40 @@ export function MercadoPagoPixCheckout({ planId, amount, email, fullName, cpf, p
             setTimeout(() => setCopied(false), 2000);
         }
     };
+    
+    useEffect(() => {
+        if (!internalId || isApproved) return;
+
+        console.log("Subscribing to payment status for:", internalId);
+
+        const channel = supabase
+            .channel(`payment-status-${internalId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'payment_transactions',
+                    filter: `id=eq.${internalId}`
+                },
+                (payload) => {
+                    console.log("Payment update received:", payload);
+                    if (payload.new && payload.new.status === 'approved') {
+                        setIsApproved(true);
+                        toast.success("Pagamento confirmado via PIX!");
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [internalId, isApproved]);
+
+    if (isApproved) {
+        return <PaymentSuccess onSuccess={onSuccess || (() => {})} />;
+    }
 
     if (isProcessing) {
         return (

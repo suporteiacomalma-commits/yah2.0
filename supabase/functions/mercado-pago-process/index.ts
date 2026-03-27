@@ -112,6 +112,7 @@ serve(async (req) => {
             success: true,
             status: result.status,
             paymentId: result.id,
+            internalId: tx.id,
             point_of_interaction: result.point_of_interaction
         }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },

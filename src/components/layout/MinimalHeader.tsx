@@ -339,10 +339,8 @@ export function MinimalHeader({ brandName, isPurchaseOpen: externalIsPurchaseOpe
                   cpf={cpf}
                   phone={phone}
                   onSuccess={() => {
-                    // Payment success logic for PIX (usually handled via webhook/polling, but we can close dialog if needed)
-                    // But for PIX we usually wait for user to pay. The component shows the QR Code.
-                    // The onSuccess prop in MP Pix component might not be triggered automatically unless we poll status.
-                    // For now, let's keep it open so user can scan.
+                    setIsPurchaseOpen(false);
+                    setSelectedPlan(null);
                   }}
                 />
               </div>

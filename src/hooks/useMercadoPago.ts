@@ -58,7 +58,7 @@ export function useMercadoPago() {
                     default:
                         toast.warning(`Status do pagamento: ${data.status}`);
                 }
-                return { success: true, status: data.status };
+                return { success: true, status: data.status, internalId: data.internalId };
             } else {
                 toast.error(`Pagamento não aprovado: ${data.status || data.error}`);
                 return { success: false, status: data.status, error: data.error };
@@ -111,7 +111,8 @@ export function useMercadoPago() {
                     qrCode: data.point_of_interaction.transaction_data.qr_code_base64,
                     qrCodePaste: data.point_of_interaction.transaction_data.qr_code,
                     ticketUrl: data.point_of_interaction.transaction_data.ticket_url,
-                    paymentId: data.id
+                    paymentId: data.id,
+                    internalId: data.internalId
                 };
             } else {
                 toast.error(`Erro ao gerar PIX: ${data.status}`);

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useMercadoPago } from "@/hooks/useMercadoPago";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { PaymentSuccess } from "./PaymentSuccess";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MercadoPagoCheckoutProps {
     planId: string;
@@ -17,6 +19,8 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
     const { loadMercadoPago, processPayment, publicKey, isProcessing } = useMercadoPago();
     const containerRef = useRef<HTMLDivElement>(null);
     const brickController = useRef<any>(null);
+    const [isApproved, setIsApproved] = useState(false);
+    const [internalId, setInternalId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!publicKey || !containerRef.current || !amount || !email) {
@@ -88,8 +92,12 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                             phone
                         });
 
-                        if (result.success && onSuccess) {
-                            onSuccess();
+                        if (result.success) {
+                            if (result.status === 'approved') {
+                                setIsApproved(true);
+                            } else {
+                                setInternalId(result.internalId);
+                            }
                         }
                     },
                     onError: (error: any) => {
@@ -134,7 +142,38 @@ export function MercadoPagoCheckout({ planId, amount, email, fullName, cpf, phon
                 }
             }
         };
-    }, [publicKey, amount, email, planId]); // Reverted dependencies
+    }, [publicKey, amount, email, planId]);
+
+    useEffect(() => {
+        if (!internalId || isApproved) return;
+
+        const channel = supabase
+            .channel(`card-payment-status-${internalId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'payment_transactions',
+                    filter: `id=eq.${internalId}`
+                },
+                (payload) => {
+                    if (payload.new && payload.new.status === 'approved') {
+                        setIsApproved(true);
+                        toast.success("Pagamento aprovado!");
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [internalId, isApproved]);
+
+    if (isApproved) {
+        return <PaymentSuccess onSuccess={onSuccess || (() => {})} />;
+    }
 
     if (!publicKey) {
         return (
